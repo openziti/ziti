@@ -17,6 +17,7 @@
 package model
 
 import (
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
@@ -70,6 +71,9 @@ type RoleAttributeUsage struct {
 type roleAttributeSource struct {
 	name  RoleAttributeSource
 	index boltz.SetReadIndex
+	// policy marks a policy roles index, where the key db.AllRoleValue is the #all wildcard rather
+	// than a reference to an attribute.
+	policy bool
 }
 
 // sourcesFor returns the ordered list of (name, index) pairs that contribute
@@ -80,26 +84,26 @@ func sourcesFor(env Env, kind RoleAttributeKind) []roleAttributeSource {
 	switch kind {
 	case RoleAttributeKindIdentity:
 		return []roleAttributeSource{
-			{RoleAttributeSourceIdentities, stores.Identity.GetRoleAttributesIndex()},
-			{RoleAttributeSourceServicePolicies, stores.ServicePolicy.GetIdentityRoleAttributesIndex()},
-			{RoleAttributeSourceEdgeRouterPolicies, stores.EdgeRouterPolicy.GetIdentityRoleAttributesIndex()},
+			{RoleAttributeSourceIdentities, stores.Identity.GetRoleAttributesIndex(), false},
+			{RoleAttributeSourceServicePolicies, stores.ServicePolicy.GetIdentityRoleAttributesIndex(), true},
+			{RoleAttributeSourceEdgeRouterPolicies, stores.EdgeRouterPolicy.GetIdentityRoleAttributesIndex(), true},
 		}
 	case RoleAttributeKindEdgeRouter:
 		return []roleAttributeSource{
-			{RoleAttributeSourceEdgeRouters, stores.EdgeRouter.GetRoleAttributesIndex()},
-			{RoleAttributeSourceEdgeRouterPolicies, stores.EdgeRouterPolicy.GetEdgeRouterRoleAttributesIndex()},
-			{RoleAttributeSourceServiceEdgeRouterPolicies, stores.ServiceEdgeRouterPolicy.GetEdgeRouterRoleAttributesIndex()},
+			{RoleAttributeSourceEdgeRouters, stores.EdgeRouter.GetRoleAttributesIndex(), false},
+			{RoleAttributeSourceEdgeRouterPolicies, stores.EdgeRouterPolicy.GetEdgeRouterRoleAttributesIndex(), true},
+			{RoleAttributeSourceServiceEdgeRouterPolicies, stores.ServiceEdgeRouterPolicy.GetEdgeRouterRoleAttributesIndex(), true},
 		}
 	case RoleAttributeKindService:
 		return []roleAttributeSource{
-			{RoleAttributeSourceServices, stores.Service.GetRoleAttributesIndex()},
-			{RoleAttributeSourceServicePolicies, stores.ServicePolicy.GetServiceRoleAttributesIndex()},
-			{RoleAttributeSourceServiceEdgeRouterPolicies, stores.ServiceEdgeRouterPolicy.GetServiceRoleAttributesIndex()},
+			{RoleAttributeSourceServices, stores.Service.GetRoleAttributesIndex(), false},
+			{RoleAttributeSourceServicePolicies, stores.ServicePolicy.GetServiceRoleAttributesIndex(), true},
+			{RoleAttributeSourceServiceEdgeRouterPolicies, stores.ServiceEdgeRouterPolicy.GetServiceRoleAttributesIndex(), true},
 		}
 	case RoleAttributeKindPostureCheck:
 		return []roleAttributeSource{
-			{RoleAttributeSourcePostureChecks, stores.PostureCheck.GetRoleAttributesIndex()},
-			{RoleAttributeSourceServicePolicies, stores.ServicePolicy.GetPostureCheckRoleAttributesIndex()},
+			{RoleAttributeSourcePostureChecks, stores.PostureCheck.GetRoleAttributesIndex(), false},
+			{RoleAttributeSourceServicePolicies, stores.ServicePolicy.GetPostureCheckRoleAttributesIndex(), true},
 		}
 	}
 	return nil
@@ -131,6 +135,9 @@ func QueryRoleAttributeUsage(env Env, kind RoleAttributeKind, queryString string
 				continue
 			}
 			src.index.ReadKeys(tx, func(val []byte) {
+				if src.policy && string(val) == db.AllRoleValue {
+					return
+				}
 				if _, ok := seen[string(val)]; ok {
 					return
 				}
@@ -164,7 +171,7 @@ func QueryRoleAttributeUsage(env Env, kind RoleAttributeKind, queryString string
 			usage := make(map[RoleAttributeSource]*RoleAttributeSourceUsage, len(sources))
 			for _, src := range sources {
 				entry := &RoleAttributeSourceUsage{}
-				if src.index != nil {
+				if src.index != nil && !(src.policy && attr == db.AllRoleValue) {
 					src.index.Read(tx, []byte(attr), func(val []byte) {
 						entry.Count++
 						if includeIds {

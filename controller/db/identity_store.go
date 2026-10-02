@@ -24,10 +24,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/v2/ziti"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -546,21 +546,25 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 
 func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.edgeRouterPolicy.symbolIdentityRoles,
-		linkCollection:        store.stores.edgeRouterPolicy.identityCollection,
-		relatedLinkCollection: store.stores.edgeRouterPolicy.edgeRouterCollection,
-		denormLinkCollection:  store.edgeRoutersCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.edgeRouterPolicy.symbolIdentityRoles,
+		policyRoleAttributesIndex: store.stores.edgeRouterPolicy.indexIdentityRoleAttributes,
+		entityPoliciesSymbol:      store.symbolEdgeRouterPolicies,
+		linkCollection:            store.stores.edgeRouterPolicy.identityCollection,
+		relatedLinkCollection:     store.stores.edgeRouterPolicy.edgeRouterCollection,
+		denormLinkCollection:      store.edgeRoutersCollection,
+		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
 
 	ctx = &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.servicePolicy.symbolIdentityRoles,
-		linkCollection:        store.stores.servicePolicy.identityCollection,
-		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.servicePolicy.symbolIdentityRoles,
+		policyRoleAttributesIndex: store.stores.servicePolicy.indexIdentityRoleAttributes,
+		entityPoliciesSymbol:      store.symbolServicePolicies,
+		linkCollection:            store.stores.servicePolicy.identityCollection,
+		relatedLinkCollection:     store.stores.servicePolicy.serviceCollection,
+		ErrorHolder:               holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 }

@@ -200,3 +200,31 @@ func TestQueryRoleAttributeUsage_Filter_Paging(t *testing.T) {
 	ctx.Equal(expected[1], results[0].RoleAttribute)
 	ctx.Equal(expected[2], results[1].RoleAttribute)
 }
+
+// TestQueryRoleAttributeUsage_WildcardIsNotAnAttribute verifies a policy's #all wildcard neither
+// surfaces as an attribute named "all" nor counts as a policy reference to an entity attribute
+// that really is named "all".
+func TestQueryRoleAttributeUsage_WildcardIsNotAnAttribute(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Cleanup()
+	ctx.Init()
+
+	ctx.requireNewServicePolicy(db.PolicyTypeDialName, ss("#all"), ss("#public"))
+
+	results, _, err := QueryRoleAttributeUsage(ctx, RoleAttributeKindIdentity, `id = "all"`, true)
+	ctx.NoError(err)
+	ctx.Empty(results)
+
+	identity := ctx.requireNewIdentity(false)
+	identity.RoleAttributes = []string{"all"}
+	ctx.NoError(ctx.managers.Identity.Update(identity, nil, change.New()))
+
+	results, _, err = QueryRoleAttributeUsage(ctx, RoleAttributeKindIdentity, `id = "all"`, true)
+	ctx.NoError(err)
+	ctx.Len(results, 1)
+	ctx.Equal("all", results[0].RoleAttribute)
+	ctx.Equal(int64(1), results[0].Usage[RoleAttributeSourceIdentities].Count)
+	ctx.Equal([]string{identity.Id}, results[0].Usage[RoleAttributeSourceIdentities].Ids)
+	ctx.Equal(int64(0), results[0].Usage[RoleAttributeSourceServicePolicies].Count)
+	ctx.Equal(int64(0), results[0].Usage[RoleAttributeSourceEdgeRouterPolicies].Count)
+}

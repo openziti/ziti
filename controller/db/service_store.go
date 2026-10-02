@@ -377,22 +377,26 @@ func (store *serviceStoreImpl) getTerminators(tx *bbolt.Tx, serviceId string) ([
 func (store *serviceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	// Recalculate service policy links
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.servicePolicy.symbolServiceRoles,
-		linkCollection:        store.stores.servicePolicy.serviceCollection,
-		relatedLinkCollection: store.stores.servicePolicy.identityCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.servicePolicy.symbolServiceRoles,
+		policyRoleAttributesIndex: store.stores.servicePolicy.indexServiceRoleAttributes,
+		entityPoliciesSymbol:      store.symbolServicePolicies,
+		linkCollection:            store.stores.servicePolicy.serviceCollection,
+		relatedLinkCollection:     store.stores.servicePolicy.identityCollection,
+		ErrorHolder:               holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 
 	// Recalculate service edge router policy links
 	ctx = &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.serviceEdgeRouterPolicy.symbolServiceRoles,
-		linkCollection:        store.stores.serviceEdgeRouterPolicy.serviceCollection,
-		relatedLinkCollection: store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
-		denormLinkCollection:  store.edgeRoutersCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.serviceEdgeRouterPolicy.symbolServiceRoles,
+		policyRoleAttributesIndex: store.stores.serviceEdgeRouterPolicy.indexServiceRoleAttributes,
+		entityPoliciesSymbol:      store.symbolServiceEdgeRouterPolicies,
+		linkCollection:            store.stores.serviceEdgeRouterPolicy.serviceCollection,
+		relatedLinkCollection:     store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
+		denormLinkCollection:      store.edgeRoutersCollection,
+		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.serviceEdgeRouterPolicy.symbolSemantic)
 }

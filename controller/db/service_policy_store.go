@@ -6,9 +6,9 @@ import (
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 )
 
 type PolicyType string
@@ -354,7 +354,7 @@ func (store *servicePolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.Persi
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService, add)
 	}
 
-	EvaluatePolicy(ctx, policy, store.stores.service.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.service.symbolRoleAttributes, store.stores.service.indexRoleAttributes)
 }
 
 func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
@@ -382,7 +382,7 @@ func (store *servicePolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.Pers
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity, add)
 	}
 
-	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes, store.stores.identity.indexRoleAttributes)
 }
 
 func (store *servicePolicyStoreImpl) postureCheckRolesUpdated(persistCtx *boltz.PersistContext, policy *ServicePolicy) {
@@ -408,7 +408,7 @@ func (store *servicePolicyStoreImpl) postureCheckRolesUpdated(persistCtx *boltz.
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck, add)
 	}
 
-	EvaluatePolicy(ctx, policy, store.stores.postureCheck.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.postureCheck.symbolRoleAttributes, store.stores.postureCheck.indexRoleAttributes)
 }
 
 func (store *servicePolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

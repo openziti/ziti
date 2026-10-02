@@ -6,9 +6,9 @@ import (
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/eid"
 )
 
 func newServiceEdgeRouterPolicy(name string) *ServiceEdgeRouterPolicy {
@@ -168,7 +168,7 @@ func (store *serviceEdgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx
 		denormLinkCollection:  store.stores.edgeRouter.servicesCollection,
 		ErrorHolder:           persistCtx.Bucket,
 	}
-	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes, store.stores.edgeRouter.indexRoleAttributes)
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) serviceRolesUpdated(persistCtx *boltz.PersistContext, policy *ServiceEdgeRouterPolicy) {
@@ -181,7 +181,7 @@ func (store *serviceEdgeRouterPolicyStoreImpl) serviceRolesUpdated(persistCtx *b
 		entityFilter:          store.stores.service.isNotFabricOnly,
 		ErrorHolder:           persistCtx.Bucket,
 	}
-	EvaluatePolicy(ctx, policy, store.stores.service.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.service.symbolRoleAttributes, store.stores.service.indexRoleAttributes)
 }
 
 func (store *serviceEdgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

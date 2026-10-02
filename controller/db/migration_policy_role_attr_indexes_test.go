@@ -17,6 +17,7 @@
 package db
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/openziti/ziti/v2/common/eid"
@@ -52,6 +53,16 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 		PostureCheckRoles: []string{roleRef("mfa")},
 	}
 	boltztest.RequireCreate(ctx, sp)
+
+	spAll := &ServicePolicy{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          eid.New(),
+		PolicyType:    PolicyTypeBind,
+		Semantic:      SemanticAllOf,
+		IdentityRoles: []string{AllRole},
+		ServiceRoles:  []string{entityRef(service.Id)},
+	}
+	boltztest.RequireCreate(ctx, spAll)
 
 	erp := &EdgeRouterPolicy{
 		BaseExtEntity:   boltz.BaseExtEntity{Id: eid.New()},
@@ -137,7 +148,8 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 	// the live entities.
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		idxIdSp := ctx.stores.ServicePolicy.GetIdentityRoleAttributesIndex()
-		ctx.Equal([]string{"marketing", "sales"}, readIndexKeys(tx, idxIdSp))
+		ctx.Equal([]string{AllRoleValue, "marketing", "sales"}, readIndexKeys(tx, idxIdSp))
+		ctx.Equal([]string{spAll.Id}, readIndexIds(tx, idxIdSp, AllRoleValue))
 		ctx.Equal([]string{sp.Id}, readIndexIds(tx, idxIdSp, "sales"))
 		ctx.Equal([]string{sp.Id}, readIndexIds(tx, idxIdSp, "marketing"))
 
@@ -203,12 +215,83 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		idxIdSp := ctx.stores.ServicePolicy.GetIdentityRoleAttributesIndex()
-		ctx.Equal([]string{"marketing", "sales"}, readIndexKeys(tx, idxIdSp))
+		ctx.Equal([]string{AllRoleValue, "marketing", "sales"}, readIndexKeys(tx, idxIdSp))
+		ctx.Equal([]string{spAll.Id}, readIndexIds(tx, idxIdSp, AllRoleValue))
 		ctx.Equal([]string{sp.Id}, readIndexIds(tx, idxIdSp, "sales"))
 
 		idxSvcSp := ctx.stores.ServicePolicy.GetServiceRoleAttributesIndex()
 		ctx.Equal([]string{"api"}, readIndexKeys(tx, idxSvcSp))
 		ctx.Equal([]string{sp.Id}, readIndexIds(tx, idxSvcSp, "api"))
+		return nil
+	})
+	ctx.NoError(err)
+}
+
+// Test_BackfillPolicyRoleAttributeIndexes_AddsWildcardKey simulates a version 48 index, which
+// carried the role attributes but not the #all wildcard: remove only the wildcard key from a
+// populated index, run the backfill, and verify the wildcard entries return while the rest is
+// untouched.
+func Test_BackfillPolicyRoleAttributeIndexes_AddsWildcardKey(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Cleanup()
+	ctx.Init()
+	ctx.CleanupAll()
+
+	spAll := &ServicePolicy{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          eid.New(),
+		PolicyType:    PolicyTypeDial,
+		Semantic:      SemanticAllOf,
+		IdentityRoles: []string{AllRole},
+		ServiceRoles:  []string{roleRef("api")},
+	}
+	boltztest.RequireCreate(ctx, spAll)
+
+	spAttr := &ServicePolicy{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          eid.New(),
+		PolicyType:    PolicyTypeDial,
+		Semantic:      SemanticAllOf,
+		IdentityRoles: []string{roleRef("sales")},
+		ServiceRoles:  []string{roleRef("api")},
+	}
+	boltztest.RequireCreate(ctx, spAttr)
+
+	err := ctx.GetDb().Update(nil, func(mctx boltz.MutateContext) error {
+		index := boltz.Path(mctx.Tx(), RootBucket, boltz.IndexesBucket, EntityTypeServicePolicies, FieldIdentityRoles)
+		ctx.NotNil(index)
+		return index.DeleteBucket([]byte(AllRoleValue))
+	})
+	ctx.NoError(err)
+
+	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		ctx.Equal([]string{"sales"}, readIndexKeys(tx, ctx.stores.ServicePolicy.GetIdentityRoleAttributesIndex()))
+		return nil
+	})
+	ctx.NoError(err)
+
+	migrations := &Migrations{stores: ctx.stores}
+	err = ctx.GetDb().Update(change.New().NewMutateContext(), func(mctx boltz.MutateContext) error {
+		step := &boltz.MigrationStep{
+			Component:      "edge",
+			Ctx:            mctx,
+			CurrentVersion: CurrentDbVersion - 1,
+		}
+		migrations.backfillPolicyRoleAttributeIndexes(step)
+		return step.GetError()
+	})
+	ctx.NoError(err)
+
+	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
+		idx := ctx.stores.ServicePolicy.GetIdentityRoleAttributesIndex()
+		ctx.Equal([]string{AllRoleValue, "sales"}, readIndexKeys(tx, idx))
+		ctx.Equal([]string{spAll.Id}, readIndexIds(tx, idx, AllRoleValue))
+		ctx.Equal([]string{spAttr.Id}, readIndexIds(tx, idx, "sales"))
+
+		idxSvc := ctx.stores.ServicePolicy.GetServiceRoleAttributesIndex()
+		expected := []string{spAll.Id, spAttr.Id}
+		sort.Strings(expected)
+		ctx.Equal(expected, readIndexIds(tx, idxSvc, "api"))
 		return nil
 	})
 	ctx.NoError(err)
