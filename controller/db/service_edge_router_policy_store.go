@@ -132,6 +132,7 @@ func (store *serviceEdgeRouterPolicyStoreImpl) PersistEntity(entity *ServiceEdge
 		ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
 		return
 	}
+	reevaluate := semanticChanged(ctx, entity.Semantic)
 
 	entity.SetBaseValues(ctx)
 	ctx.SetRequiredString(FieldName, entity.Name)
@@ -143,11 +144,11 @@ func (store *serviceEdgeRouterPolicyStoreImpl) PersistEntity(entity *ServiceEdge
 	sort.Strings(entity.ServiceRoles)
 
 	oldServiceRoles, valueSet := ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
-	if valueSet && !stringz.EqualSlices(oldServiceRoles, entity.ServiceRoles) {
+	if reevaluate || (valueSet && !stringz.EqualSlices(oldServiceRoles, entity.ServiceRoles)) {
 		serviceEdgeRouterPolicyStore.serviceRolesUpdated(ctx, entity)
 	}
 	oldEdgeRouterRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterRoles, entity.EdgeRouterRoles)
-	if valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles) {
+	if reevaluate || (valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles)) {
 		serviceEdgeRouterPolicyStore.edgeRouterRolesUpdated(ctx, entity)
 	}
 }
