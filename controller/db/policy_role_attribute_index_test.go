@@ -37,13 +37,12 @@ func Test_PolicyRoleAttributeIndexes(t *testing.T) {
 	t.Run("service policy role-attribute indexes", ctx.testServicePolicyRoleAttributeIndexes)
 	t.Run("edge-router policy role-attribute indexes", ctx.testEdgeRouterPolicyRoleAttributeIndexes)
 	t.Run("service-edge-router policy role-attribute indexes", ctx.testServiceEdgeRouterPolicyRoleAttributeIndexes)
-	t.Run("the #all wildcard is excluded from role-attribute indexes", ctx.testRoleAttributeIndexExcludesAllWildcard)
+	t.Run("the #all wildcard is indexed under all", ctx.testRoleAttributeIndexIncludesAllWildcard)
 }
 
-// testRoleAttributeIndexExcludesAllWildcard verifies the "#all" wildcard is not
-// indexed as a role attribute named "all", while a normal "#attr" on the same
-// policy still is.
-func (ctx *TestContext) testRoleAttributeIndexExcludesAllWildcard(_ *testing.T) {
+// testRoleAttributeIndexIncludesAllWildcard verifies the "#all" wildcard is indexed under the key
+// AllRoleValue, alongside a normal "#attr" on the same policy.
+func (ctx *TestContext) testRoleAttributeIndexIncludesAllWildcard(_ *testing.T) {
 	ctx.CleanupAll()
 
 	// "#all" must be the only entry in its field, so it gets its own field
@@ -62,8 +61,8 @@ func (ctx *TestContext) testRoleAttributeIndexExcludesAllWildcard(_ *testing.T) 
 		idxIdentity := ctx.stores.ServicePolicy.GetIdentityRoleAttributesIndex()
 		idxService := ctx.stores.ServicePolicy.GetServiceRoleAttributesIndex()
 
-		// "#all" stripped to "all" must NOT appear; the normal attr must.
-		ctx.Empty(readIndexKeys(tx, idxIdentity))
+		ctx.Equal([]string{AllRoleValue}, readIndexKeys(tx, idxIdentity))
+		ctx.Equal([]string{p.Id}, readIndexIds(tx, idxIdentity, AllRoleValue))
 		ctx.Equal([]string{"api"}, readIndexKeys(tx, idxService))
 		return nil
 	})

@@ -2,14 +2,15 @@ package db
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -60,7 +61,76 @@ type roleAttributeChangeContext struct {
 	changeHandler         func(fromId []byte, toId []byte, add bool)
 	denormChangeHandler   func(fromId, toId []byte, add bool)
 	entityFilter          func(tx *bbolt.Tx, entityId []byte) bool
+
+	// policyRoleAttributesIndex is the policy store's role-attribute index of rolesSymbol and
+	// entityPoliciesSymbol is the entity's list of linked policies. Both are required for entity-side
+	// evaluation and are unused on the policy side.
+	policyRoleAttributesIndex boltz.SetReadIndex
+	entityPoliciesSymbol      boltz.EntitySetSymbol
 	errorz.ErrorHolder
+}
+
+// idSet accumulates candidate ids for policy evaluation without duplicates.
+type idSet map[string]struct{}
+
+func (self idSet) add(id []byte) {
+	self[string(id)] = struct{}{}
+}
+
+// sorted returns the ids in lexical order, so evaluation touches entities in a stable order.
+func (self idSet) sorted() []string {
+	result := make([]string, 0, len(self))
+	for id := range self {
+		result = append(result, id)
+	}
+	sort.Strings(result)
+	return result
+}
+
+// candidatePolicyIds returns the ids of every policy whose link to entityId may need to change
+// when the entity's role attributes become entityRoles: the policies currently linked to the
+// entity, which include every policy naming it by id, those naming all entities and those naming
+// any of its attributes. A policy outside this set neither matches the entity nor is linked to it.
+func (self *roleAttributeChangeContext) candidatePolicyIds(entityId []byte, entityRoles []string) []string {
+	if self.policyRoleAttributesIndex == nil || self.entityPoliciesSymbol == nil {
+		self.SetError(errors.Errorf("entity-side evaluation of %v requires the policy role-attribute index and the entity policies symbol",
+			self.rolesSymbol.GetName()))
+		return nil
+	}
+
+	tx := self.tx()
+	candidates := idSet{}
+	for _, policyId := range self.entityPoliciesSymbol.EvalStringList(tx, entityId) {
+		candidates.add([]byte(policyId))
+	}
+	self.policyRoleAttributesIndex.Read(tx, []byte(AllRoleValue), candidates.add)
+	for _, attr := range entityRoles {
+		self.policyRoleAttributesIndex.Read(tx, []byte(attr), candidates.add)
+	}
+	return candidates.sorted()
+}
+
+// candidateEntityIds returns the ids of every entity whose link to policyId may need to change
+// when the policy's roles become ids and roles: the entities currently linked to the policy, those
+// named by id and those carrying any of the named attributes, looked up in roleAttributesIndex. A
+// policy naming all entities has no such bound, and is reported with all set instead.
+func (self *roleAttributeChangeContext) candidateEntityIds(policyId []byte, ids, roles []string, roleAttributesIndex boltz.SetReadIndex) (candidates []string, all bool) {
+	if stringz.Contains(roles, AllRoleValue) {
+		return nil, true
+	}
+
+	tx := self.tx()
+	result := idSet{}
+	for _, id := range ids {
+		result.add([]byte(id))
+	}
+	for _, role := range roles {
+		roleAttributesIndex.Read(tx, []byte(role), result.add)
+	}
+	for cursor := self.linkCollection.IterateLinks(tx, policyId); cursor.IsValid(); cursor.Next() {
+		result.add(cursor.Current())
+	}
+	return result.sorted(), false
 }
 
 func (self *roleAttributeChangeContext) tx() *bbolt.Tx {
@@ -130,8 +200,6 @@ func (store *baseStore[E]) validateRoleAttributes(attributes []string, holder er
 }
 
 func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue) {
-	cursor := ctx.rolesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
-
 	entityRoles := FieldValuesToIds(newRoleAttributes)
 
 	servicePolicyStore := store.stores.servicePolicy
@@ -152,8 +220,8 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, relatedEntityType, add)
 	}
 
-	for ; cursor.IsValid(); cursor.Next() {
-		policyId := cursor.Current()
+	for _, candidate := range ctx.candidatePolicyIds(entityId, entityRoles) {
+		policyId := []byte(candidate)
 		roleSet := ctx.rolesSymbol.EvalStringList(ctx.tx(), policyId)
 		roles, ids, err := splitRolesAndIds(roleSet)
 		if err != nil {
@@ -215,7 +283,11 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 	}
 }
 
-func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttributesSymbol boltz.EntitySetSymbol) {
+// EvaluatePolicy relinks policy to the entities selected by ctx.rolesSymbol, adding and removing
+// links and their denormalized counterparts as needed. roleAttributesSymbol and roleAttributesIndex
+// are the target entity store's role attributes field and its index. Only entities that can be
+// affected are visited, unless the policy names all entities.
+func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttributesSymbol boltz.EntitySetSymbol, roleAttributesIndex boltz.SetReadIndex) {
 	policyId := []byte(policy.GetId())
 	_, semanticB := ctx.rolesSymbol.GetStore().GetSymbol(FieldSemantic).Eval(ctx.tx(), policyId)
 	semantic := string(semanticB)
@@ -246,15 +318,26 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 		return
 	}
 
-	cursor := roleAttributesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
-	for ; cursor.IsValid(); cursor.Next() {
-		entityId := cursor.Current()
+	evaluate := func(entityId []byte) {
 		if ctx.entityFilter != nil && !ctx.entityFilter(ctx.tx(), entityId) {
-			continue
+			return
 		}
 		entityRoleAttributes := roleAttributesSymbol.EvalStringList(ctx.tx(), entityId)
 		match, didChange := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes, log)
 		log.Tracef("evaluating %v match: %v, change: %v", string(entityId), match, didChange)
+	}
+
+	candidates, all := ctx.candidateEntityIds(policyId, ids, roles, roleAttributesIndex)
+	if all {
+		cursor := roleAttributesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
+		for ; cursor.IsValid(); cursor.Next() {
+			evaluate(cursor.Current())
+		}
+		return
+	}
+
+	for _, candidate := range candidates {
+		evaluate([]byte(candidate))
 	}
 }
 
@@ -275,13 +358,14 @@ func validateEntityIds(tx *bbolt.Tx, store boltz.Store, field string, ids []stri
 	return nil
 }
 
+// UpdateRelatedRoles relinks the entity identified by entityId to the policies selected by
+// ctx.rolesSymbol after its role attributes become newRoleAttributes. Only policies that can be
+// affected are visited.
 func UpdateRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue, semanticSymbol boltz.EntitySymbol) {
-	cursor := ctx.rolesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
-
 	entityRoles := FieldValuesToIds(newRoleAttributes)
 
-	for ; cursor.IsValid(); cursor.Next() {
-		policyId := cursor.Current()
+	for _, candidate := range ctx.candidatePolicyIds(entityId, entityRoles) {
+		policyId := []byte(candidate)
 		roleSet := ctx.rolesSymbol.EvalStringList(ctx.tx(), policyId)
 		roles, ids, err := splitRolesAndIds(roleSet)
 		if err != nil {
@@ -305,7 +389,7 @@ func UpdateRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRol
 }
 
 func evaluatePolicyAgainstEntity(ctx *roleAttributeChangeContext, semantic string, entityId, policyId []byte, ids, roles, roleAttributes []string, log *logrus.Entry) (bool, bool) {
-	if stringz.Contains(ids, string(entityId)) || stringz.Contains(roles, "all") ||
+	if stringz.Contains(ids, string(entityId)) || stringz.Contains(roles, AllRoleValue) ||
 		(strings.EqualFold(semantic, SemanticAllOf) && len(roles) > 0 && stringz.ContainsAll(roleAttributes, roles...)) ||
 		(strings.EqualFold(semantic, SemanticAnyOf) && len(roles) > 0 && stringz.ContainsAny(roleAttributes, roles...)) {
 		return true, ProcessEntityPolicyMatched(ctx, entityId, policyId, log)

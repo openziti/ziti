@@ -229,11 +229,13 @@ func (store *postureCheckStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, id s
 
 func (store *postureCheckStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.servicePolicy.symbolPostureCheckRoles,
-		linkCollection:        store.stores.servicePolicy.postureCheckCollection,
-		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.servicePolicy.symbolPostureCheckRoles,
+		policyRoleAttributesIndex: store.stores.servicePolicy.indexPostureCheckRoleAttributes,
+		entityPoliciesSymbol:      store.symbolServicePolicies,
+		linkCollection:            store.stores.servicePolicy.postureCheckCollection,
+		relatedLinkCollection:     store.stores.servicePolicy.serviceCollection,
+		ErrorHolder:               holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 }

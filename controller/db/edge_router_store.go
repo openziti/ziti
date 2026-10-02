@@ -20,9 +20,9 @@ import (
 	"fmt"
 
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 )
@@ -217,23 +217,27 @@ func (store *edgeRouterStoreImpl) PersistEntity(entity *EdgeRouter, ctx *boltz.P
 func (store *edgeRouterStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	// Recalculate edge router policy links
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.edgeRouterPolicy.symbolEdgeRouterRoles,
-		linkCollection:        store.stores.edgeRouterPolicy.edgeRouterCollection,
-		relatedLinkCollection: store.stores.edgeRouterPolicy.identityCollection,
-		denormLinkCollection:  store.identitiesCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.edgeRouterPolicy.symbolEdgeRouterRoles,
+		policyRoleAttributesIndex: store.stores.edgeRouterPolicy.indexEdgeRouterRoleAttributes,
+		entityPoliciesSymbol:      store.symbolEdgeRouterPolicies,
+		linkCollection:            store.stores.edgeRouterPolicy.edgeRouterCollection,
+		relatedLinkCollection:     store.stores.edgeRouterPolicy.identityCollection,
+		denormLinkCollection:      store.identitiesCollection,
+		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
 
 	// Recalculate service edge router policy links
 	ctx = &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles,
-		linkCollection:        store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
-		relatedLinkCollection: store.stores.serviceEdgeRouterPolicy.serviceCollection,
-		denormLinkCollection:  store.servicesCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles,
+		policyRoleAttributesIndex: store.stores.serviceEdgeRouterPolicy.indexEdgeRouterRoleAttributes,
+		entityPoliciesSymbol:      store.symbolServiceEdgeRouterPolicies,
+		linkCollection:            store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
+		relatedLinkCollection:     store.stores.serviceEdgeRouterPolicy.serviceCollection,
+		denormLinkCollection:      store.servicesCollection,
+		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.serviceEdgeRouterPolicy.symbolSemantic)
 }

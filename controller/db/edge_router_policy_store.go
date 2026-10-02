@@ -6,9 +6,9 @@ import (
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/eid"
 )
 
 func newEdgeRouterPolicy(name string) *EdgeRouterPolicy {
@@ -169,7 +169,7 @@ func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz
 		denormLinkCollection:  store.stores.edgeRouter.identitiesCollection,
 		ErrorHolder:           persistCtx.Bucket,
 	}
-	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes, store.stores.edgeRouter.indexRoleAttributes)
 }
 
 func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
@@ -181,7 +181,7 @@ func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.P
 		denormLinkCollection:  store.stores.identity.edgeRoutersCollection,
 		ErrorHolder:           persistCtx.Bucket,
 	}
-	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes, store.stores.identity.indexRoleAttributes)
 }
 
 func (store *edgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
