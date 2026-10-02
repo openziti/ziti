@@ -234,6 +234,7 @@ func (store *servicePolicyStoreImpl) PersistEntity(entity *ServicePolicy, ctx *b
 		ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
 		return
 	}
+	reevaluate := semanticChanged(ctx, entity.Semantic)
 
 	entity.SetBaseValues(ctx)
 	ctx.SetRequiredString(FieldName, entity.Name)
@@ -307,14 +308,14 @@ func (store *servicePolicyStoreImpl) PersistEntity(entity *ServicePolicy, ctx *b
 		currentServiceRoles, serviceRolesSet := ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
 		currentPostureCheckRoles, postureCheckRolesSet := ctx.GetAndSetStringList(FieldPostureCheckRoles, entity.PostureCheckRoles)
 
-		if identityRolesSet && !stringz.EqualSlices(currentIdentityRoles, entity.IdentityRoles) {
+		if reevaluate || (identityRolesSet && !stringz.EqualSlices(currentIdentityRoles, entity.IdentityRoles)) {
 			servicePolicyStore.identityRolesUpdated(ctx, entity)
 		}
 
-		if serviceRolesSet && !stringz.EqualSlices(currentServiceRoles, entity.ServiceRoles) {
+		if reevaluate || (serviceRolesSet && !stringz.EqualSlices(currentServiceRoles, entity.ServiceRoles)) {
 			servicePolicyStore.serviceRolesUpdated(ctx, entity)
 		}
-		if postureCheckRolesSet && !stringz.EqualSlices(currentPostureCheckRoles, entity.PostureCheckRoles) {
+		if reevaluate || (postureCheckRolesSet && !stringz.EqualSlices(currentPostureCheckRoles, entity.PostureCheckRoles)) {
 			servicePolicyStore.postureCheckRolesUpdated(ctx, entity)
 		}
 	}

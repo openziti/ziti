@@ -868,6 +868,7 @@ Thanks to the community members who contributed to this release.
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
     * [Issue #4513](https://github.com/openziti/ziti/issues/4513) - Policy evaluation scans every entity or policy on each write
+    * [Issue #4514](https://github.com/openziti/ziti/issues/4514) - Changing a policy's semantic without changing its roles does not re-evaluate its links
     * [Issue #4596](https://github.com/openziti/ziti/issues/4596) - ER/T terminator re-create reverts health check cost and precedence
     * [Issue #4580](https://github.com/openziti/ziti/issues/4580) - Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
     * [Issue #4489](https://github.com/openziti/ziti/issues/4489) - Router panics sending a link state update to a controller it has unregistered

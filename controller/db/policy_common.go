@@ -341,6 +341,17 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 	}
 }
 
+// semanticChanged reports whether persisting a policy changes its stored semantic. It reads the
+// stored value, so it must be called before the new semantic is written. A create never counts as
+// a change, since the roles are evaluated on create regardless.
+func semanticChanged(ctx *boltz.PersistContext, semantic string) bool {
+	if ctx.IsCreate || !ctx.ProceedWithSet(FieldSemantic) {
+		return false
+	}
+	current := ctx.Bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
+	return !strings.EqualFold(current, semantic)
+}
+
 // validateEntityIds returns a field error if any of the given explicit policy ids does not resolve
 // to a valid target entity. filter, when non-nil, is the same predicate used to scope policy
 // evaluation (e.g. isNotFabricOnly for service roles); an id that exists but is excluded by the
