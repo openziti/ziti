@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
@@ -33,7 +32,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/controller/api"
-	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/handler_mgmt"
 	"github.com/openziti/ziti/v2/controller/network"
@@ -73,8 +71,8 @@ func (factory *FabricManagementApiFactory) Binding() string {
 	return FabricApiBinding
 }
 
-func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	managementApiHandler, err := NewFabricManagementApiHandler(factory.env, factory.MakeDefault, options)
+func (factory *FabricManagementApiFactory) New(serverConfig *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
+	managementApiHandler, err := NewFabricManagementApiHandler(serverConfig, factory.env, factory.MakeDefault, options)
 
 	if err != nil {
 		return nil, err
@@ -91,11 +89,12 @@ func (factory *FabricManagementApiFactory) New(_ *xweb.ServerConfig, options map
 	return managementApiHandler, nil
 }
 
-func NewFabricManagementApiHandler(ae *env.AppEnv, isDefault bool, options map[interface{}]interface{}) (*FabricManagementApiHandler, error) {
+func NewFabricManagementApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, isDefault bool, options map[interface{}]interface{}) (*FabricManagementApiHandler, error) {
 	managementApi := &FabricManagementApiHandler{
-		options:   options,
-		isDefault: isDefault,
-		ae:        ae,
+		options:      options,
+		isDefault:    isDefault,
+		ae:           ae,
+		serverConfig: serverConfig,
 	}
 
 	managementApi.handler = managementApi.newHandler()
@@ -106,13 +105,14 @@ func NewFabricManagementApiHandler(ae *env.AppEnv, isDefault bool, options map[i
 }
 
 type FabricManagementApiHandler struct {
-	handler     http.Handler
-	wsHandler   http.Handler
-	wsUrl       string
-	options     map[interface{}]interface{}
-	bindHandler channel.BindHandler
-	isDefault   bool
-	ae          *env.AppEnv
+	handler      http.Handler
+	wsHandler    http.Handler
+	wsUrl        string
+	options      map[interface{}]interface{}
+	bindHandler  channel.BindHandler
+	isDefault    bool
+	ae           *env.AppEnv
+	serverConfig *xweb.ServerConfig
 }
 
 func (self *FabricManagementApiHandler) Binding() string {
@@ -199,7 +199,7 @@ func (self *FabricManagementApiHandler) WrapHttpHandler(handler http.Handler) ht
 		handler.ServeHTTP(rw, r)
 	})
 
-	return api.TimeoutHandler(api.WrapCorsHandler(wrapped), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
+	return wrapWithTimeout(wrapped, self.serverConfig)
 }
 
 func (self *FabricManagementApiHandler) WrapWsHandler(handler http.Handler) http.Handler {

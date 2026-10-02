@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
@@ -159,9 +160,23 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 	}
 
 	return self.Limiter.RunRateLimited(func() error {
+		if err := CheckRequestDeadline(changeCtx); err != nil {
+			return err
+		}
 		ctx := changeCtx.NewMutateContext()
 		return command.Apply(ctx)
 	})
+}
+
+// CheckRequestDeadline returns a timeout error if the request that initiated a change has passed its deadline,
+// so dispatchers can refuse to start a command its caller has already been told failed. changeCtx may be nil.
+func CheckRequestDeadline(changeCtx *change.Context) error {
+	if err := changeCtx.RequestDeadlineErr(); err != nil {
+		timeoutErr := apierror.NewTimeoutError()
+		timeoutErr.Cause = err
+		return timeoutErr
+	}
+	return nil
 }
 
 // Decoder instances know how to decode encoded commands
