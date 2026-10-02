@@ -38,7 +38,10 @@ const (
 
 	FieldEdgeServiceDialIdentities = "dialIdentities"
 	FieldEdgeServiceBindIdentities = "bindIdentities"
-	FieldServiceIdentityService    = "identityServices"
+
+	FieldEdgeServiceDialPostureChecks = "dialPostureChecks"
+	FieldEdgeServiceBindPostureChecks = "bindPostureChecks"
+	FieldServiceIdentityService       = "identityServices"
 )
 
 type Service struct {
@@ -103,13 +106,17 @@ type serviceStoreImpl struct {
 	symbolServicePolicies           boltz.EntitySetSymbol
 	symbolServiceEdgeRouterPolicies boltz.EntitySetSymbol
 
-	symbolDialIdentities boltz.EntitySetSymbol
-	symbolBindIdentities boltz.EntitySetSymbol
-	symbolEdgeRouters    boltz.EntitySetSymbol
+	symbolDialIdentities    boltz.EntitySetSymbol
+	symbolBindIdentities    boltz.EntitySetSymbol
+	symbolDialPostureChecks boltz.EntitySetSymbol
+	symbolBindPostureChecks boltz.EntitySetSymbol
+	symbolEdgeRouters       boltz.EntitySetSymbol
 
-	bindIdentitiesCollection boltz.RefCountedLinkCollection
-	dialIdentitiesCollection boltz.RefCountedLinkCollection
-	edgeRoutersCollection    boltz.RefCountedLinkCollection
+	bindIdentitiesCollection    boltz.RefCountedLinkCollection
+	dialIdentitiesCollection    boltz.RefCountedLinkCollection
+	bindPostureChecksCollection boltz.RefCountedLinkCollection
+	dialPostureChecksCollection boltz.RefCountedLinkCollection
+	edgeRoutersCollection       boltz.RefCountedLinkCollection
 
 	symbolIdentityServices boltz.EntitySetSymbol
 	identityServicesLinks  *boltz.LinkedSetSymbol
@@ -137,6 +144,8 @@ func (store *serviceStoreImpl) initializeLocal() {
 
 	store.symbolBindIdentities = store.AddFkSetSymbol(FieldEdgeServiceBindIdentities, store.stores.identity)
 	store.symbolDialIdentities = store.AddFkSetSymbol(FieldEdgeServiceDialIdentities, store.stores.identity)
+	store.symbolBindPostureChecks = store.AddFkSetSymbol(FieldEdgeServiceBindPostureChecks, store.stores.postureCheck)
+	store.symbolDialPostureChecks = store.AddFkSetSymbol(FieldEdgeServiceDialPostureChecks, store.stores.postureCheck)
 
 	store.symbolEdgeRouters = store.AddFkSetSymbol(FieldEdgeRouters, store.stores.edgeRouter)
 
@@ -153,6 +162,8 @@ func (store *serviceStoreImpl) initializeLinked() {
 
 	store.bindIdentitiesCollection = store.AddRefCountedLinkCollection(store.symbolBindIdentities, store.stores.identity.symbolBindServices)
 	store.dialIdentitiesCollection = store.AddRefCountedLinkCollection(store.symbolDialIdentities, store.stores.identity.symbolDialServices)
+	store.bindPostureChecksCollection = store.AddRefCountedLinkCollection(store.symbolBindPostureChecks, store.stores.postureCheck.symbolBindServices)
+	store.dialPostureChecksCollection = store.AddRefCountedLinkCollection(store.symbolDialPostureChecks, store.stores.postureCheck.symbolDialServices)
 	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServices)
 }
 
@@ -382,7 +393,6 @@ func (store *serviceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId
 		policyRoleAttributesIndex: store.stores.servicePolicy.indexServiceRoleAttributes,
 		entityPoliciesSymbol:      store.symbolServicePolicies,
 		linkCollection:            store.stores.servicePolicy.serviceCollection,
-		relatedLinkCollection:     store.stores.servicePolicy.identityCollection,
 		ErrorHolder:               holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
@@ -394,8 +404,7 @@ func (store *serviceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId
 		policyRoleAttributesIndex: store.stores.serviceEdgeRouterPolicy.indexServiceRoleAttributes,
 		entityPoliciesSymbol:      store.symbolServiceEdgeRouterPolicies,
 		linkCollection:            store.stores.serviceEdgeRouterPolicy.serviceCollection,
-		relatedLinkCollection:     store.stores.serviceEdgeRouterPolicy.edgeRouterCollection,
-		denormLinkCollection:      store.edgeRoutersCollection,
+		pairs:                     []denormPair{{related: store.stores.serviceEdgeRouterPolicy.edgeRouterCollection, counts: store.edgeRoutersCollection}},
 		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.serviceEdgeRouterPolicy.symbolSemantic)
