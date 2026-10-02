@@ -34,18 +34,26 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 )
 
-// TimeoutHandler will create a http.Handler that wraps the given http.Handler. If the given timeout is reached, the
-// supplied errorz.ApiError and ResponseMapper will be used to create an error response. This handler assumes JSON
-// output.
+// timeoutResponseMargin is how long past a TimeoutHandler's timeout the connection must stay writable so the
+// buffered response, or the timeout error, can be sent.
+const timeoutResponseMargin = 5 * time.Second
+
+// TimeoutHandler wraps next, buffering its response. If next does not finish within timeout, apiErr is written
+// as a JSON 503 using mapper. If next panics, an empty 500 is written. Downstream handlers are encouraged to
+// implement their own panic recovery.
 //
-// This handler functions by creating a proxy ResponseWriter that is passed to downstream http.Handlers.
-// This proxy ResponseWriter is ignored on timeout and panics. On panic, a blank response is returned with a
-// 500 Internal Error status code. Downstream handlers are encouraged to implement their own panic recovery.
-func TimeoutHandler(next http.Handler, timeout time.Duration, apiErr *errorz.ApiError, mapper ResponseMapper) http.Handler {
+// On timeout next keeps running with a cancelled request context and its output is discarded, so any change it
+// makes may still be applied after the client has received the error.
+//
+// writeTimeout is the server's write timeout. When it is shorter than timeout plus a margin, the per-request
+// write deadline is extended so the response can still be written; this requires the http.ResponseWriter
+// passed in to support http.ResponseController. Zero means the server has no write timeout.
+func TimeoutHandler(next http.Handler, timeout, writeTimeout time.Duration, apiErr *errorz.ApiError, mapper ResponseMapper) http.Handler {
 	return &timeoutHandler{
 		next:           next,
 		apiError:       apiErr,
 		timeout:        timeout,
+		writeTimeout:   writeTimeout,
 		producer:       runtime.JSONProducer(),
 		responseMapper: mapper,
 	}
@@ -54,9 +62,30 @@ func TimeoutHandler(next http.Handler, timeout time.Duration, apiErr *errorz.Api
 type timeoutHandler struct {
 	next           http.Handler
 	timeout        time.Duration
+	writeTimeout   time.Duration
 	apiError       *errorz.ApiError
 	producer       runtime.Producer
 	responseMapper ResponseMapper
+
+	deadlineWarnOnce sync.Once
+}
+
+// ensureWriteDeadline keeps the connection writable until the timeout response can be sent. net/http starts the
+// write deadline before the handler runs, so a write timeout no longer than timeout expires before the 503 is
+// written, and a failed TLS write leaves the connection unusable for any response.
+func (h *timeoutHandler) ensureWriteDeadline(w http.ResponseWriter) {
+	needed := h.timeout + timeoutResponseMargin
+	if h.writeTimeout <= 0 || h.writeTimeout >= needed {
+		return
+	}
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(needed)); err != nil {
+		h.deadlineWarnOnce.Do(func() {
+			pfxlog.Logger().WithError(err).
+				WithField("writeTimeout", h.writeTimeout).
+				WithField("timeout", h.timeout).
+				Warn("unable to extend write deadline, requests that time out may fail without a response")
+		})
+	}
 }
 
 func (h *timeoutHandler) errorBody(w http.ResponseWriter, r *http.Request) error {
@@ -75,6 +104,8 @@ func (h *timeoutHandler) errorBody(w http.ResponseWriter, r *http.Request) error
 }
 
 func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.ensureWriteDeadline(w)
+
 	ctx, cancelCtx := context.WithTimeout(r.Context(), h.timeout)
 	defer cancelCtx()
 

@@ -849,6 +849,7 @@ Thanks to the community members who contributed to this release.
     * [Issue #4542](https://github.com/openziti/ziti/issues/4542) - Disabling a connected router deadlocks the controller
     * [Issue #3588](https://github.com/openziti/ziti/issues/3588) - Sync a controller's raft advertise address with its config on startup
     * [Issue #4394](https://github.com/openziti/ziti/issues/4394) - Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
+    * [Issue #4509](https://github.com/openziti/ziti/issues/4509) - API request timeouts surface as TLS 'bad record MAC' errors instead of a 503
     * [Issue #4442](https://github.com/openziti/ziti/issues/4442) - Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
     * [Issue #4524](https://github.com/openziti/ziti/issues/4524) - Allow case-insensitive terminator addressing via host.v1
     * [Issue #4378](https://github.com/openziti/ziti/issues/4378) - Api session enforcer delete meter only marks when the batch delete fails
