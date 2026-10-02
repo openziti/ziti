@@ -84,7 +84,8 @@ func (rc *RequestContextImpl) NewChangeContext() *change.Context {
 		SetSourceAuth("fabric").
 		SetSourceMethod(rc.GetRequest().Method).
 		SetSourceLocal(rc.GetRequest().Host).
-		SetSourceRemote(rc.GetRequest().RemoteAddr)
+		SetSourceRemote(rc.GetRequest().RemoteAddr).
+		SetRequestContext(rc.GetRequest().Context())
 
 	changeCtx.SetChangeAuthorType(change.AuthorTypeCert)
 

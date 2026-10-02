@@ -20,13 +20,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/controller/api"
-	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/response"
 )
@@ -58,8 +56,8 @@ func (factory ManagementApiFactory) Binding() string {
 	return ManagementApiBinding
 }
 
-func (factory ManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	managementApi, err := NewManagementApiHandler(factory.appEnv, options)
+func (factory ManagementApiFactory) New(serverConfig *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
+	managementApi, err := NewManagementApiHandler(serverConfig, factory.appEnv, options)
 
 	if err != nil {
 		return nil, err
@@ -100,18 +98,18 @@ func (managementApi ManagementApiHandler) ServeHTTP(writer http.ResponseWriter, 
 	managementApi.handler.ServeHTTP(writer, request)
 }
 
-func NewManagementApiHandler(ae *env.AppEnv, options map[interface{}]interface{}) (*ManagementApiHandler, error) {
+func NewManagementApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options map[interface{}]interface{}) (*ManagementApiHandler, error) {
 	managementApi := &ManagementApiHandler{
 		options: options,
 		appEnv:  ae,
 	}
 
-	managementApi.handler = managementApi.newHandler(ae)
+	managementApi.handler = managementApi.newHandler(ae, serverConfig)
 
 	return managementApi, nil
 }
 
-func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handler {
+func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv, serverConfig *xweb.ServerConfig) http.Handler {
 	innerManagementHandler := ae.ManagementApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -149,5 +147,5 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 		innerManagementHandler.ServeHTTP(rw, r)
 	})
 
-	return api.TimeoutHandler(api.WrapCorsHandler(handler), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
+	return wrapWithTimeout(handler, serverConfig)
 }

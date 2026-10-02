@@ -401,6 +401,10 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 		return errors.New("unable to execute command. In a readonly state: different versions detected in cluster")
 	}
 
+	if err := command.CheckRequestDeadline(cmd.GetChangeContext()); err != nil {
+		return err
+	}
+
 	if self.IsLeader() {
 		idx, err := self.applyCommand(cmd)
 		if err == nil {
