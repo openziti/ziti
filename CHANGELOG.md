@@ -1,3 +1,20 @@
+# Release 1.6.22
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.21 -> v1.6.22](https://github.com/openziti/ziti/compare/v1.6.21...v1.6.22)
+    * [Issue #4463](https://github.com/openziti/ziti/issues/4463) - [Backport-1.6] Router gives up announcing its links to a controller after a reconnect, leaving the controller missing links
+    * [Issue #4464](https://github.com/openziti/ziti/issues/4464) - [Backport-1.6] Checking whether a half-built split link is closed panics
+    * [Issue #4465](https://github.com/openziti/ziti/issues/4465) - [Backport-1.6] A dialed link the router has no state for is left up and never reported
+    * [Issue #4458](https://github.com/openziti/ziti/issues/4458) - [Backport-1.6] Controller can maintain invalid links when disconnected for longer periods
+    * [Issue #4439](https://github.com/openziti/ziti/issues/4439) - [Backport-1.6] Seed the router data model index gate from the applied raft index
+    * [Issue #4445](https://github.com/openziti/ziti/issues/4445) - [Backport-1.6] Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
+
+
 # Release 1.6.21
 
 ## What's New
