@@ -25,6 +25,7 @@ import (
 
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -83,6 +84,11 @@ func Test_classifyDialError(t *testing.T) {
 	t.Run("invalid terminator", func(t *testing.T) {
 		err := xgress.InvalidTerminatorError{InnerError: fmt.Errorf("not found")}
 		require.Equal(t, byte(ctrl_msg.ErrorTypeInvalidTerminator), classifyDialError(err))
+	})
+
+	t.Run("unusable terminator", func(t *testing.T) {
+		err := xgress_router.UnusableTerminatorError{InnerError: fmt.Errorf("host is closing")}
+		require.Equal(t, byte(ctrl_msg.ErrorTypeUnusableTerminator), classifyDialError(err))
 	})
 
 	t.Run("port not allowed", func(t *testing.T) {

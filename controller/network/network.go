@@ -121,6 +121,7 @@ type Network struct {
 
 	Inspections         *InspectionsManager
 	RouterMessaging     *RouterMessaging
+	unusableTerminators *unusableTerminators
 	inspectionTargets   concurrenz.CopyOnWriteSlice[InspectTarget]
 	ctrlDialerValidator CtrlDialerValidator
 }
@@ -159,6 +160,8 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 		serviceInvalidTerminatorCounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.invalid", time.Minute),
 		serviceMisconfiguredTerminatorCounter:     serviceEventMetrics.IntervalCounter("service.dial.terminator.misconfigured", time.Minute),
 
+		unusableTerminators: newUnusableTerminators(unusableTerminatorTTL),
+
 		config: config,
 	}
 
@@ -172,6 +175,7 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	network.RouterMessaging = NewRouterMessaging(env, routerCommPool)
 
 	env.GetManagers().Router.Store.AddEntityIdListener(network.HandleRouterDelete, boltz.EntityDeletedAsync)
+	env.GetManagers().Terminator.Store.AddEntityIdListener(network.unusableTerminators.Unmark, boltz.EntityCreated, boltz.EntityDeleted)
 
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
@@ -324,13 +328,30 @@ func (network *Network) RouteResult(rs *RouteStatus) bool {
 }
 
 func (network *Network) newRouteSender(circuitId string) *routeSender {
-	rs := newRouteSender(circuitId, network.options.RouteTimeout, network, network.Terminator)
+	rs := newRouteSender(circuitId, network.options.RouteTimeout, network)
 	network.routeSenderController.addRouteSender(rs)
 	return rs
 }
 
 func (network *Network) removeRouteSender(rs *routeSender) {
 	network.routeSenderController.removeRouteSender(rs)
+}
+
+// GetManagers returns the model managers the network was built with.
+func (network *Network) GetManagers() *model.Managers {
+	return network.Managers
+}
+
+// MarkTerminatorUnusable takes terminatorId out of path selection until it is created, deleted or
+// established again, or for at most a minute.
+func (network *Network) MarkTerminatorUnusable(terminatorId string) {
+	network.unusableTerminators.Mark(terminatorId)
+}
+
+// TerminatorEstablished makes terminatorId selectable again. Create handlers call it when a router
+// asks to create a terminator that already exists, since that writes nothing and fires no store event.
+func (network *Network) TerminatorEstablished(terminatorId string) {
+	network.unusableTerminators.Unmark(terminatorId)
 }
 
 func (network *Network) GetEventDispatcher() event.Dispatcher {
@@ -877,10 +898,17 @@ func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.
 	log := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx)
 
 	hasOfflineRouters := false
+	hasUnusableTerminators := false
 	pathError := false
 
 	for _, terminator := range svc.Terminators {
 		if terminator.InstanceId != instanceId {
+			continue
+		}
+
+		if network.unusableTerminators.IsMarked(terminator.Id) {
+			log.Debugf("skipping terminator with id=%v for service %v, reported unusable", terminator.Id, svc.Id)
+			hasUnusableTerminators = true
 			continue
 		}
 
@@ -928,7 +956,7 @@ func (network *Network) selectPath(params model.CreateCircuitParams, svc *model.
 			return nil, nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errors.Join(errList...))
 		}
 
-		if hasOfflineRouters {
+		if hasOfflineRouters || hasUnusableTerminators {
 			return nil, nil, nil, nil, newCircuitErrorf(CircuitFailureNoOnlineTerminators, "service %v has no online terminators for instanceId %v", svc.Id, instanceId)
 		}
 

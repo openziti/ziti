@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_common"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
 )
 
@@ -128,6 +129,18 @@ func (self *edgeTerminator) IsEstablishing() bool {
 
 func (self *edgeTerminator) IsDeleting() bool {
 	return self.state.Load() == xgress_common.TerminatorStateDeleting
+}
+
+// checkUsable returns an xgress_router.UnusableTerminatorError if the terminator is Deleting or its
+// SDK channel has closed, and nil if it can take dials.
+func (self *edgeTerminator) checkUsable() error {
+	if self.IsDeleting() {
+		return xgress_router.UnusableTerminatorError{InnerError: fmt.Errorf("host for terminator '%v' is being removed", self.terminatorId)}
+	}
+	if self.GetChannel().IsClosed() {
+		return xgress_router.UnusableTerminatorError{InnerError: fmt.Errorf("host for terminator '%v' has closed its connection", self.terminatorId)}
+	}
+	return nil
 }
 
 func (self *edgeTerminator) setState(state xgress_common.TerminatorState, reason string) {
