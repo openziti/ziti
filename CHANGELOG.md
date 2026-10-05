@@ -797,6 +797,7 @@ Thanks to the community members who contributed to this release.
     * [Issue #4543](https://github.com/openziti/ziti/issues/4543) - Router deadlocks syncing subscribers when a subscribed identity was deleted or disabled while out of sync
     * [Issue #4542](https://github.com/openziti/ziti/issues/4542) - Disabling a connected router deadlocks the controller
     * [Issue #4442](https://github.com/openziti/ziti/issues/4442) - Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
+    * [Issue #4524](https://github.com/openziti/ziti/issues/4524) - Allow case-insensitive terminator addressing via host.v1
     * [Issue #4378](https://github.com/openziti/ziti/issues/4378) - Api session enforcer delete meter only marks when the batch delete fails
     * [Issue #4434](https://github.com/openziti/ziti/issues/4434) - Update to Go 1.27
     * [Issue #4413](https://github.com/openziti/ziti/issues/4413) - debian controller & router packages hang on post-install script when installed via ansible
