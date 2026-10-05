@@ -18,9 +18,28 @@ package oidc_auth
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/openziti/foundation/v2/errorz"
 )
+
+func newUnsupportedMediaTypeError(contentType string) *errorz.ApiError {
+	return &errorz.ApiError{
+		AppCode: "UNSUPPORTED_MEDIA_TYPE",
+		Message: fmt.Sprintf("the content type: %s, is not supported (supported: %s, %s)", contentType, FormContentType, JsonContentType),
+		Status:  http.StatusUnsupportedMediaType,
+	}
+}
+
+// newInvalidTotpCodeError returns the error for a wrong TOTP code. The app code keeps the
+// space separated "INVALID TOTP CODE" format for legacy client support.
+func newInvalidTotpCodeError() *errorz.ApiError {
+	return &errorz.ApiError{
+		AppCode: "INVALID TOTP CODE",
+		Message: "an invalid TOTP code was supplied",
+		Status:  http.StatusBadRequest,
+	}
+}
 
 func newNotAcceptableError(acceptHeader string) *errorz.ApiError {
 	return &errorz.ApiError{
