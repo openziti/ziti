@@ -119,6 +119,10 @@ type Oidc struct {
 	RefreshTokenDuration time.Duration
 	IdTokenDuration      time.Duration
 
+	// AuthRequestDuration is how long an OIDC auth request lives before it expires and
+	// the login it belongs to must start over.
+	AuthRequestDuration time.Duration
+
 	// RevocationMinTokenLifetime skips revocation for refresh tokens that expire
 	// within this duration. Unset (zero) means always revoke. Must be less than
 	// 50% of RefreshTokenDuration if set.
@@ -368,6 +372,7 @@ func (c *EdgeConfig) loadOidcSection(edgeConfigMap map[any]any) error {
 	c.Oidc.AccessTokenDuration = 30 * time.Minute
 	c.Oidc.RefreshTokenDuration = 24 * time.Hour
 	c.Oidc.IdTokenDuration = 30 * time.Minute
+	c.Oidc.AuthRequestDuration = common.DefaultAuthRequestDuration
 	// RevocationMinTokenLifetime defaults to 0 (unset), meaning always revoke.
 	c.Oidc.RevocationBucketInterval = 1 * time.Minute
 	c.Oidc.RevocationBucketMaxSize = 200
@@ -422,6 +427,26 @@ func (c *EdgeConfig) loadOidcSection(edgeConfigMap map[any]any) error {
 				}
 
 				c.Oidc.RefreshTokenDuration = durationValue
+			}
+
+			if val, ok := oidcSubMap["authRequestDuration"]; ok {
+				strValue := val.(string)
+				durationValue, err := time.ParseDuration(strValue)
+				if err != nil {
+					return errors.Errorf("error parsing [edge.oidc.authRequestDuration], invalid duration string %s, cannot parse as duration (e.g. 1m): %v", strValue, err)
+				}
+
+				if durationValue < common.MinAuthRequestDuration {
+					pfxlog.Logger().Warnf("field [edge.oidc.authRequestDuration] is too short, setting to %s", common.MinAuthRequestDuration)
+					durationValue = common.MinAuthRequestDuration
+				}
+
+				if durationValue > common.MaxAuthRequestDuration {
+					pfxlog.Logger().Warnf("field [edge.oidc.authRequestDuration] is too long, setting to %s", common.MaxAuthRequestDuration)
+					durationValue = common.MaxAuthRequestDuration
+				}
+
+				c.Oidc.AuthRequestDuration = durationValue
 			}
 
 			if val, ok := oidcSubMap["revocationMinTokenLifetime"]; ok {
