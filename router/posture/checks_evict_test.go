@@ -60,6 +60,9 @@ func Test_EvictInactive_EvictsAfterRetention(t *testing.T) {
 
 	cache.MarkDisconnected("gone")
 
+	// deal with Windows clock coarseness of ~15ms
+	time.Sleep(20 * time.Millisecond)
+
 	req.Equal(1, cache.EvictInactive(0))
 	req.Nil(cache.GetInstance("gone"))
 }
@@ -73,6 +76,9 @@ func Test_EvictInactive_EvictsOnlyDisconnectedSessions(t *testing.T) {
 
 	cache.MarkDisconnected("drop-1")
 	cache.MarkDisconnected("drop-2")
+
+	// deal with Windows clock coarseness of ~15ms
+	time.Sleep(20 * time.Millisecond)
 
 	req.Equal(2, cache.EvictInactive(0))
 	req.NotNil(cache.GetInstance("keep"))
@@ -140,6 +146,10 @@ func Test_ReconcileDisconnected_RecordsMissedDisconnect(t *testing.T) {
 
 	// reconciling against the connection tracker records the disconnect, making it evictable
 	cache.ReconcileDisconnected(connectedSet())
+
+	// deal with Windows clock coarseness of ~15ms
+	time.Sleep(20 * time.Millisecond)
+
 	req.Equal(1, cache.EvictInactive(0))
 	req.Nil(cache.GetInstance("drifted"))
 }

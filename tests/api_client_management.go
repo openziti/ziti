@@ -547,6 +547,35 @@ func (helper *ManagementHelperClient) CreatePostureCheckMac(addresses []string, 
 	return checkDetail, nil
 }
 
+// CreatePostureCheckMfa creates an MFA posture check. A timeout of -1 means no timeout.
+func (helper *ManagementHelperClient) CreatePostureCheckMfa(timeoutSeconds int64, promptOnWake, promptOnUnlock bool, attributes []string) (*rest_model.PostureCheckMfaDetail, error) {
+	newCheck := &rest_model.PostureCheckMfaCreate{
+		PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
+			TimeoutSeconds: timeoutSeconds,
+			PromptOnWake:   promptOnWake,
+			PromptOnUnlock: promptOnUnlock,
+		},
+	}
+
+	attrs := rest_model.Attributes(attributes)
+	newCheck.SetRoleAttributes(&attrs)
+	newCheck.SetName(ToPtr(eid.New()))
+
+	postureCheckDetail, err := helper.CreatePostureCheck(newCheck)
+
+	if err != nil {
+		return nil, err
+	}
+
+	checkDetail, ok := postureCheckDetail.(*rest_model.PostureCheckMfaDetail)
+
+	if !ok {
+		return nil, fmt.Errorf("posture check detail is not the right type, expected %T, got %T", checkDetail, postureCheckDetail)
+	}
+
+	return checkDetail, nil
+}
+
 func (helper *ManagementHelperClient) CreatePostureCheckProcessMulti(processes []*rest_model.ProcessMulti, semantic rest_model.Semantic, attributes []string) (*rest_model.PostureCheckProcessMultiDetail, error) {
 	newCheck := &rest_model.PostureCheckProcessMultiCreate{
 		Processes: processes,

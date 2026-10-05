@@ -280,6 +280,9 @@ type Manager interface {
 	// the router's posture cache.
 	ProcessPostureResponses(ch channel.Channel, response *edge_client_pb.PostureResponses)
 
+	// SeedMfaFromApiSession seeds MFA posture from an OIDC api session token. No-op for legacy sessions.
+	SeedMfaFromApiSession(apiSession *ApiSessionToken)
+
 	// SweepInactivePostureData reconciles cached posture data against connectedApiSessionIds and
 	// then evicts sessions that have been disconnected for at least retention, returning the
 	// number evicted.
@@ -482,7 +485,8 @@ func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, p
 	instance := self.postureCache.GetInstance(apiSessionId)
 
 	if instance != nil {
-		data = &instance.InstanceData
+		snapshot := instance.Snapshot()
+		data = &snapshot
 	}
 
 	return posture.HasAccess(rdm, identityId, serviceId, data, policyType)
@@ -490,6 +494,14 @@ func (self *ManagerImpl) HasAccess(identityId, apiSessionId, serviceId string, p
 
 func routerDataModelWorker(_ uint32, f func()) {
 	f()
+}
+
+// SeedMfaFromApiSession seeds MFA posture from an OIDC api session token. No-op for legacy sessions.
+func (self *ManagerImpl) SeedMfaFromApiSession(apiSession *ApiSessionToken) {
+	if apiSession == nil || !apiSession.IsOidc() || apiSession.Claims == nil {
+		return
+	}
+	self.postureCache.SeedMfaFromApiSession(apiSession.IdentityId, apiSession.Claims.ApiSessionId, apiSession.Claims)
 }
 
 // NotifyApiSessionConnected retains the posture data of a newly connected api session, cancelling
@@ -784,6 +796,8 @@ func (self *ManagerImpl) HandleClientApiSessionTokenUpdate(newApiSession *ApiSes
 	if newApiSession.Claims.Type != common.TokenTypeAccess {
 		return fmt.Errorf("bearer token is of invalid type: expected %s, got: %s", common.TokenTypeAccess, newApiSession.Claims.Type)
 	}
+
+	self.SeedMfaFromApiSession(newApiSession)
 
 	channels := self.connectionTracker.GetChannelsByIdentityId(newApiSession.IdentityId)
 
