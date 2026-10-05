@@ -234,6 +234,9 @@ edge:
     idTokenDuration: 30m
     # (optional, default 24hr)
     refreshTokenDuration: 24h
+    # (optional, default 10m) Sets how long an OIDC auth request lives before the login must start over.
+    # Values below 1m are raised to 1m. Values above 30m are lowered to 30m.
+    authRequestDuration: 10m
 
     # --- Refresh-token revocation tuning ---
     #
