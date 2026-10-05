@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
@@ -192,11 +193,28 @@ func doTokenExchangeRequest(
 	csrPem string,
 	expectSessionCert bool,
 ) (newAccessToken string, newRefreshToken string, sessionCert string, statusCode int) {
+	return doTokenExchangeRequestForClient(ctx, accessToken, "", tlsCerts, csrPem, expectSessionCert)
+}
+
+// doTokenExchangeRequestForClient performs a token exchange grant, sending client_id when clientID
+// is non-empty.
+func doTokenExchangeRequestForClient(
+	ctx *TestContext,
+	accessToken string,
+	clientID string,
+	tlsCerts []cryptoTls.Certificate,
+	csrPem string,
+	expectSessionCert bool,
+) (newAccessToken string, newRefreshToken string, sessionCert string, statusCode int) {
 	dst := map[string][]string{
 		"grant_type":         {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":      {accessToken},
 		"subject_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
 		"scope":              {"openid offline_access"},
+	}
+
+	if clientID != "" {
+		dst["client_id"] = []string{clientID}
 	}
 
 	if csrPem != "" {
@@ -876,6 +894,37 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 			}
 		})
 	})
+}
+
+// Test_OIDC_TokenExchange_PreservesAuthTime verifies a token exchange keeps the subject token's
+// auth_time.
+func Test_OIDC_TokenExchange_PreservesAuthTime(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	clientHelper := ctx.NewEdgeClientApi(nil)
+
+	updbCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	updbCreds.CaPool = ctx.ControllerCaPool()
+
+	accessToken, _, _, _, clientID := oidcAuthWithCsr(ctx, clientHelper, updbCreds, "")
+	ctx.Req.NotEmpty(accessToken)
+
+	origClaims, err := parseAccessClaims(accessToken)
+	ctx.Req.NoError(err)
+	ctx.Req.NotZero(origClaims.AuthTime, "authentication must stamp auth_time")
+
+	time.Sleep(1100 * time.Millisecond)
+
+	newAccess, _, _, statusCode := doTokenExchangeRequestForClient(ctx, accessToken, clientID, nil, "", false)
+	ctx.Req.Equal(http.StatusOK, statusCode)
+	ctx.Req.NotEmpty(newAccess)
+
+	newClaims, err := parseAccessClaims(newAccess)
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(origClaims.AuthTime, newClaims.AuthTime,
+		"auth_time must carry the subject token's original authentication time through the exchange, never the mint time")
 }
 
 // Test_OIDC_CSR_SpiffeFallback verifies the SPIFFE ID fallback behavior when z_cfs is empty.

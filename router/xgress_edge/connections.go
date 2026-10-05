@@ -686,6 +686,8 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 
 	edgeConn.apiSessionToken = apiSession
 
+	handler.stateManager.SeedMfaFromApiSession(apiSession)
+
 	leafCert := certificates[0]
 	now := time.Now()
 	certExpired := now.Before(leafCert.NotBefore) || now.After(leafCert.NotAfter)

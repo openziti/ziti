@@ -735,6 +735,8 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 			claims.AccessTokenClaims.Scopes = subjectClaims.CustomClaims.Scopes
 		}
 		claims.CustomClaims = subjectClaims.CustomClaims
+		// keep the original auth_time so an exchange does not reset authentication recency
+		claims.AuthTime = subjectClaims.AuthTime
 		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
 		claims.ClientID = req.GetClientID()
 
