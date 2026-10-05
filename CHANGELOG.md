@@ -2,7 +2,45 @@
 
 ## What's New
 
+* [OIDC Auth Request Expiration](#oidc-auth-request-expiration) - The OIDC auth request lifetime is configurable and published, and login endpoints return 401 for an unknown or expired auth request
 * Bug fixes
+
+## OIDC Auth Request Expiration
+
+An OIDC auth request is the in-memory state a controller holds while a login is
+in progress, between the authorize redirect and the code exchange. It used to
+expire after a fixed 10 minutes. The value was previously not exposed to
+clients. Its lifetime is now configurable:
+
+```yaml
+edge:
+  oidc:
+    authRequestDuration: 10m
+```
+
+The default is `10m`. Values below `1m` are raised to `1m`. Values above `30m`
+are lowered to `30m`.
+
+The controller publishes the duration in two places. The OIDC discovery
+document carries it as `openziti_auth_request_expiration_seconds`. The auth
+queries response, returned whenever a login step needs more authentication
+instead of redirecting, carries `expiresAt` and `expirationSeconds`:
+
+```json
+{
+  "authQueries": [ ... ],
+  "expiresAt": "2026-10-05T14:10:00.000Z",
+  "expirationSeconds": 600
+}
+```
+
+Every OIDC login endpoint that takes an auth request id now returns 401
+`UNAUTHORIZED` for an unknown or expired id. Before this release,
+`/oidc/login/totp` returned 400 `INVALID TOTP CODE` for that id, the same
+response as a wrong code. `/oidc/login/auth-queries` returned a plain text
+body. A wrong TOTP code
+against a live auth request still returns 400 `INVALID TOTP CODE`. A client
+that gets 401 from a login endpoint should start a new login.
 
 ## Component Updates and Bug Fixes
 

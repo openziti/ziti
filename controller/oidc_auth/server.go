@@ -18,6 +18,7 @@ package oidc_auth
 
 import (
 	"context"
+	"time"
 
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
@@ -30,6 +31,9 @@ import (
 type openZitiDiscoveryConfiguration struct {
 	*oidc.DiscoveryConfiguration
 	OpenZitiEndpoints openZitiEndpoints `json:"openziti_endpoints"`
+
+	// OpenZitiAuthRequestExpirationSeconds is how long an auth request lives before the login must start over.
+	OpenZitiAuthRequestExpirationSeconds int64 `json:"openziti_auth_request_expiration_seconds"`
 }
 
 // openZitiEndpoints contains the URLs for OpenZiti-specific OIDC endpoints.
@@ -65,13 +69,15 @@ type openZitiEndpoints struct {
 // CSR submission and cert-binding verification.
 type server struct {
 	*op.LegacyServer
+	authRequestDuration time.Duration
 }
 
 var _ op.ExtendedLegacyServer = (*server)(nil)
 
-func newServer(provider op.OpenIDProvider, endpoints op.Endpoints) *server {
+func newServer(provider op.OpenIDProvider, endpoints op.Endpoints, authRequestDuration time.Duration) *server {
 	return &server{
-		LegacyServer: op.NewLegacyServer(provider, endpoints),
+		LegacyServer:        op.NewLegacyServer(provider, endpoints),
+		authRequestDuration: authRequestDuration,
 	}
 }
 
@@ -107,6 +113,7 @@ func (s *server) Discovery(ctx context.Context, r *op.Request[struct{}]) (*op.Re
 			TotpEnrollVerify: issuer + "/login/totp/enroll/verify",
 			AuthQueries:      issuer + "/login/auth-queries",
 		},
+		OpenZitiAuthRequestExpirationSeconds: int64(s.authRequestDuration.Seconds()),
 	}), nil
 }
 
