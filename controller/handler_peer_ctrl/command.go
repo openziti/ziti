@@ -83,6 +83,7 @@ func (self *commandHandler) processMessages() {
 //
 // Phase 1 (under lock):
 //   - Dequeue the next message from the queue
+//   - Decode and validate it with the leader's registry (inside ApplyTwoPhase); a failure is answered here and never reaches raft
 //   - Acquire a slot in the adaptive rate limiter (raft.rateLimiter)
 //   - Submit the command to Raft.Apply(), which enqueues it in Raft's internal queue
 //   - Return a continuation function (phaseTwo) for later execution
@@ -139,7 +140,7 @@ func (self *commandHandler) processMessage() bool {
 		defer self.lock.Unlock()
 		select {
 		case pair = <-self.queue:
-			// ApplyTwoPhase acquires a rate limiter slot and submits to Raft.Apply()
+			// ApplyTwoPhase decodes and validates, then acquires a rate limiter slot and submits to Raft.Apply()
 			// It returns immediately with a continuation function, not waiting for Raft consensus
 			phaseTwo, err = self.controller.ApplyTwoPhase(pair.msg.Body)
 			return true
@@ -153,8 +154,8 @@ func (self *commandHandler) processMessage() bool {
 	}
 
 	if err != nil {
-		// Rate limiter rejected the operation (too many in-flight operations)
-		sendErrorResponseCalculateType(pair.msg, pair.ch, apierror.NewTooManyUpdatesError())
+		// a rate limiter rejection is already a too-many-updates API error; validation errors pass through as they are
+		sendErrorResponseCalculateType(pair.msg, pair.ch, err)
 		return true
 	}
 
