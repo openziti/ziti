@@ -194,6 +194,15 @@ func Test_Services(t *testing.T) {
 		detail := ctx.AdminManagementSession.requireQuery("services/" + second.Id)
 		ctx.Req.Equal(originalName, ctx.RequireGetNonNilPathValue(detail, "data", "name").Data().(string))
 	})
+
+	t.Run("create with duplicate name should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		service := ctx.AdminManagementSession.requireNewService(nil, nil)
+		duplicate := ctx.newService(nil, nil)
+		duplicate.Name = service.Name
+		resp := ctx.AdminManagementSession.createEntity(duplicate)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "name")
+	})
 }
 
 func Test_ServiceListWithConfigs(t *testing.T) {
