@@ -10,6 +10,7 @@
     * [Issue #4545](https://github.com/openziti/ziti/issues/4545) - [Backport-2.0] Controller deadlock: disabling a connected edge router wedges every HA controller (raft FSM goroutine self-deadlocks on the `connected` map), v2.0.4+
     * [Issue #4546](https://github.com/openziti/ziti/issues/4546) - [Backport-2.0] Router deadlocks syncing subscribers when a subscribed identity was deleted or disabled while out of sync
     * [Issue #4484](https://github.com/openziti/ziti/issues/4484) - [Backport-2.0] Controller Cluster - new controllers must be able to be dialed by the leader in order to join successfully
+    * [Issue #4525](https://github.com/openziti/ziti/issues/4525) - [Backport-2.0] Allow case-insensitive terminator addressing via host.v1
     * [Issue #4460](https://github.com/openziti/ziti/issues/4460) - [Backport-2.0] Router gives up announcing its links to a controller after a reconnect, leaving the controller missing links
     * [Issue #4461](https://github.com/openziti/ziti/issues/4461) - [Backport-2.0] Checking whether a half-built split link is closed panics
     * [Issue #4462](https://github.com/openziti/ziti/issues/4462) - [Backport-2.0] A dialed link the router has no state for is left up and never reported
