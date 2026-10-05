@@ -40,9 +40,8 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 	errCode := byte(ctrl_msg.ErrorTypeInvalidTerminator)
 
 	rs := routeSender{
-		serviceCounters: network,
-		terminators:     network.Terminator,
-		attendance:      make(map[string]bool),
+		env:        network,
+		attendance: make(map[string]bool),
 	}
 
 	status := &RouteStatus{
@@ -93,9 +92,8 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 	errCode := byte(ctrl_msg.ErrorTypeInvalidTerminator)
 
 	rs := routeSender{
-		serviceCounters: network,
-		terminators:     network.Terminator,
-		attendance:      make(map[string]bool),
+		env:        network,
+		attendance: make(map[string]bool),
 	}
 
 	status := &RouteStatus{

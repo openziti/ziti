@@ -84,6 +84,24 @@ func (dialer *dialer) InspectTerminator(id string, destination string, fixInvali
 	return false, false, "terminator not found"
 }
 
+// lookupHost returns the hosted terminator registered for terminatorAddress, or the error a dial to
+// it should fail with: xgress.InvalidTerminatorError if nothing is registered, and
+// xgress_router.UnusableTerminatorError if the registered terminator is Deleting or its SDK channel
+// has closed.
+func (dialer *dialer) lookupHost(terminatorAddress string) (*edgeTerminator, error) {
+	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
+	if !found {
+		return nil, xgress.InvalidTerminatorError{InnerError: fmt.Errorf("host for terminator address '%v' not found", terminatorAddress)}
+	}
+	if terminator.IsDeleting() {
+		return nil, xgress_router.UnusableTerminatorError{InnerError: fmt.Errorf("host for terminator address '%v' is being removed", terminatorAddress)}
+	}
+	if terminator.GetChannel().IsClosed() {
+		return nil, xgress_router.UnusableTerminatorError{InnerError: fmt.Errorf("host for terminator address '%v' has closed its connection", terminatorAddress)}
+	}
+	return terminator, nil
+}
+
 func newDialer(factory *Factory, options *Options) xgress_router.Dialer {
 	txd := &dialer{
 		factory: factory,
@@ -102,9 +120,9 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 	terminatorAddress = strings.TrimPrefix(terminatorAddress, "hosted:")
 
 	log.Debugf("looking up hosted service conn for address %v", terminatorAddress)
-	terminator, found := dialer.factory.hostedServices.Get(terminatorAddress)
-	if !found {
-		return nil, xgress.InvalidTerminatorError{InnerError: fmt.Errorf("host for terminator address '%v' not found", terminatorAddress)}
+	terminator, err := dialer.lookupHost(terminatorAddress)
+	if err != nil {
+		return nil, err
 	}
 	log = log.WithField("bindConnId", terminator.MsgChannel.Id())
 
@@ -156,6 +174,9 @@ func (dialer *dialer) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 
 	conn, err := terminator.newConnection(connId)
 	if err != nil {
+		if _, goneErr := dialer.lookupHost(terminatorAddress); goneErr != nil {
+			return nil, goneErr
+		}
 		return nil, errors.Wrapf(err, "failed to create edge xgress conn for terminator address %v", terminatorAddress)
 	}
 
@@ -368,6 +389,9 @@ func (dialer *dialer) dialLegacy(terminator *edgeTerminator, params xgress_route
 			log.Debug("failed to send state disconnected")
 		}
 
+		if _, goneErr := dialer.lookupHost(terminatorAddress); goneErr != nil {
+			return nil, goneErr
+		}
 		return nil, errors.Wrapf(err, "failed to create edge xgress conn for terminator address %v", terminatorAddress)
 	}
 
