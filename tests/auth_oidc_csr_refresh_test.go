@@ -673,6 +673,12 @@ func Test_OIDC_CSR_Refresh_CertAuth(t *testing.T) {
 			rotatedFp := fingerprintFromPem(newSessionCert)
 			ctx.Req.Contains(newClaims.CertFingerprints, rotatedFp,
 				"z_cfs should contain the new session cert fingerprint")
+
+			rotatedCerts := nfpem.PemStringToCertificates(newSessionCert)
+			ctx.Req.NotEmpty(rotatedCerts)
+			ctx.Req.ElementsMatch([]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+				rotatedCerts[0].ExtKeyUsage,
+				"a rotated session cert must carry clientAuth and serverAuth")
 		}
 	})
 
