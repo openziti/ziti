@@ -7,6 +7,7 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.7 -> v2.0.8](https://github.com/openziti/ziti/compare/v2.0.7...v2.0.8)
+    * [Issue #4546](https://github.com/openziti/ziti/issues/4546) - [Backport-2.0] Router deadlocks syncing subscribers when a subscribed identity was deleted or disabled while out of sync
     * [Issue #4545](https://github.com/openziti/ziti/issues/4545) - [Backport-2.0] Controller deadlock: disabling a connected edge router wedges every HA controller (raft FSM goroutine self-deadlocks on the `connected` map), v2.0.4+
     * [Issue #4484](https://github.com/openziti/ziti/issues/4484) - [Backport-2.0] Controller Cluster - new controllers must be able to be dialed by the leader in order to join successfully
 
