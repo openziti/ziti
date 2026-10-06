@@ -245,9 +245,15 @@ func (x *GossipAck) GetRequestId() string {
 }
 
 type DigestEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Version       uint64                 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Key     string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Version uint64                 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	// tombstone says the sender holds this key as a tombstone rather than live.
+	// A digest covers both, and the receiver acts differently on each: a key the
+	// sender holds live that the receiver no longer backs is retired, while one
+	// the sender has already retired needs nothing said about it. Unset reads as
+	// live, so a sender that does not set it is taken to hold every key live.
+	Tombstone     bool `protobuf:"varint,3,opt,name=tombstone,proto3" json:"tombstone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -294,6 +300,13 @@ func (x *DigestEntry) GetVersion() uint64 {
 		return x.Version
 	}
 	return 0
+}
+
+func (x *DigestEntry) GetTombstone() bool {
+	if x != nil {
+		return x.Tombstone
+	}
+	return false
 }
 
 // OwnerDigest carries a per-owner short-circuit hash. When present in a
@@ -720,10 +733,11 @@ const file_gossip_proto_rawDesc = "" +
 	"\n" +
 	"store_type\x18\x01 \x01(\tR\tstoreType\x12\x1d\n" +
 	"\n" +
-	"request_id\x18\x02 \x01(\tR\trequestId\"9\n" +
+	"request_id\x18\x02 \x01(\tR\trequestId\"W\n" +
 	"\vDigestEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
-	"\aversion\x18\x02 \x01(\x04R\aversion\"7\n" +
+	"\aversion\x18\x02 \x01(\x04R\aversion\x12\x1c\n" +
+	"\ttombstone\x18\x03 \x01(\bR\ttombstone\"7\n" +
 	"\vOwnerDigest\x12\x14\n" +
 	"\x05owner\x18\x01 \x01(\tR\x05owner\x12\x12\n" +
 	"\x04hash\x18\x02 \x01(\x04R\x04hash\"\xb5\x01\n" +

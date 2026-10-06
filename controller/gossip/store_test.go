@@ -1314,6 +1314,30 @@ func TestGetDigestForOwner(t *testing.T) {
 	assert.Nil(t, store.GetDigestForOwner("nonexistent", "owner1"))
 }
 
+// TestGetDigestForOwner_MarksTombstones: the digest covers tombstones as well as live entries, and the
+// receiver acts differently on the two. A router reading a retired key as one it should retire answers with
+// another tombstone over it, which restarts the entry's expiry everywhere and re-broadcasts it.
+func TestGetDigestForOwner_MarksTombstones(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	st := newTestStateType(store, nil)
+	require.NoError(t, st.Set("live", "owner1", "v1"))
+	require.NoError(t, st.Set("dead", "owner1", "v2"))
+	st.Delete("dead", "owner1")
+
+	byKey := map[string]*gossip_pb.DigestEntry{}
+	for _, d := range store.GetDigestForOwner("test", "owner1") {
+		byKey[d.Key] = d
+	}
+	require.Len(t, byKey, 2, "a tombstone stays in the digest; only how it is read changes")
+
+	assert.False(t, byKey["live"].Tombstone)
+	assert.True(t, byKey["dead"].Tombstone)
+	assert.Greater(t, byKey["dead"].Version, byKey["live"].Version,
+		"the tombstone's version is what an owner re-advertising the key has to beat")
+}
+
 // helpers
 
 func mustEncode(s string) []byte {

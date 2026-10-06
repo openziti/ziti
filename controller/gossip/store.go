@@ -1276,6 +1276,12 @@ func (sm *stateMap) getOwnerDigests() []*gossip_pb.OwnerDigest {
 	return digests
 }
 
+// getDigestForOwner returns what this store holds for the owner, live entries and tombstones alike, each
+// marked with which it is.
+//
+// Tombstones are included because the exchange has to order against them: an owner re-advertising a key
+// this store has retired needs to see the version it must beat. Marking them is what stops the far side
+// reading a retired key as one it should retire again.
 func (sm *stateMap) getDigestForOwner(owner string) []*gossip_pb.DigestEntry {
 	od := sm.getOwner(owner)
 	if od == nil {
@@ -1286,8 +1292,9 @@ func (sm *stateMap) getDigestForOwner(owner string) []*gossip_pb.DigestEntry {
 	digest := make([]*gossip_pb.DigestEntry, 0, len(od.entries))
 	for key, e := range od.entries {
 		digest = append(digest, &gossip_pb.DigestEntry{
-			Key:     key,
-			Version: e.Version,
+			Key:       key,
+			Version:   e.Version,
+			Tombstone: e.Tombstone,
 		})
 	}
 	return digest

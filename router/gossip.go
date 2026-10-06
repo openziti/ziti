@@ -899,9 +899,17 @@ func (g *gossipClient) handleDigest(digest *gossip_pb.GossipDigest, ch channel.C
 	// we stamp below outranks what the controller already holds. This is critical after a restart, when
 	// the Lamport clock resets to 0 and the controller still holds versions from the previous
 	// incarnation. Both the tombstone loop and the re-stamp below depend on this running first.
+	//
+	// Tombstones are kept in the version map and only excluded from the retirement loop. The re-stamp
+	// below has to see one: a key we still advertise that the controller holds as a tombstone is exactly
+	// the divergence it exists to repair, and it needs the version it must beat.
 	controllerVersions := make(map[string]uint64, len(digest.Entries))
+	controllerTombstones := map[string]struct{}{}
 	for _, de := range digest.Entries {
 		controllerVersions[de.Key] = de.Version
+		if de.Tombstone {
+			controllerTombstones[de.Key] = struct{}{}
+		}
 		g.observeVersion(de.Version)
 	}
 
@@ -953,13 +961,25 @@ func (g *gossipClient) handleDigest(digest *gossip_pb.GossipDigest, ch channel.C
 		}
 	})
 
-	// Tombstone entries the controller has that our source of truth doesn't.
+	// Tombstone live entries the controller holds that our source of truth doesn't.
+	//
+	// A key the controller already holds as a tombstone is skipped. Answering it with another tombstone at
+	// a fresh version wins the version check, which restarts the entry's expiry at every controller and
+	// broadcasts it across the peer mesh again, so a router that churns enough to keep failing the hash
+	// gate would keep its tombstones from ever being reaped.
 	for key := range controllerVersions {
-		if !localKeys[key] {
-			entry := g.newTombstone(key)
-			s.currentEntries.Remove(key)
-			responseEntries = append(responseEntries, entry)
+		if localKeys[key] {
+			continue
 		}
+		if _, retired := controllerTombstones[key]; retired {
+			// Still dropped locally. A tombstone on the controller is the answer we would have sent, so
+			// there is nothing left to advertise and nothing left to say.
+			s.currentEntries.Remove(key)
+			continue
+		}
+		entry := g.newTombstone(key)
+		s.currentEntries.Remove(key)
+		responseEntries = append(responseEntries, entry)
 	}
 
 	s.invalidateHash()

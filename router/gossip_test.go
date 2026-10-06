@@ -439,3 +439,74 @@ func Test_handleDigest_RestampIsIdempotent(t *testing.T) {
 
 	req.Empty(ch.entries(), "a caught-up controller must end the exchange, not start another restamp")
 }
+
+// Test_handleDigest_DoesNotRetireWhatTheControllerAlreadyRetired: a digest covers tombstones as well as
+// live entries, so a key the controller has already retired shows up here as one the router does not
+// advertise. Answering it with another tombstone wins the version check, which restarts the entry's expiry
+// on every controller and broadcasts it across the peer mesh again. A router churning enough to keep
+// failing the hash gate would keep its tombstones from ever being reaped.
+func Test_handleDigest_DoesNotRetireWhatTheControllerAlreadyRetired(t *testing.T) {
+	req := require.New(t)
+
+	g, store := newDigestTestClient(t, "test-store", nil)
+	store.currentEntries.Set("link1", &gossip_pb.GossipEntry{Key: "link1", Version: 3, Owner: "r1"})
+
+	ch := &capturingChannel{}
+	g.handleDigest(&gossip_pb.GossipDigest{
+		StoreType: "test-store",
+		Entries:   []*gossip_pb.DigestEntry{{Key: "link1", Version: 500, Tombstone: true}},
+	}, ch)
+
+	req.Empty(ch.entries(), "a key the controller has already retired must not be retired again")
+
+	_, ok := store.currentEntries.Get("link1")
+	req.False(ok, "the entry must still be dropped locally, since the controller's answer is the one we would have sent")
+}
+
+// Test_handleDigest_RetiresALiveEntryTheRouterNoLongerHas guards the other direction. Retiring what the
+// controller still holds live and the router no longer backs is the whole point of the exchange, and a
+// tombstone flag read too broadly would switch it off.
+func Test_handleDigest_RetiresALiveEntryTheRouterNoLongerHas(t *testing.T) {
+	req := require.New(t)
+
+	g, store := newDigestTestClient(t, "test-store", nil)
+	store.currentEntries.Set("link1", &gossip_pb.GossipEntry{Key: "link1", Version: 3, Owner: "r1"})
+
+	ch := &capturingChannel{}
+	g.handleDigest(&gossip_pb.GossipDigest{
+		StoreType: "test-store",
+		Entries:   []*gossip_pb.DigestEntry{{Key: "link1", Version: 500}},
+	}, ch)
+
+	sent := ch.entries()
+	req.Len(sent, 1)
+	req.Equal("link1", sent[0].Key)
+	req.True(sent[0].Tombstone, "an entry the source of truth no longer backs must be retired")
+	req.Greater(sent[0].Version, uint64(500), "the tombstone must outrank the entry it replaces")
+
+	_, ok := store.currentEntries.Get("link1")
+	req.False(ok, "a retired entry must leave the advertised set")
+}
+
+// Test_handleDigest_RestampsOverATombstoneForAKeyStillAdvertised: a tombstone is only excluded from the
+// retirement loop, not from the version map. A key the router still advertises that the controller holds
+// as a tombstone is exactly the divergence the restamp exists to repair, and it needs the version it has
+// to beat.
+func Test_handleDigest_RestampsOverATombstoneForAKeyStillAdvertised(t *testing.T) {
+	req := require.New(t)
+
+	g, store := newDigestTestClient(t, "test-store", map[string][]byte{"link1": []byte("live")})
+	store.currentEntries.Set("link1", &gossip_pb.GossipEntry{Key: "link1", Version: 1, Owner: "r1"})
+
+	ch := &capturingChannel{}
+	g.handleDigest(&gossip_pb.GossipDigest{
+		StoreType: "test-store",
+		Entries:   []*gossip_pb.DigestEntry{{Key: "link1", Version: 500, Tombstone: true}},
+	}, ch)
+
+	sent := ch.entries()
+	req.Len(sent, 1, "a link still held must be re-advertised over the controller's tombstone")
+	req.False(sent[0].Tombstone)
+	req.Equal([]byte("live"), sent[0].Value)
+	req.Greater(sent[0].Version, uint64(500), "the live value must outrank the tombstone it is replacing")
+}

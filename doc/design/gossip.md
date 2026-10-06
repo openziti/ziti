@@ -139,12 +139,21 @@ gossip entries owned by that router. The router compares with its current link
 state and responds with corrections:
 
 - Entries the router has but the controller doesn't → sent as live entries
-- Entries the controller has but the router doesn't → sent as tombstones
+- Entries the controller holds **live** that the router doesn't → sent as tombstones
 
 Before creating tombstones, the router advances its Lamport clock past all
 versions in the digest (the `observeVersion` call). This ensures tombstones
 have higher versions than the entries they replace, even after a restart resets
 the clock.
+
+The digest carries the controller's tombstones too, and marks them. Both halves
+of the comparison need them. A key the router still advertises that the
+controller holds as a tombstone is a real divergence, and the router has to see
+that version to re-stamp above it. A key the router no longer has is the
+opposite: the controller has already retired it, so there is nothing to say.
+Answering that with a fresh tombstone wins the version check, which restarts the
+entry's expiry on every controller and broadcasts it across the peer mesh again,
+leaving a churning router's tombstones unable to ever be reaped.
 
 ## Disconnect Handling
 

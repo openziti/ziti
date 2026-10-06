@@ -41,6 +41,13 @@ message GossipAck {
 message DigestEntry {
     string key = 1;
     uint64 version = 2;
+
+    // tombstone says the sender holds this key as a tombstone rather than live.
+    // A digest covers both, and the receiver acts differently on each: a key the
+    // sender holds live that the receiver no longer backs is retired, while one
+    // the sender has already retired needs nothing said about it. Unset reads as
+    // live, so a sender that does not set it is taken to hold every key live.
+    bool tombstone = 3;
 }
 
 // OwnerDigest carries a per-owner short-circuit hash. When present in a
