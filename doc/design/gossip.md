@@ -358,12 +358,20 @@ cannot change it. Capabilities are remembered per member rather than read from t
 the mesh's peer map holds only connected ones; a member cannot change what it advertises without
 reconnecting, so its last answer holds until it does.
 
-Two conservative defaults, pointing opposite ways on purpose:
+Two defaults, and neither is a guess dressed up as an answer:
 
-- A raft member nothing has ever been seen from narrows the cluster mask to nothing. Clustered is
-  conservative.
+- A raft member nothing has ever been seen from makes the cluster mask **unknown**, and an unknown
+  answer is not reported at all. Narrowing it to nothing instead would be conservative in the abstract
+  and wrong in practice: a restarted controller has observed only itself, so it would tell every router
+  connected to it that the cluster cannot carry a feature its peers are carrying happily, and the
+  restart would become a fleet-wide flap. Withholding leaves each router on the last answer it had,
+  which is the right one across a restart.
 - A router that no controller has reported to treats every capability as supported. Standalone is
   permissive, since a controller with no peers has no member that could fail to take part.
+
+So a router falls back to its own per-connection view while no controller can answer, which is what it
+had before the cluster mask existed. That view is the thing the cluster mask exists to correct, so the
+window is real; see [The gap that remains](#the-gap-that-remains).
 
 ### Giving up a capability
 
@@ -387,12 +395,21 @@ feature again starts from nothing, rather than from entries describing a state t
 
 ### The gap that remains
 
-Two controllers can disagree only by one of them holding a *stale supported* answer: a member it observed as
-capable, which was then downgraded and restarted, while that controller never reconnects to it. A missing
-answer cannot cause it, since an unseen member narrows the mask to nothing.
+Two ways a router can publish while a member cannot carry the feature, both bounded and both left that way
+on purpose.
 
-So it takes a downgrade plus a partition sustained across the whole window, and it resolves as soon as the
-partition heals. Bounded rather than eliminated, deliberately.
+**A stale supported answer.** A controller observed a member as capable, that member was downgraded and
+restarted, and the controller never reconnects to it. It takes a downgrade plus a partition sustained across
+the whole window, and it resolves as soon as the partition heals.
+
+**No answer yet.** A controller that has not observed every member reports nothing, so its routers fall back
+to their own per-connection view. A router connected only to capable controllers then publishes while an
+incapable member it never connects to is held back. It takes a controller restart, plus a router whose
+connections are all capable, plus an incapable member that router never reaches, and it resolves on the
+first observation of that member.
+
+The alternative for the second is to narrow an unseen member to nothing, which trades a narrow window for a
+guaranteed flap on every controller restart. That is the worse trade, so it is the window that stands.
 
 ### Faults from the far end
 
