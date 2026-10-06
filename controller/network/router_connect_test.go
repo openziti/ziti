@@ -21,6 +21,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/transport/v2"
@@ -28,6 +29,8 @@ import (
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 )
@@ -380,4 +383,36 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 				"iteration %d: a link published by a router that has been disconnected must not survive", i)
 		}
 	}
+}
+
+// TestRouterDisable_DisconnectsConnectedRouter: disabling a connected router closes its control channel and
+// the close handler's teardown runs to completion. The store runs the update listener on the updating
+// goroutine, so a teardown that cannot finish hangs the update itself.
+func TestRouterDisable_DisconnectsConnectedRouter(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+	require.NoError(t, network.Router.Create(model.NewRouterForTest("r1", "", addr, nil, 0, false), change.New()))
+
+	ch := &fakeCtrlChannel{}
+	r := model.NewRouterForTest("r1", "", addr, ch, 0, false)
+	ch.onClose = func() { network.DisconnectRouter(r) }
+	require.NoError(t, network.ConnectRouter(r))
+
+	update := model.NewRouterForTest("r1", "", addr, nil, 0, false)
+	update.Disabled = true
+
+	done := make(chan error, 1)
+	go func() {
+		done <- network.Router.Update(update, fields.UpdatedFieldsMap{db.FieldRouterDisabled: struct{}{}}, change.New())
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "disabling a connected router did not complete")
+	}
+
+	require.True(t, ch.IsClosed(), "disabling a connected router must close its control channel")
+	require.Nil(t, network.Router.GetConnected("r1"), "the disabled router's teardown must clear its slot")
+	require.False(t, r.Connected.Load())
 }
