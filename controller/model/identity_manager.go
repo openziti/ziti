@@ -266,7 +266,56 @@ func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ident
 	} else {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker, ctx)
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		if err := self.requireAuthorMayAffect(ctx, cmd.Entity.Id); err != nil {
+			return err
+		}
+		return self.updateEntity(cmd.Entity, checker, ctx)
+	})
+}
+
+func (self *IdentityManager) ApplyDelete(cmd *command.DeleteEntityCommand, ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		if err := self.requireAuthorMayAffect(ctx, cmd.Id); err != nil {
+			return err
+		}
+		return self.Store.DeleteById(ctx, cmd.Id)
+	})
+}
+
+// requireAuthorMayAffect refuses a change to an admin identity by an identity author that is not an
+// admin, reading both identities in the transaction so the decision is the same on every member. An
+// author that is not an identity is exempt; an author that no longer exists is not an admin. A target
+// that does not exist is left for the caller to report.
+func (self *IdentityManager) requireAuthorMayAffect(ctx boltz.MutateContext, targetId string) error {
+	author := change.FromContext(ctx.Context()).GetAuthor()
+	if author == nil || author.Type != change.AuthorTypeIdentity {
+		return nil
+	}
+
+	target, err := self.readInTx(ctx.Tx(), targetId)
+	if err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			return nil
+		}
+		return err
+	}
+	if !target.IsAdmin {
+		return nil
+	}
+
+	authorIdentity, err := self.readInTx(ctx.Tx(), author.Id)
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return err
+	}
+	if err == nil && authorIdentity.IsAdmin {
+		return nil
+	}
+
+	unauthorized := errorz.NewUnauthorized()
+	unauthorized.Cause = errors.New("non-admin may not modify admin identities")
+	unauthorized.AppendCause = true
+	return unauthorized
 }
 
 func (self *IdentityManager) IsUpdated(field string) bool {
