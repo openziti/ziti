@@ -521,9 +521,18 @@ func (self syncAllSubscribersEvent) process(rdm *RouterDataModel) {
 	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).
 		WithField("updatedIdentities", rdm.updatedIdentities.Count()).
 		Debug("sync all subscribers: start")
-	rdm.subscriptions.IterCb(func(key string, v *IdentitySubscription) {
-		rdm.markIdentityCheckComplete(key, IdentityUpdated)
-		v.checkForChanges(rdm)
+	// Collect, then check outside the shard locks: a subscriber can unsubscribe from inside its
+	// notification, which needs the write lock on the subscription's shard. Collect ids, not
+	// subscriptions, since one can be replaced before the loop reaches it.
+	identityIds := make([]string, 0, rdm.subscriptions.Count())
+	rdm.subscriptions.IterCb(func(identityId string, _ *IdentitySubscription) {
+		identityIds = append(identityIds, identityId)
 	})
+	for _, identityId := range identityIds {
+		rdm.markIdentityCheckComplete(identityId, IdentityUpdated)
+		if sub, found := rdm.subscriptions.Get(identityId); found {
+			sub.checkForChanges(rdm)
+		}
+	}
 	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).Debug("sync all subscribers: done")
 }

@@ -515,11 +515,15 @@ func (self *RouterManager) HandleRouterDelete(id string) {
 	}
 }
 
+// UpdateCachedRouter refreshes the cached and connected instances of router id from the store, and closes
+// the control channel of a connected router that is now disabled. The channel's close handlers run on the
+// calling goroutine, so the caller must not hold the router's connect lock.
 func (self *RouterManager) UpdateCachedRouter(id string) {
 	log := pfxlog.Logger().WithField("routerId", id)
 	if router, err := self.readUncached(id); err != nil {
 		log.WithError(err).Error("failed to read router for cache update")
 	} else {
+		var disabledCtrl ctrlchan.CtrlChannel
 		updateCb := func(key string, v *Router, exist bool) bool {
 			if !exist {
 				return false
@@ -532,11 +536,8 @@ func (self *RouterManager) UpdateCachedRouter(id string) {
 			v.Disabled = router.Disabled
 			v.CtrlChanListeners = router.CtrlChanListeners
 
-			if v.Disabled {
-				if ctrl := v.Control; ctrl != nil {
-					_ = ctrl.Close()
-					log.Warn("connected router disabled, disconnecting router")
-				}
+			if v.Disabled && v.Control != nil {
+				disabledCtrl = v.Control
 			}
 
 			return false
@@ -544,6 +545,15 @@ func (self *RouterManager) UpdateCachedRouter(id string) {
 
 		self.cache.RemoveCb(id, updateCb)
 		self.connected.RemoveCb(id, updateCb)
+
+		// Closed only once RemoveCb has released the shard lock, since the close handler's teardown reads
+		// and removes this router's connected entry.
+		if disabledCtrl != nil {
+			if err := disabledCtrl.Close(); err != nil {
+				log.WithError(err).Error("connected router disabled, error reported while disconnecting router")
+			}
+			log.Warn("connected router disabled, disconnected router")
+		}
 	}
 }
 
