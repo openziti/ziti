@@ -133,7 +133,7 @@ func (l *listener) rx() {
 			now := tick.UnixNano()
 			for _, session := range l.sessions {
 				if session.TimeoutNanos() < now {
-					_ = session.Close()
+					session.CloseFromEventLoop()
 				}
 			}
 		}
@@ -147,7 +147,7 @@ func (l *listener) handleConnect(session xgress_udp.Session) {
 		session.SetState(xgress_udp.SessionStateEstablished)
 	} else {
 		logrus.Errorf("error creating session (%s)", response.Message)
-		_ = session.Close()
+		session.CloseFromEventLoop()
 	}
 }
 
