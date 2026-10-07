@@ -283,6 +283,12 @@ func (self *IdentityManager) ApplyDelete(cmd *command.DeleteEntityCommand, ctx b
 	})
 }
 
+// isAdminIdentity reports whether identity holds admin rights, by either flag, matching how a
+// session's permissions are resolved.
+func isAdminIdentity(identity *Identity) bool {
+	return identity.IsAdmin || identity.IsDefaultAdmin
+}
+
 // requireAuthorMayAffect refuses a change to an admin identity by an identity author that is not an
 // admin, reading both identities in the transaction so the decision is the same on every member. An
 // author that is not an identity is exempt; an author that no longer exists is not an admin. A target
@@ -300,7 +306,7 @@ func (self *IdentityManager) requireAuthorMayAffect(ctx boltz.MutateContext, tar
 		}
 		return err
 	}
-	if !target.IsAdmin {
+	if !isAdminIdentity(target) {
 		return nil
 	}
 
@@ -308,7 +314,7 @@ func (self *IdentityManager) requireAuthorMayAffect(ctx boltz.MutateContext, tar
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		return err
 	}
-	if err == nil && authorIdentity.IsAdmin {
+	if err == nil && isAdminIdentity(authorIdentity) {
 		return nil
 	}
 
