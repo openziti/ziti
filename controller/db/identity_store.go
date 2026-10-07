@@ -24,10 +24,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/v2/ziti"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/permissions"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -315,6 +315,18 @@ func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.Persi
 	entity.SetBaseValues(ctx)
 
 	ctx.SetString(FieldName, entity.Name)
+	// a default admin is always an admin, on create and after any update; evaluated before the
+	// flags are written so an update sees the stored value of a field it does not set
+	effectiveFlag := func(field string, value bool) bool {
+		if ctx.IsCreate || ctx.ProceedWithSet(field) {
+			return value
+		}
+		return ctx.Bucket.GetBoolWithDefault(field, false)
+	}
+	if effectiveFlag(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin) && !effectiveFlag(FieldIdentityIsAdmin, entity.IsAdmin) {
+		ctx.Bucket.SetError(errorz.NewFieldError("the default admin must be an admin", FieldIdentityIsAdmin, false))
+		return
+	}
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
 	if oldValue, changed := ctx.GetAndSetString(FieldIdentityType, entity.IdentityTypeId); changed {
