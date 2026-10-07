@@ -29,6 +29,8 @@ import (
 	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 )
@@ -469,6 +471,38 @@ func TestRouterDelete_KeepsTheIndexOfAReusedId(t *testing.T) {
 	require.Len(t, network.Link.LinksForRouter(reused.Id), 1,
 		"a delete that lands after the id was recreated must not drop the live router's index")
 	require.Len(t, network.Link.LinksForRouter(peer.Id), 1)
+}
+
+// TestRouterDisable_DisconnectsConnectedRouter: disabling a connected router closes its control channel and
+// the close handler's teardown runs to completion. The store runs the update listener on the updating
+// goroutine, so a teardown that cannot finish hangs the update itself.
+func TestRouterDisable_DisconnectsConnectedRouter(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+	newPersistedRouter(t, network, addr, "r1")
+
+	ch := &fakeCtrlChannel{}
+	r := model.NewRouterForTest("r1", "", addr, ch, 0, false)
+	ch.onClose = func() { network.DisconnectRouter(r) }
+	require.NoError(t, network.ConnectRouter(r))
+
+	update := model.NewRouterForTest("r1", "", addr, nil, 0, false)
+	update.Disabled = true
+
+	done := make(chan error, 1)
+	go func() {
+		done <- network.Router.Update(update, fields.UpdatedFieldsMap{db.FieldRouterDisabled: struct{}{}}, change.New())
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "disabling a connected router did not complete")
+	}
+
+	require.True(t, ch.IsClosed(), "disabling a connected router must close its control channel")
+	require.Nil(t, network.Router.GetConnected("r1"), "the disabled router's teardown must clear its slot")
+	require.False(t, r.Connected.Load())
 }
 
 // TestRouterReportedLink_RepairsDestDisplacedMidReport is the same interleave with a stale destination

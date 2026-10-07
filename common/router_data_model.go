@@ -2487,16 +2487,14 @@ func (rdm *RouterDataModel) queueIdentityDeletedSubCheck(identityId string) {
 }
 
 func (rdm *RouterDataModel) syncSubscriptionIfRequired(identityId string, clearUpdateEntry bool) {
+	// Clear before the lookup: a subscription looked up first can be replaced, and the replacement
+	// updated, before the clear, which would consume that update's flag on the stale subscription.
+	if clearUpdateEntry && !rdm.markIdentityCheckComplete(identityId, IdentityUpdated) {
+		return
+	}
+
 	if subscription, _ := rdm.subscriptions.Get(identityId); subscription != nil {
-		requiresSync := true
-
-		if clearUpdateEntry {
-			requiresSync = rdm.markIdentityCheckComplete(identityId, IdentityUpdated)
-		}
-
-		if requiresSync {
-			subscription.checkForChanges(rdm)
-		}
+		subscription.checkForChanges(rdm)
 	}
 }
 
