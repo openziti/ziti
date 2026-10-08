@@ -19,6 +19,7 @@ package xgress_udp
 import (
 	"io"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/openziti/channel/v5"
@@ -30,6 +31,7 @@ func NewPacketSesssion(l Listener, addr net.Addr, timeout int64) Session {
 	return &PacketSession{
 		listener:             l,
 		readC:                make(chan []byte, 10),
+		closeNotify:          make(chan struct{}),
 		addr:                 addr,
 		state:                SessionStateNew,
 		timeoutIntervalNanos: timeout,
@@ -56,8 +58,10 @@ func (s *PacketSession) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	return buffer, nil, nil
 }
 
+// Write marks the session active and sends p to the session's address. Safe to call from the
+// listener's event loop.
 func (s *PacketSession) Write(p []byte) (n int, err error) {
-	s.listener.QueueEvent((*SessionUpdateEvent)(s))
+	s.MarkActivity()
 	return s.listener.WriteTo(p, s.addr)
 }
 
@@ -73,13 +77,46 @@ func (s *PacketSession) HandleControlMsg(controlType xgress.ControlType, headers
 	return errors.Errorf("unhandled control type: %v", controlType)
 }
 
+// QueueRead hands data to the session's reader, waiting while the read buffer is full. Once the
+// session is closed it drops data that does not fit instead, since its reader may already have
+// stopped.
 func (s *PacketSession) QueueRead(data []byte) {
-	s.readC <- data
+	select {
+	case s.readC <- data:
+		return
+	default:
+	}
+
+	select {
+	case s.readC <- data:
+	case <-s.closeNotify:
+	}
 }
 
+// Close releases any QueueRead waiting on the session, then queues the session's removal on the
+// listener's event loop, blocking while the loop's queue is full. The event loop must not call it;
+// it uses CloseFromEventLoop. Repeated calls are harmless.
 func (s *PacketSession) Close() error {
-	s.listener.QueueEvent((*sessionCloseEvent)(s))
+	if s.closing.CompareAndSwap(false, true) {
+		close(s.closeNotify)
+		s.listener.QueueEvent((*sessionCloseEvent)(s))
+	}
 	return nil
+}
+
+func (s *PacketSession) CloseFromEventLoop() {
+	if s.closing.CompareAndSwap(false, true) {
+		close(s.closeNotify)
+	}
+	s.remove(s.listener)
+}
+
+func (s *PacketSession) remove(l Listener) {
+	if !s.removed {
+		close(s.readC)
+		l.DeleteSession(s.SessionId())
+		s.removed = true
+	}
 }
 
 func (s *PacketSession) LogContext() string {
@@ -87,11 +124,11 @@ func (s *PacketSession) LogContext() string {
 }
 
 func (s *PacketSession) TimeoutNanos() int64 {
-	return s.timeoutNanos
+	return s.timeoutNanos.Load()
 }
 
 func (s *PacketSession) MarkActivity() {
-	s.timeoutNanos = time.Now().UnixNano() + s.timeoutIntervalNanos
+	s.timeoutNanos.Store(time.Now().UnixNano() + s.timeoutIntervalNanos)
 }
 
 func (s *PacketSession) SessionId() string {
@@ -101,26 +138,17 @@ func (s *PacketSession) SessionId() string {
 type PacketSession struct {
 	listener             Listener
 	readC                chan []byte
+	closeNotify          chan struct{}
+	closing              atomic.Bool
 	addr                 net.Addr
 	state                SessionState
 	timeoutIntervalNanos int64
-	timeoutNanos         int64
-	closed               bool
+	timeoutNanos         atomic.Int64
+	removed              bool
 }
-
-func (s *SessionUpdateEvent) Handle(_ Listener) {
-	(*PacketSession)(s).MarkActivity()
-}
-
-type SessionUpdateEvent PacketSession
 
 func (e *sessionCloseEvent) Handle(l Listener) {
-	session := (*PacketSession)(e)
-	if !session.closed {
-		close(session.readC)
-		l.DeleteSession(session.SessionId())
-		session.closed = true
-	}
+	(*PacketSession)(e).remove(l)
 }
 
 type sessionCloseEvent PacketSession
