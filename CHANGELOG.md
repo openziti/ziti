@@ -78,6 +78,7 @@
 
 * github.com/openziti/go-term-markdown: v1.0.1 (new)
 * github.com/openziti/ziti: [v1.6.20 -> v1.6.21](https://github.com/openziti/ziti/compare/v1.6.20...v1.6.21)
+    * [Issue #4491](https://github.com/openziti/ziti/issues/4491) - [Backport-1.6] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4445](https://github.com/openziti/ziti/issues/4445) - [Backport-1.6] Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
     * [Issue #4340](https://github.com/openziti/ziti/issues/4340) - [Backport-1.6] Router does not relay an SDK xgress terminator's half-close to a legacy edge client
     * [Issue #4395](https://github.com/openziti/ziti/issues/4395) - Update release-v1.6.x to the sdk-golang 1.8 line
