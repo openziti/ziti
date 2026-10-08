@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	"github.com/openziti/ziti/v2/common/inspect"
@@ -31,9 +32,13 @@ import (
 )
 
 type splitImpl struct {
-	id            string
-	payloadCh     channel.Channel
-	ackCh         channel.Channel
+	id string
+	// payloadCh and ackCh are each bound once, and are held atomically rather than under lock because
+	// the two arrive independently: the link exists, and is readable, while only one of them is set.
+	// Readers include the link registry's event loop, which must not block, and lock is held across
+	// channel binding.
+	payloadCh     concurrenz.AtomicValue[channel.Channel]
+	ackCh         concurrenz.AtomicValue[channel.Channel]
 	routerId      string
 	routerVersion string
 	linkProtocol  string
@@ -90,7 +95,7 @@ func (self *splitImpl) syncInit(f func() error) error {
 
 func (self *splitImpl) SendPayload(msg *xgress.Payload, timeout time.Duration, payloadType xgress.PayloadType) error {
 	if timeout == 0 {
-		sent, err := self.payloadCh.TrySend(msg.Marshall())
+		sent, err := self.payloadCh.Load().TrySend(msg.Marshall())
 		if err == nil && !sent {
 			channelLog.Info("dropped payload", "circuitId", msg.CircuitId)
 			self.droppedMsgMeter.Mark(1)
@@ -105,11 +110,11 @@ func (self *splitImpl) SendPayload(msg *xgress.Payload, timeout time.Duration, p
 		return err
 	}
 
-	return msg.Marshall().WithTimeout(timeout).Send(self.payloadCh)
+	return msg.Marshall().WithTimeout(timeout).Send(self.payloadCh.Load())
 }
 
 func (self *splitImpl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
-	sent, err := self.ackCh.TrySend(msg.Marshall())
+	sent, err := self.ackCh.Load().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -117,7 +122,7 @@ func (self *splitImpl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
 }
 
 func (self *splitImpl) SendControl(msg *xgress.Control) error {
-	sent, err := self.payloadCh.TrySend(msg.Marshall())
+	sent, err := self.payloadCh.Load().TrySend(msg.Marshall())
 	if err == nil && !sent {
 		self.droppedMsgMeter.Mark(1)
 	}
@@ -146,11 +151,11 @@ func (self *splitImpl) Close() error {
 		self.droppedFwdMsgMeter.Dispose()
 	}
 	var err, err2 error
-	if ch := self.payloadCh; ch != nil {
+	if ch := self.payloadCh.Load(); ch != nil {
 		err = ch.Close()
 	}
 
-	if ch := self.ackCh; ch != nil {
+	if ch := self.ackCh.Load(); ch != nil {
 		err2 = ch.Close()
 	}
 	if err == nil {
@@ -192,10 +197,10 @@ func (self *splitImpl) CloseOnce(f func()) {
 // open: the listener side sets the two independently as each binds, so a link is briefly half-built, and
 // Close skips a nil channel for the same reason.
 func (self *splitImpl) IsClosed() bool {
-	if ch := self.payloadCh; ch != nil && ch.IsClosed() {
+	if ch := self.payloadCh.Load(); ch != nil && ch.IsClosed() {
 		return true
 	}
-	if ch := self.ackCh; ch != nil && ch.IsClosed() {
+	if ch := self.ackCh.Load(); ch != nil && ch.IsClosed() {
 		return true
 	}
 	return false
@@ -220,11 +225,11 @@ func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
 }
 
 func (self *splitImpl) GetLinkConnState() *ctrl_pb.LinkConnState {
-	ackLocalAddr := self.ackCh.Underlay().GetLocalAddr()
-	ackRemoteAddr := self.ackCh.Underlay().GetRemoteAddr()
+	ackLocalAddr := self.ackCh.Load().Underlay().GetLocalAddr()
+	ackRemoteAddr := self.ackCh.Load().Underlay().GetRemoteAddr()
 
-	plLocalAddr := self.payloadCh.Underlay().GetLocalAddr()
-	plRemoteAddr := self.payloadCh.Underlay().GetRemoteAddr()
+	plLocalAddr := self.payloadCh.Load().Underlay().GetLocalAddr()
+	plRemoteAddr := self.payloadCh.Load().Underlay().GetRemoteAddr()
 
 	return &ctrl_pb.LinkConnState{
 		StateIteration: 1,

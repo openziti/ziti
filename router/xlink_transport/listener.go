@@ -307,7 +307,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 		return err
 	}
 
-	if complete && xli.payloadCh != nil && xli.ackCh != nil {
+	if complete && xli.payloadCh.Load() != nil && xli.ackCh.Load() != nil {
 		if err = self.accepter.Accept(xli); err != nil {
 			log.Error("error accepting incoming Xlink", "error", err)
 
@@ -379,8 +379,8 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 
 	if chanType == PayloadChannel {
 		if err := link.syncInit(func() error {
-			if link.payloadCh == nil {
-				link.payloadCh = binding.GetChannel()
+			if link.payloadCh.Load() == nil {
+				link.payloadCh.Store(binding.GetChannel())
 				return nil
 			}
 			return errors.Errorf("got two payload channels for link %v", linkMeta.linkId)
@@ -389,8 +389,8 @@ func (self *listener) getOrCreateSplitLink(connId string, linkMeta *linkMetadata
 		}
 	} else if chanType == AckChannel {
 		if err := link.syncInit(func() error {
-			if link.ackCh == nil {
-				link.ackCh = binding.GetChannel()
+			if link.ackCh.Load() == nil {
+				link.ackCh.Store(binding.GetChannel())
 				return nil
 			}
 			return errors.Errorf("got two ack channels for link %v", linkMeta.linkId)
