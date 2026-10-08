@@ -7,12 +7,12 @@ replace github.com/michaelquigley/pfxlog => github.com/michaelquigley/pfxlog v0.
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.6.0
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.1
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.10.0
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/antchfx/jsonquery v1.3.7
+	github.com/antchfx/jsonquery v1.3.8
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/biogo/store v0.0.0-20201120204734-aad293a2328f
 	github.com/blang/semver v3.5.1+incompatible
@@ -30,9 +30,9 @@ require (
 	github.com/go-openapi/errors v0.22.9
 	github.com/go-openapi/jsonpointer v1.0.2
 	github.com/go-openapi/loads v0.25.3
-	github.com/go-openapi/runtime v0.33.2
+	github.com/go-openapi/runtime v0.33.3
 	github.com/go-openapi/spec v1.0.1
-	github.com/go-openapi/strfmt v0.27.2
+	github.com/go-openapi/strfmt v0.27.3
 	github.com/go-openapi/swag v0.29.2
 	github.com/go-openapi/swag/jsonutils v0.29.2
 	github.com/go-openapi/validate v1.0.0
@@ -91,7 +91,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.51.6
+	github.com/zitadel/oidc/v3 v3.51.13
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/atomic v1.12.0
 	go4.org v0.0.0-20260112195520-a5071408f32f
@@ -111,12 +111,12 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.13.0 // indirect
 	github.com/Azure/go-amqp v1.7.0 // indirect
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.2.5 // indirect
-	github.com/antchfx/xpath v1.3.8 // indirect
+	github.com/antchfx/xpath v1.3.9 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.2 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -136,7 +136,7 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.2 // indirect
-	github.com/go-openapi/runtime/server-middleware v0.33.2 // indirect
+	github.com/go-openapi/runtime/server-middleware v0.33.3 // indirect
 	github.com/go-openapi/swag/cmdutils v0.29.2 // indirect
 	github.com/go-openapi/swag/conv v0.29.2 // indirect
 	github.com/go-openapi/swag/fileutils v0.29.2 // indirect
