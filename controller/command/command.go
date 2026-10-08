@@ -51,8 +51,11 @@ type CriticalCommand interface {
 	IsCriticalCommand()
 }
 
-// Validatable instances can be validated. Command instances which implement Validable will be validated
-// before Command.Apply is called
+// Validatable marks a command whose Validate runs before dispatch and again on the leader before
+// the command enters the raft log. Validate reads only the command's own fields and local
+// configuration, never the database: the serving controller's view may trail the leader, and on
+// the leader entries already in the log apply first, so a check that depends on stored state
+// belongs in Apply. It is deterministic and free of side effects, since it runs more than once.
 type Validatable interface {
 	Validate() error
 }
@@ -140,6 +143,12 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 			panic(p)
 		}
 	}()
+
+	if validatable, ok := command.(Validatable); ok {
+		if err := validatable.Validate(); err != nil {
+			return err
+		}
+	}
 
 	changeCtx := command.GetChangeContext()
 	if changeCtx == nil {

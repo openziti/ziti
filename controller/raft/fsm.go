@@ -53,6 +53,7 @@ func NewFsm(dataDir string, restartSelf bool, decoders command.Decoders, indexTr
 		indexTracker:    indexTracker,
 		eventDispatcher: eventDispatcher,
 		restartSelf:     restartSelf,
+		halt:            haltOnUnappliableEntry,
 	}
 }
 
@@ -90,6 +91,14 @@ type BoltDbFsm struct {
 	dbReferenced     atomic.Bool
 	restartSelf      bool
 	stateInitialized atomic.Bool
+	halt             func(err error)
+}
+
+// haltOnUnappliableEntry ends the process. Reached only from BoltDbFsm.Apply, on the raft FSM
+// goroutine, for a committed entry this member cannot apply. The condition is deterministic, so
+// continuing would diverge from the cluster, and a restart replays the entry.
+func haltOnUnappliableEntry(err error) {
+	pfxlog.Logger().WithError(err).Fatal("cannot apply committed raft entry; halting rather than advancing past it")
 }
 
 func (self *BoltDbFsm) Init() error {
@@ -317,52 +326,63 @@ func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Confi
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 	logger := pfxlog.Logger().WithField("index", log.Index)
 	if log.Type == raft.LogCommand {
-		defer self.indexTracker.NotifyOfIndex(log.Index)
-
 		if log.Index <= self.index {
 			logger.Debug("skipping replay of command")
+			self.indexTracker.NotifyOfIndex(log.Index)
 			return nil
 		}
 
+		cmd, err := self.decodeEntry(log)
+		if err != nil {
+			// Neither index nor tracker advances: the entry was not applied, and halting is what keeps
+			// this member from reporting itself caught up while missing it.
+			self.halt(fmt.Errorf("index %v: %w", log.Index, err))
+			return err
+		}
+
+		defer self.indexTracker.NotifyOfIndex(log.Index)
 		self.index = log.Index
 
-		if len(log.Data) >= 4 {
-			cmd, err := self.decoders.Decode(log.Data)
-			if err != nil {
-				logger.WithError(err).Error("failed to create command")
+		logger = logger.WithField("cmdType", fmt.Sprintf("%T", cmd))
+		logger.Info("applying log")
+		changeCtx := cmd.GetChangeContext()
+		if changeCtx == nil {
+			changeCtx = change.New().SetSourceType("unattributed").SetChangeAuthorType(change.AuthorTypeUnattributed)
+		}
+		changeCtx.RaftIndex = log.Index
+
+		ctx := changeCtx.NewMutateContext()
+		ctx.AddPreCommitAction(func(ctx boltz.MutateContext) error {
+			return self.updateIndexInTx(ctx.Tx(), log.Index)
+		})
+
+		if err = cmd.Apply(ctx); err != nil {
+			if _, critical := cmd.(command.CriticalCommand); critical {
+				// The in-tx index update rolled back with the apply, so a restart replays the entry.
+				self.halt(fmt.Errorf("critical base-state command %T failed at index %v: %w", cmd, log.Index, err))
 				return err
 			}
-
-			logger = logger.WithField("cmdType", fmt.Sprintf("%T", cmd))
-			logger.Info("applying log")
-			changeCtx := cmd.GetChangeContext()
-			if changeCtx == nil {
-				changeCtx = change.New().SetSourceType("unattributed").SetChangeAuthorType(change.AuthorTypeUnattributed)
-			}
-			changeCtx.RaftIndex = log.Index
-
-			ctx := changeCtx.NewMutateContext()
-			ctx.AddPreCommitAction(func(ctx boltz.MutateContext) error {
-				return self.updateIndexInTx(ctx.Tx(), log.Index)
-			})
-
-			if err = cmd.Apply(ctx); err != nil {
-				if _, critical := cmd.(command.CriticalCommand); critical {
-					// Base-state command failed; halt instead of advancing over incomplete state. The
-					// in-tx index update rolled back with the apply, so raft replays it on restart.
-					logger.WithError(err).Fatal("failed to apply critical base-state command; halting rather than advancing over incomplete state")
-				}
-				logger.WithError(err).Error("applying log resulted in error")
-				// apply rolled back the in-tx index update; persist it here since raft advances regardless
-				self.updateIndex(log.Index)
-			}
-
-			return err
-		} else {
-			return fmt.Errorf("log data contained invalid message type. data: %+v", log.Data)
+			logger.WithError(err).Error("applying log resulted in error")
+			// apply rolled back the in-tx index update; persist it here since raft advances regardless
+			self.updateIndex(log.Index)
 		}
+
+		return err
 	}
 	return nil
+}
+
+// decodeEntry decodes a command log entry with this member's registry. An error means the entry
+// cannot be applied here, not that it is malformed on every member.
+func (self *BoltDbFsm) decodeEntry(log *raft.Log) (command.Command, error) {
+	if len(log.Data) < 4 {
+		return nil, fmt.Errorf("log data contained invalid message type. data: %+v", log.Data)
+	}
+	cmd, err := self.decoders.Decode(log.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create command: %w", err)
+	}
+	return cmd, nil
 }
 
 func (self *BoltDbFsm) Snapshot() (raft.FSMSnapshot, error) {
