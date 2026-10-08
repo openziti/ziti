@@ -24,6 +24,7 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.6 -> v2.0.7](https://github.com/openziti/ziti/compare/v2.0.6...v2.0.7)
+    * [Issue #4490](https://github.com/openziti/ziti/issues/4490) - [Backport-2.0] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4479](https://github.com/openziti/ziti/issues/4479) - [Backport-2.0] Router never reconnects to a standalone controller after the heartbeat check closes the control channel
     * [Issue #4466](https://github.com/openziti/ziti/issues/4466) - [Backport-2.0] Router mis-signals congestion on terminator establish/remove timeouts
     * [Issue #4444](https://github.com/openziti/ziti/issues/4444) - [Backport-2.0] Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
