@@ -926,30 +926,14 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
-	caPEMs := strategy.ae.GetConfig().Edge.CaPems()
-	caCerts := nfPem.PemBytesToCertificates(caPEMs)
-
-	// Non-root CA certs in the bundle are intermediates; publish them on every root from
-	// the same bundle. Verification treats intermediates as a pool, so extras are harmless.
-	var caIntermediates [][]byte
-	for _, caCert := range caCerts {
-		if caCert.IsCA && !identity.IsRootCa(caCert) {
-			caIntermediates = append(caIntermediates, caCert.Raw)
+	for _, publicKey := range firstPartyCaPublicKeys(strategy.ae.GetConfig().Edge.CaCerts()) {
+		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+		newEvent := &edge_ctrl_pb.DataState_Event{
+			Action:      edge_ctrl_pb.DataState_Create,
+			Model:       newModel,
+			IsSynthetic: true,
 		}
-	}
-
-	for _, caCert := range caCerts {
-		if identity.IsRootCa(caCert) {
-			publicKey := newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, firstPartyCaUsages, caIntermediates...)
-			newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
-			newEvent := &edge_ctrl_pb.DataState_Event{
-				Action:      edge_ctrl_pb.DataState_Create,
-				Model:       newModel,
-				IsSynthetic: true,
-			}
-
-			strategy.HandlePublicKeyEvent(newEvent, newModel)
-		}
+		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
 	for cursor := strategy.ae.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
@@ -1637,6 +1621,20 @@ func newPublicKey(data []byte, format edge_ctrl_pb.DataState_PublicKey_Format, u
 		Format:        format,
 		Intermediates: intermediates,
 	}
+}
+
+// firstPartyCaPublicKeys returns a first-party trust anchor for each root CA in caCerts. Roots are
+// published without intermediates: a root's kid is shared by every controller, and the intermediates
+// in a controller's bundle are its own, so publishing them would give the same kid different content
+// on each controller. Routers take intermediates from the chain a client presents.
+func firstPartyCaPublicKeys(caCerts []*x509.Certificate) []*edge_ctrl_pb.DataState_PublicKey {
+	var result []*edge_ctrl_pb.DataState_PublicKey
+	for _, caCert := range caCerts {
+		if identity.IsRootCa(caCert) {
+			result = append(result, newPublicKey(caCert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, firstPartyCaUsages))
+		}
+	}
+	return result
 }
 
 // certsToRaw returns the raw DER bytes of each certificate.
