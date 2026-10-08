@@ -265,6 +265,8 @@ func (ctx *inspectRequestContext) InspectLocal(name string) {
 		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipStore())
 	} else if lc == "gossip-canaries" {
 		ctx.handleLocalJsonResponse(name, ctx.network.inspectGossipCanaries())
+	} else if lc == "deferred-link-reports" {
+		ctx.handleLocalJsonResponse(name, ctx.network.Link.InspectDeferredReports())
 	} else {
 		for _, inspectTarget := range ctx.network.inspectionTargets.Value() {
 			if handled, val, err := inspectTarget(lc); handled {

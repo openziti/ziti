@@ -69,6 +69,13 @@ const maxDeferredReports = 4096
 // barrier can still leave a just-committed create unseen; taking a fresh barrier each pass removes that.
 const maxDeferredReportAttempts = 5
 
+// DeferredLinkReportsGauge is how many link reports are held awaiting catch-up.
+//
+// Deliberately not under `link.`, which the metrics mappers read as a per-link namespace: a name there is
+// split into a metric and a link id, and one with fewer than two dotted segments after the prefix panics
+// the mapper rather than mapping oddly.
+const DeferredLinkReportsGauge = "link_manager.deferred_reports"
+
 // deferredReport is a link report held back because the destination was unknown while this controller was
 // behind. The report is kept rather than the routers it named, since those are re-resolved on each retry.
 type deferredReport struct {
@@ -76,6 +83,22 @@ type deferredReport struct {
 	srcRouterId  string
 	attempts     int
 }
+
+// deferOutcome says what deferReport did with a report, so a caller reporting on it can say which of the
+// ways it was not held applies.
+type deferOutcome int
+
+const (
+	// deferHeld means the report is held, and will be judged again once this controller has caught up.
+	deferHeld deferOutcome = iota
+
+	// deferNoSource means the report named no reporting router. Nothing re-resolves it, and nothing would
+	// announce it again, so it is dropped.
+	deferNoSource
+
+	// deferSetFull means the held set is already at maxDeferredReports.
+	deferSetFull
+)
 
 func NewLinkManager(env Env) *LinkManager {
 	initialLatency := config.DefaultOptionsInitialLinkLatency
@@ -88,6 +111,14 @@ func NewLinkManager(env Env) *LinkManager {
 		linkLocks:      concurrency.NewStripedIdLocker(256),
 		initialLatency: initialLatency,
 		env:            env,
+	}
+
+	if env != nil {
+		if reg := env.GetMetricsRegistry(); reg != nil {
+			reg.FuncGauge(DeferredLinkReportsGauge, func() int64 {
+				return int64(result.DeferredReportCount())
+			})
+		}
 	}
 
 	result.InitStore(objectz.NewObjectStore[*Link](func() objectz.ObjectIterator[*Link] {
@@ -233,11 +264,13 @@ func (self *LinkManager) raftCommitIndex() uint64 {
 }
 
 // deferReport holds a report whose destination is unknown while this controller is behind, so it can be
-// re-evaluated once caught up. Re-reporting the same link replaces the held copy and keeps its attempt
-// count, since it is the same question being asked again.
-func (self *LinkManager) deferReport(reportedLink *ctrl_pb.RouterLinks_RouterLink, src *Router) {
+// re-evaluated once caught up, and reports whether it was held. Re-reporting the same link replaces the
+// held copy and keeps its attempt count, since it is the same question being asked again.
+//
+// A report that is not held is discarded, so a caller that logs the deferral has to ask rather than assume.
+func (self *LinkManager) deferReport(reportedLink *ctrl_pb.RouterLinks_RouterLink, src *Router) deferOutcome {
 	if src == nil {
-		return
+		return deferNoSource
 	}
 
 	self.deferredReportsLock.Lock()
@@ -252,17 +285,18 @@ func (self *LinkManager) deferReport(reportedLink *ctrl_pb.RouterLinks_RouterLin
 		// is the earlier of the two, so keeping it resolves the report sooner.
 		existing.reportedLink = reportedLink
 		existing.srcRouterId = src.Id
-		return
+		return deferHeld
 	}
 
 	if len(self.deferredReports) >= maxDeferredReports {
-		return
+		return deferSetFull
 	}
 
 	self.deferredReports[reportedLink.Id] = &deferredReport{
 		reportedLink: reportedLink,
 		srcRouterId:  src.Id,
 	}
+	return deferHeld
 }
 
 // RetryDeferredReports re-evaluates reports held back because their destination was unknown while this
@@ -352,6 +386,56 @@ func (self *LinkManager) DeferredReportCount() int {
 	self.deferredReportsLock.Lock()
 	defer self.deferredReportsLock.Unlock()
 	return len(self.deferredReports)
+}
+
+// DeferredLinkReport is one held report, as rendered for inspection.
+type DeferredLinkReport struct {
+	LinkId       string `json:"linkId"`
+	SrcRouterId  string `json:"srcRouterId"`
+	DestRouterId string `json:"destRouterId"`
+	Attempts     int    `json:"attempts"`
+}
+
+// DeferredLinkReports is what this controller is holding back for want of catching up.
+type DeferredLinkReports struct {
+	Count int `json:"count"`
+	// Max is the point past which further reports are discarded rather than held.
+	Max int `json:"max"`
+	// MaxAttempts is how many evaluation passes a report survives before its destination is treated as gone.
+	MaxAttempts int `json:"maxAttempts"`
+	// Barrier is the raft index the next pass waits to reach before it judges anything. A barrier above the
+	// applied index is why a non-empty set can sit untouched.
+	Barrier uint64 `json:"barrier"`
+	// AppliedIndex is what this controller has applied, for reading against Barrier.
+	AppliedIndex uint64               `json:"appliedIndex"`
+	Reports      []DeferredLinkReport `json:"reports"`
+}
+
+// InspectDeferredReports renders the held reports and the state that decides when they are next judged.
+func (self *LinkManager) InspectDeferredReports() *DeferredLinkReports {
+	self.deferredReportsLock.Lock()
+	result := &DeferredLinkReports{
+		Count:       len(self.deferredReports),
+		Max:         maxDeferredReports,
+		MaxAttempts: maxDeferredReportAttempts,
+		Barrier:     self.deferredBarrier,
+		Reports:     make([]DeferredLinkReport, 0, len(self.deferredReports)),
+	}
+	for _, report := range self.deferredReports {
+		result.Reports = append(result.Reports, DeferredLinkReport{
+			LinkId:       report.reportedLink.Id,
+			SrcRouterId:  report.srcRouterId,
+			DestRouterId: report.reportedLink.DestRouterId,
+			Attempts:     report.attempts,
+		})
+	}
+	self.deferredReportsLock.Unlock()
+
+	// Read outside the lock: it reaches raft, and nothing here orders against it.
+	if self.env != nil {
+		result.AppliedIndex = self.env.GetRaftIndex()
+	}
+	return result
 }
 
 // ScanForDeadLinks removes links whose dialer is no longer connected to this controller, skipping any the
@@ -469,10 +553,19 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 		// the two want opposite answers. Refusing while behind silently drops a link to a router that does
 		// exist, and the reporting router considers it delivered, so nothing ever says it again.
 		if !self.isRaftCaughtUp() {
-			self.deferReport(reportedLink, src)
-			linkLog.Info("deferring link report naming an unknown destination until this controller catches up",
+			log := linkLog.With(
 				"linkId", reportedLink.Id,
 				"destRouterId", reportedLink.DestRouterId)
+
+			switch self.deferReport(reportedLink, src) {
+			case deferHeld:
+				log.Info("deferring link report naming an unknown destination until this controller catches up")
+			case deferNoSource:
+				log.Warn("dropping link report naming an unknown destination, it names no reporting router")
+			case deferSetFull:
+				log.Warn("dropping link report naming an unknown destination, no room to hold it",
+					"deferredReports", maxDeferredReports)
+			}
 			return nil, false
 		}
 

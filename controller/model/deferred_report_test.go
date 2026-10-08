@@ -26,8 +26,8 @@ import (
 )
 
 // deferReportForTest stands in for a report arriving from a router, without needing a real one.
-func deferReportForTest(mgr *LinkManager, linkId, destId, srcId string) {
-	mgr.deferReport(&ctrl_pb.RouterLinks_RouterLink{
+func deferReportForTest(mgr *LinkManager, linkId, destId, srcId string) deferOutcome {
+	return mgr.deferReport(&ctrl_pb.RouterLinks_RouterLink{
 		Id:           linkId,
 		DestRouterId: destId,
 		LinkProtocol: "tls",
@@ -71,4 +71,55 @@ func Test_RetryDeferredReports_WaitsForCatchUp(t *testing.T) {
 	mgr.RetryDeferredReports()
 
 	req.Equal(1, mgr.DeferredReportCount(), "a held report must survive a retry that runs with no env")
+}
+
+// Test_DeferReport_SaysWhetherItHeldTheReport: a report that is not held is discarded, and the caller logs
+// what happened. Reporting the intent rather than the outcome left a controller shedding reports saying it
+// had deferred every one of them, which is the opposite of what an operator needs at that moment.
+func Test_DeferReport_SaysWhetherItHeldTheReport(t *testing.T) {
+	req := require.New(t)
+	mgr := &LinkManager{}
+
+	req.Equal(deferHeld, deferReportForTest(mgr, "l1", "unknown-dest", "src"))
+	req.Equal(deferHeld, deferReportForTest(mgr, "l1", "unknown-dest", "src"), "the same link re-reported is still held")
+
+	outcome := mgr.deferReport(&ctrl_pb.RouterLinks_RouterLink{Id: "l2", DestRouterId: "unknown-dest"}, nil)
+	req.Equal(deferNoSource, outcome, "a report with no reporting router cannot be resolved later")
+	req.Equal(1, mgr.DeferredReportCount())
+
+	for i := 0; i < maxDeferredReports; i++ {
+		deferReportForTest(mgr, fmt.Sprintf("fill-%d", i), "unknown-dest", "src")
+	}
+	req.Equal(maxDeferredReports, mgr.DeferredReportCount())
+
+	req.Equal(deferSetFull, deferReportForTest(mgr, "overflow", "unknown-dest", "src"))
+	req.Equal(deferHeld, deferReportForTest(mgr, "fill-0", "unknown-dest", "src"),
+		"a report already held is replaced rather than refused, even with no room for a new one")
+}
+
+// Test_InspectDeferredReports_RendersTheHeldSet: the held set is otherwise invisible, so a controller
+// holding thousands of reports and discarding the rest reads the same as one holding none.
+func Test_InspectDeferredReports_RendersTheHeldSet(t *testing.T) {
+	req := require.New(t)
+	mgr := &LinkManager{}
+
+	req.Empty(mgr.InspectDeferredReports().Reports, "an empty set renders as no reports, not as nil entries")
+
+	deferReportForTest(mgr, "l1", "dest-1", "src-1")
+	deferReportForTest(mgr, "l2", "dest-2", "src-2")
+
+	result := mgr.InspectDeferredReports()
+	req.Equal(2, result.Count)
+	req.Equal(maxDeferredReports, result.Max)
+	req.Equal(maxDeferredReportAttempts, result.MaxAttempts)
+	req.Len(result.Reports, 2)
+
+	byLink := map[string]DeferredLinkReport{}
+	for _, r := range result.Reports {
+		byLink[r.LinkId] = r
+	}
+	req.Equal("dest-1", byLink["l1"].DestRouterId)
+	req.Equal("src-1", byLink["l1"].SrcRouterId)
+	req.Equal("src-2", byLink["l2"].SrcRouterId)
+	req.Zero(byLink["l1"].Attempts, "a report that has not been judged yet has made no attempts")
 }
