@@ -59,23 +59,29 @@ func (self *routeSenderController) removeRouteSender(rs *routeSender) {
 	self.senders.Remove(rs.circuitId)
 }
 
-type routeSender struct {
-	circuitId       string
-	timeout         time.Duration
-	in              chan *RouteStatus
-	attendance      map[string]bool
-	serviceCounters ServiceCounters
-	terminators     *model.TerminatorManager
+// RouteSenderEnv provides what a routeSender needs from the network.
+type RouteSenderEnv interface {
+	ServiceCounters
+	GetManagers() *model.Managers
+	// MarkTerminatorUnusable is called when a router reports terminatorId invalid or unusable.
+	MarkTerminatorUnusable(terminatorId string)
 }
 
-func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters, terminators *model.TerminatorManager) *routeSender {
+type routeSender struct {
+	circuitId  string
+	timeout    time.Duration
+	in         chan *RouteStatus
+	attendance map[string]bool
+	env        RouteSenderEnv
+}
+
+func newRouteSender(circuitId string, timeout time.Duration, env RouteSenderEnv) *routeSender {
 	return &routeSender{
-		circuitId:       circuitId,
-		timeout:         timeout,
-		in:              make(chan *RouteStatus, 16),
-		attendance:      make(map[string]bool),
-		serviceCounters: serviceCounters,
-		terminators:     terminators,
+		circuitId:  circuitId,
+		timeout:    timeout,
+		in:         make(chan *RouteStatus, 16),
+		attendance: make(map[string]bool),
+		env:        env,
 	}
 }
 
@@ -109,7 +115,7 @@ attendance:
 		case <-time.After(timeout):
 			cleanups = self.cleanups(path)
 			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId(), terminator.GetId())
+			self.env.ServiceDialTimeout(terminator.GetServiceId(), terminator.GetId())
 			return nil, cleanups, newCircuitErrWrap(CircuitFailureRouterResponseTimeout, &routeTimeoutError{circuitId: self.circuitId})
 		}
 
@@ -141,7 +147,7 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strat
 			self.attendance[status.Router.Id] = true
 			if status.Router.Id == terminator.GetRouterId() {
 				peerData = status.PeerData
-				self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
+				self.env.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
 			}
 		} else {
 			logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
@@ -159,40 +165,45 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strat
 
 		switch errorCode {
 		case ctrl_msg.ErrorTypeGeneric:
-			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			self.env.ServiceDialOtherError(terminator.GetServiceId())
 		case ctrl_msg.ErrorTypeInvalidTerminator:
 			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
-				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+				self.env.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+				self.env.MarkTerminatorUnusable(terminator.GetId())
 				changeCtx := change.NewCtrlChannelChange(status.Router.Id, status.Router.Name, "route.response", status.Router.Control)
-				if err := self.terminators.Delete(terminator.GetId(), changeCtx); err != nil {
-					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
+				if err := self.env.GetManagers().Terminator.Delete(terminator.GetId(), changeCtx); err != nil {
+					logger.WithError(err).WithField("terminatorId", terminator.GetId()).Warn("unable to delete invalid terminator")
 				}
 				failureCause = CircuitFailureRouterErrInvalidTerminator
 			} else {
-				self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
-				self.terminators.HandlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
+				self.env.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
+				self.env.GetManagers().Terminator.HandlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
 				failureCause = CircuitFailureRouterErrMisconfiguredTerminator
 			}
+		case ctrl_msg.ErrorTypeUnusableTerminator:
+			self.env.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+			self.env.MarkTerminatorUnusable(terminator.GetId())
+			failureCause = CircuitFailureRouterErrUnusableTerminator
 		case ctrl_msg.ErrorTypeDialTimedOut:
-			self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
+			self.env.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
 			failureCause = CircuitFailureRouterErrDialTimedOut
 		case ctrl_msg.ErrorTypeConnectionRefused:
-			self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
+			self.env.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
 			failureCause = CircuitFailureRouterErrDialConnRefused
 		case ctrl_msg.ErrorTypeRejectedByApplication:
-			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			self.env.ServiceDialOtherError(terminator.GetServiceId())
 			failureCause = CircuitFailureRouterErrRejectedByApp
 		case ctrl_msg.ErrorTypeDnsResolutionFailed:
-			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			self.env.ServiceDialOtherError(terminator.GetServiceId())
 			failureCause = CircuitFailureRouterErrDnsResolutionFailed
 		case ctrl_msg.ErrorTypePortNotAllowed:
-			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			self.env.ServiceDialOtherError(terminator.GetServiceId())
 			failureCause = CircuitFailureRouterErrPortNotAllowed
 		case ctrl_msg.ErrorTypeInvalidLinkDestination:
-			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			self.env.ServiceDialOtherError(terminator.GetServiceId())
 			failureCause = CircuitFailureRouterErrInvalidLinkDest
 		case ctrl_msg.ErrorTypeResourcesNotAvailable:
-			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			self.env.ServiceDialOtherError(terminator.GetServiceId())
 			failureCause = CircuitFailureRouterErrResourcesNotAvailable
 		default:
 			logger.WithField("errorCode", status.ErrorCode).Error("unhandled error code")
@@ -202,7 +213,7 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *model.Path, strat
 
 		if status.Router.Id == terminator.GetRouterId() {
 			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-			self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
+			self.env.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
 		}
 		cleanups = self.cleanups(path)
 

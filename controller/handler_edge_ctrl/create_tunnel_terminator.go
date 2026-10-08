@@ -143,6 +143,9 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		}
 	}
 
+	// A create for an existing terminator writes nothing, so no store event clears an unusable mark.
+	self.getNetwork().TerminatorEstablished(ctx.req.Address)
+
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{
 		Session:      ctx.getCreateSessionResponse(),
 		TerminatorId: ctx.req.Address,
