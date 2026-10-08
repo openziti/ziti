@@ -25,14 +25,14 @@ import (
 	"github.com/lucsky/cuid"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -375,6 +375,10 @@ func (self *SessionManager) DeleteForIdentity(id, identityId string, changeCtx *
 
 func (self *SessionManager) Delete(id string, ctx *change.Context) error {
 	return self.deleteEntity(id, ctx)
+}
+
+func (self *SessionManager) DeleteIfExists(id string, ctx *change.Context) error {
+	return self.deleteEntityIfExists(id, ctx)
 }
 
 func (self *SessionManager) PublicQueryForIdentity(sessionIdentity *Identity, query ast.Query) (*SessionListResult, error) {

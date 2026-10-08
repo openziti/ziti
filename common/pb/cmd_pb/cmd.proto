@@ -70,6 +70,7 @@ message DeleteEntityCommand {
   string entityId = 1;
   string entityType = 2;
   ChangeContext ctx = 3;
+  uint32 flags = 4;
 }
 
 message SyncSnapshotCommand {

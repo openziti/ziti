@@ -18,12 +18,12 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -299,22 +299,54 @@ func (self *baseEntityManager[ME, PE]) readEntityByQuery(query string) (models.E
 }
 
 func (self *baseEntityManager[ME, PE]) Delete(id string, ctx *change.Context) error {
+	return self.dispatchDelete(id, 0, ctx)
+}
+
+// DeleteIfExists deletes the entity with the given id, returning nil when no such entity exists.
+// Absence is decided inside the delete's transaction, so it is a no-op whether or not the
+// dispatching controller's view trails the leader.
+func (self *baseEntityManager[ME, PE]) DeleteIfExists(id string, ctx *change.Context) error {
+	return self.dispatchDelete(id, command.DeleteIfExistsFlag, ctx)
+}
+
+func (self *baseEntityManager[ME, PE]) dispatchDelete(id string, flags uint32, ctx *change.Context) error {
 	cmd := &command.DeleteEntityCommand{
 		Context: ctx,
 		Deleter: self.impl, // needs to be impl, otherwise we will miss overrides to GetEntityTypeId
 		Id:      id,
+		Flags:   flags,
 	}
 	return self.Dispatch(cmd)
 }
 
+// ApplyDelete removes the entity when this manager's own store holds it; an absent target is not
+// found, or nil when cmd.IfExists. The typed presence check must precede DeleteById, which on a
+// child store delegates to the parent and would otherwise remove a sibling type's record.
 func (self *baseEntityManager[ME, PE]) ApplyDelete(cmd *command.DeleteEntityCommand, ctx boltz.MutateContext) error {
 	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		if !self.Store.IsEntityPresent(ctx.Tx(), cmd.Id) {
+			if cmd.IfExists() {
+				return nil
+			}
+			return boltz.NewNotFoundError(self.Store.GetSingularEntityType(), "id", cmd.Id)
+		}
 		return self.Store.DeleteById(ctx, cmd.Id)
 	})
 }
 
 func (self *baseEntityManager[ME, PE]) deleteEntity(id string, changeCtx *change.Context) error {
 	return self.GetDb().Update(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		return self.GetStore().DeleteById(ctx, id)
+	})
+}
+
+// deleteEntityIfExists removes the entity directly from the store, dispatching no command, and
+// returns nil when it is absent. For managers whose entities are not replicated through commands.
+func (self *baseEntityManager[ME, PE]) deleteEntityIfExists(id string, changeCtx *change.Context) error {
+	return self.GetDb().Update(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		if !self.GetStore().IsEntityPresent(ctx.Tx(), id) {
+			return nil
+		}
 		return self.GetStore().DeleteById(ctx, id)
 	})
 }

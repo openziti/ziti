@@ -351,8 +351,10 @@ func (store *BaseStore[E]) IsChildStore() bool {
 	return store.parent != nil
 }
 
+// IsEntityPresent reports whether id can be loaded through this store. For an extended child store
+// that includes a parent record with no child record, matching FindById and LoadById.
 func (store *BaseStore[E]) IsEntityPresent(tx *bbolt.Tx, id string) bool {
-	return nil != store.GetEntityBucket(tx, []byte(id))
+	return nil != store.getEntityBucketForLoad(tx, id)
 }
 
 func (store *BaseStore[E]) cleanupLinks(tx *bbolt.Tx, id string, holder errorz.ErrorHolder) {
