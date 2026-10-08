@@ -17,15 +17,13 @@
 package handler_peer_ctrl
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/hashicorp/raft"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/peermsg"
+	ctrlraft "github.com/openziti/ziti/v2/controller/raft"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -49,21 +47,7 @@ func sendErrorResponse(m *channel.Message, ch channel.Channel, err error, errorC
 }
 
 func sendApiErrorResponse(m *channel.Message, ch channel.Channel, err *errorz.ApiError) {
-	encodingMap := map[string]interface{}{}
-	encodingMap["code"] = err.AppCode
-	encodingMap["message"] = err.Message
-	encodingMap["status"] = err.Status
-
-	if err.Cause != nil {
-		encodingMap["causeType"] = fmt.Sprintf("%T", err.Cause)
-		if causeBytes, causeErr := json.Marshal(err.Cause); causeErr == nil && string(causeBytes) != "{}" {
-			encodingMap["cause"] = err.Cause
-		} else {
-			encodingMap["cause"] = err.Cause.Error()
-		}
-	}
-
-	buf, encodeErr := json.Marshal(encodingMap)
+	buf, encodeErr := ctrlraft.EncodeApiError(err)
 	if encodeErr != nil {
 		logrus.WithError(encodeErr).WithField("apiErr", err).Error("unable to encode api error")
 		sendErrorResponse(m, ch, err, peermsg.ErrorCodeGeneric)

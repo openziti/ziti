@@ -24,7 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,10 +32,8 @@ import (
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
@@ -136,10 +133,8 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		migrationMgr:    migrationMgr,
 		clusterEvents:   make(chan raft.Observation, 16),
 		raftRateLimiter: command.NewAdaptiveRateLimitTracker(env.GetRaftRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
-		errorMappers:    map[string]func(map[string]any) error{},
 		decoders:        command.NewDecoders(),
 	}
-	result.initErrorMappers()
 	return result
 }
 
@@ -171,7 +166,6 @@ type Controller struct {
 	leaderCaughtUp  atomic.Bool
 	clusterEvents   chan raft.Observation
 	raftRateLimiter rate.AdaptiveRateLimitTracker
-	errorMappers    map[string]func(map[string]any) error
 	decoders        command.Decoders
 }
 
@@ -227,11 +221,6 @@ func (self *Controller) GetListenerHeaders() map[int32][]byte {
 		headers[mesh.SigningCertChainHeader] = mesh.ConcatDer(serverCerts[0].Certificate)
 	}
 	return headers
-}
-
-func (self *Controller) initErrorMappers() {
-	self.errorMappers[fmt.Sprintf("%T", &boltz.RecordNotFoundError{})] = self.parseBoltzNotFoundError
-	self.errorMappers[fmt.Sprintf("%T", &errorz.FieldError{})] = self.parseFieldError
 }
 
 func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState, leaderId string)) {
@@ -451,144 +440,12 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	if result.ContentType == int32(cmd_pb.ContentType_ErrorResponseType) {
 		errCode, found := result.GetUint32Header(peermsg.HeaderErrorCode)
 		if found && errCode == peermsg.ErrorCodeApiError {
-			return self.decodeApiError(result.Body)
+			return DecodeApiError(result.Body)
 		}
 		return errors.New(string(result.Body))
 	}
 
 	return fmt.Errorf("unexpected response type %v", result.ContentType)
-}
-
-func (self *Controller) decodeApiError(data []byte) error {
-	m := map[string]interface{}{}
-	if err := json.Unmarshal(data, &m); err != nil {
-		pfxlog.Logger().Warnf("invalid api error encoding, unable to decode: %v", string(data))
-		return errors.New(string(data))
-	}
-
-	apiErr := &errorz.ApiError{}
-
-	if code, ok := m["code"]; ok {
-		if apiErr.AppCode, ok = code.(string); !ok {
-			pfxlog.Logger().Warnf("invalid api error encoding, invalid code, not string: %v", string(data))
-			return errors.New(string(data))
-		}
-	} else {
-		pfxlog.Logger().Warnf("invalid api error encoding, no code: %v", string(data))
-		return errors.New(string(data))
-	}
-
-	if status, ok := m["status"]; ok {
-		statusStr := fmt.Sprintf("%v", status)
-		statusInt, err := strconv.Atoi(statusStr)
-		if err != nil {
-			pfxlog.Logger().Warnf("invalid api error encoding, invalid code, not int: %v", string(data))
-			return errors.New(string(data))
-		}
-		apiErr.Status = statusInt
-	} else {
-		pfxlog.Logger().Warnf("invalid api error encoding, no status: %v", string(data))
-		return errors.New(string(data))
-	}
-
-	if message, ok := m["message"]; ok {
-		if apiErr.Message, ok = message.(string); !ok {
-			pfxlog.Logger().Warnf("invalid api error encoding, no message: %v", string(data))
-			return errors.New(string(data))
-		}
-	} else {
-		pfxlog.Logger().Warnf("invalid api error encoding, invalid message, not string: %v", string(data))
-		return errors.New(string(data))
-	}
-
-	if cause, ok := m["cause"]; ok && cause != nil {
-		if strCause, ok := cause.(string); ok {
-			apiErr.Cause = errors.New(strCause)
-		} else if objCause, ok := cause.(map[string]any); ok {
-			if parser := self.getErrorParser(m); parser != nil {
-				pfxlog.Logger().Info("parser found for cause type")
-				apiErr.Cause = parser(objCause)
-			} else {
-				pfxlog.Logger().Info("no parser found for cause type")
-			}
-
-			if apiErr.Cause == nil {
-				apiErr.Cause = self.fallbackMarshallError(objCause)
-			}
-		} else {
-			pfxlog.Logger().Warnf("invalid api error encoding, no cause: %v", string(data))
-			return errors.New(string(data))
-		}
-	}
-
-	return apiErr
-}
-
-func (self *Controller) parseFieldError(m map[string]any) error {
-	var fieldError *errorz.FieldError
-	field, ok := m["field"]
-	if !ok {
-		return nil
-	}
-
-	fieldStr, ok := field.(string)
-	if !ok {
-		return nil
-	}
-
-	fieldError = &errorz.FieldError{
-		FieldName:  fieldStr,
-		FieldValue: m["value"],
-	}
-
-	if reason, ok := m["message"]; ok {
-		if reasonStr, ok := reason.(string); ok {
-			fieldError.Reason = reasonStr
-		}
-	} else if reason, ok := m["reason"]; ok {
-		if reasonStr, ok := reason.(string); ok {
-			fieldError.Reason = reasonStr
-		}
-	}
-
-	return fieldError
-}
-
-func (self *Controller) parseBoltzNotFoundError(m map[string]any) error {
-	result := &boltz.RecordNotFoundError{}
-	err := mapstructure.Decode(m, result)
-	if err != nil {
-		var errList []error
-		errList = append(errList, fmt.Errorf("unable to decode RecordNotFoundError (%w)", err))
-		errList = append(errList, self.fallbackMarshallError(m))
-		return errors.Join(errList...)
-	}
-	return result
-}
-
-func (self *Controller) fallbackMarshallError(m map[string]any) error {
-	if b, err := json.Marshal(m); err == nil {
-		return errors.New(string(b))
-	}
-	return fmt.Errorf("%+v", m)
-}
-
-func (self *Controller) getErrorParser(m map[string]any) func(map[string]any) error {
-	causeType, ok := m["causeType"]
-	if !ok {
-		pfxlog.Logger().Info("no causetype defined for error parser")
-		return nil
-	}
-
-	causeTypeStr, ok := causeType.(string)
-	if !ok {
-		pfxlog.Logger().Info("causetype not string")
-		return nil
-	}
-
-	pfxlog.Logger().Infof("causetype %s", causeTypeStr)
-
-	return self.errorMappers[causeTypeStr]
 }
 
 // applyCommand encodes the command and passes it to ApplyEncodedCommand
