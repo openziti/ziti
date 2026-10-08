@@ -24,7 +24,7 @@ import (
 
 	"github.com/openziti/sdk-golang/xgress"
 	"github.com/openziti/ziti/v2/router/env"
-	"github.com/orcaman/concurrent-map/v2"
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // circuitTable implements a directory of forwardTables, keyed by circuitId.
