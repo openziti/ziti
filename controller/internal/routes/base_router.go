@@ -24,11 +24,7 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	edgeRestModel "github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/api"
-	edgeApiError "github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
@@ -36,6 +32,8 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/response"
 	fabricRestModel "github.com/openziti/ziti/v2/controller/rest_model"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -218,30 +216,6 @@ func respondWithCreatedIdForFabric(responder response.Responder, id string, link
 func CreateWithResponderF(rc *response.RequestContext, creator ModelCreateF, responderF func(id string)) {
 	id, err := creator()
 	if err != nil {
-		if boltz.IsErrNotFoundErr(err) {
-			rc.RespondWithNotFoundWithCause(err)
-			return
-		}
-
-		if fe, ok := err.(*errorz.FieldError); ok {
-			rc.RespondWithFieldError(fe)
-			return
-		}
-
-		if sve, ok := err.(*edgeApiError.ValidationErrors); ok {
-			rc.RespondWithValidationErrors(sve)
-			return
-		}
-
-		if uie, ok := err.(*boltz.UniqueIndexDuplicateError); ok {
-			rc.RespondWithFieldError(&errorz.FieldError{
-				Reason:     uie.Error(),
-				FieldName:  uie.Field,
-				FieldValue: uie.Value,
-			})
-			return
-		}
-
 		rc.RespondWithError(err)
 		return
 	}
@@ -316,13 +290,7 @@ func Delete(rc *response.RequestContext, deleteF ModelDeleteF) {
 	err = deleteF(rc, id)
 
 	if err != nil {
-		if boltz.IsErrNotFoundErr(err) {
-			rc.RespondWithNotFoundWithCause(err)
-		} else if refErr, ok := err.(*boltz.ReferenceExistsError); ok {
-			rc.RespondWithApiError(edgeApiError.NewCanNotDeleteReferencedEntity(refErr.LocalType, refErr.RemoteType, refErr.RemoteIds, refErr.RemoteField))
-		} else {
-			rc.RespondWithError(err)
-		}
+		rc.RespondWithError(err)
 		return
 	}
 
@@ -346,21 +314,6 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, updateF ModelUpdateF) {
 	}
 
 	if err = updateF(id); err != nil {
-		if boltz.IsErrNotFoundErr(err) {
-			rc.RespondWithNotFoundWithCause(err)
-			return
-		}
-
-		if fe, ok := err.(*errorz.FieldError); ok {
-			rc.RespondWithFieldError(fe)
-			return
-		}
-
-		if sve, ok := err.(*edgeApiError.ValidationErrors); ok {
-			rc.RespondWithValidationErrors(sve)
-			return
-		}
-
 		rc.RespondWithError(err)
 		return
 	}
@@ -388,21 +341,6 @@ func Patch(rc *response.RequestContext, patchF ModelPatchF) {
 
 	err = patchF(id, jsonFields)
 	if err != nil {
-		if boltz.IsErrNotFoundErr(err) {
-			rc.RespondWithNotFoundWithCause(err)
-			return
-		}
-
-		if fe, ok := err.(*errorz.FieldError); ok {
-			rc.RespondWithFieldError(fe)
-			return
-		}
-
-		if sve, ok := err.(*edgeApiError.ValidationErrors); ok {
-			rc.RespondWithValidationErrors(sve)
-			return
-		}
-
 		rc.RespondWithError(err)
 		return
 	}
