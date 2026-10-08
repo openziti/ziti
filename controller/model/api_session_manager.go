@@ -22,11 +22,11 @@ import (
 
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -134,6 +134,10 @@ func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession, ctx *change.
 
 func (self *ApiSessionManager) Delete(id string, ctx *change.Context) error {
 	return self.deleteEntity(id, ctx)
+}
+
+func (self *ApiSessionManager) DeleteIfExists(id string, ctx *change.Context) error {
+	return self.deleteEntityIfExists(id, ctx)
 }
 
 func (self *ApiSessionManager) DeleteBatch(id []string, ctx *change.Context) error {

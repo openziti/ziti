@@ -118,14 +118,24 @@ func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
 	})
 }
 
+func (self *UpdateEntityCommand[T]) GetChangeContext() *change.Context {
+	return self.Context
+}
+
+// DeleteIfExistsFlag marks a DeleteEntityCommand whose target may be absent at apply time.
+const DeleteIfExistsFlag uint32 = 1
+
 type DeleteEntityCommand struct {
 	Context *change.Context
 	Deleter EntityDeleter
 	Id      string
+	Flags   uint32
 }
 
-func (self *UpdateEntityCommand[T]) GetChangeContext() *change.Context {
-	return self.Context
+// IfExists reports whether an absent target is a no-op for this command rather than an error.
+// Which targets count as absent is decided by the Deleter's ApplyDelete.
+func (self *DeleteEntityCommand) IfExists() bool {
+	return self.Flags&DeleteIfExistsFlag != 0
 }
 
 func (self *DeleteEntityCommand) Apply(ctx boltz.MutateContext) error {
@@ -137,6 +147,7 @@ func (self *DeleteEntityCommand) Encode() ([]byte, error) {
 		Ctx:        self.Context.ToProtoBuf(),
 		EntityId:   self.Id,
 		EntityType: self.Deleter.GetEntityTypeId(),
+		Flags:      self.Flags,
 	})
 }
 

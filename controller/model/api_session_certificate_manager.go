@@ -131,6 +131,10 @@ func (self *ApiSessionCertificateManager) Delete(id string, ctx *change.Context)
 	return self.deleteEntity(id, ctx)
 }
 
+func (self *ApiSessionCertificateManager) DeleteIfExists(id string, ctx *change.Context) error {
+	return self.deleteEntityIfExists(id, ctx)
+}
+
 func (self *ApiSessionCertificateManager) Query(tx *bbolt.Tx, query string) (*ApiSessionCertificateListResult, error) {
 	result := &ApiSessionCertificateListResult{manager: self}
 	err := self.ListWithTx(tx, query, result.collect)

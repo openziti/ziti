@@ -517,6 +517,7 @@ type DeleteEntityCommand struct {
 	EntityId      string                 `protobuf:"bytes,1,opt,name=entityId,proto3" json:"entityId,omitempty"`
 	EntityType    string                 `protobuf:"bytes,2,opt,name=entityType,proto3" json:"entityType,omitempty"`
 	Ctx           *ChangeContext         `protobuf:"bytes,3,opt,name=ctx,proto3" json:"ctx,omitempty"`
+	Flags         uint32                 `protobuf:"varint,4,opt,name=flags,proto3" json:"flags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -570,6 +571,13 @@ func (x *DeleteEntityCommand) GetCtx() *ChangeContext {
 		return x.Ctx
 	}
 	return nil
+}
+
+func (x *DeleteEntityCommand) GetFlags() uint32 {
+	if x != nil {
+		return x.Flags
+	}
+	return 0
 }
 
 type SyncSnapshotCommand struct {
@@ -1368,13 +1376,14 @@ const file_cmd_proto_rawDesc = "" +
 	"entityData\x12$\n" +
 	"\rupdatedFields\x18\x03 \x03(\tR\rupdatedFields\x12\x14\n" +
 	"\x05flags\x18\x04 \x01(\rR\x05flags\x12,\n" +
-	"\x03ctx\x18\x05 \x01(\v2\x1a.ziti.cmd.pb.ChangeContextR\x03ctx\"\x7f\n" +
+	"\x03ctx\x18\x05 \x01(\v2\x1a.ziti.cmd.pb.ChangeContextR\x03ctx\"\x95\x01\n" +
 	"\x13DeleteEntityCommand\x12\x1a\n" +
 	"\bentityId\x18\x01 \x01(\tR\bentityId\x12\x1e\n" +
 	"\n" +
 	"entityType\x18\x02 \x01(\tR\n" +
 	"entityType\x12,\n" +
-	"\x03ctx\x18\x03 \x01(\v2\x1a.ziti.cmd.pb.ChangeContextR\x03ctx\"o\n" +
+	"\x03ctx\x18\x03 \x01(\v2\x1a.ziti.cmd.pb.ChangeContextR\x03ctx\x12\x14\n" +
+	"\x05flags\x18\x04 \x01(\rR\x05flags\"o\n" +
 	"\x13SyncSnapshotCommand\x12\x1e\n" +
 	"\n" +
 	"snapshotId\x18\x01 \x01(\tR\n" +
