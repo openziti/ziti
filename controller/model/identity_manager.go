@@ -759,7 +759,7 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 	}
 
 	var sdkInfo *SdkInfo
-	for msg.SdkInfo != nil {
+	if msg.SdkInfo != nil {
 		sdkInfo = &SdkInfo{
 			AppId:      msg.SdkInfo.AppId,
 			AppVersion: msg.SdkInfo.AppVersion,
