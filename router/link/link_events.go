@@ -98,7 +98,7 @@ func (self *linkDestUpdate) supersededByRemoval(registry *linkRegistryImpl) bool
 			"routerId", self.id,
 			"ctrlId", self.ctrlId,
 			"raftIndex", self.raftIndex,
-			"removedAtStoreIndex", removed.raftIndex)
+			"removedAtRaftIndex", removed.raftIndex)
 		return true
 	}
 

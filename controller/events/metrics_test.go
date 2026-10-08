@@ -60,6 +60,24 @@ func Test_ExtractId(t *testing.T) {
 	req.Equal(entityId, ".tO.kK.D.")
 }
 
+// Test_ExtractId_NameWithoutAnId: a namespace that carries ids also carries metrics that have none, and the
+// name of one has fewer segments than the id-bearing shape the caller asks for.
+func Test_ExtractId_NameWithoutAnId(t *testing.T) {
+	req := require.New(t)
+
+	name, entityId := ExtractId("link.deferred_reports", "link.", 2)
+	req.Equal("link.deferred_reports", name, "a name with nothing left for an id is emitted as it stands")
+	req.Equal("", entityId)
+
+	name, entityId = ExtractId("link.tx.bytesrate", "link.", 2)
+	req.Equal("link.tx.bytesrate", name, "a name whose every segment is the metric keeps all of them")
+	req.Equal("", entityId)
+
+	name, entityId = splitMetricName("link.deferred_reports")
+	req.Equal("link.deferred_reports", name)
+	req.Equal("", entityId)
+}
+
 // Test_FilterMetrics_GroupGate guards the anyFieldAllowed fast path in
 // convertMetricsMsgToEvents: a metric whose fields are all filtered out must be
 // skipped (no event), while a metric matched only on a tail field (here a

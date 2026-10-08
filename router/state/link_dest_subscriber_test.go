@@ -29,13 +29,13 @@ import (
 // other call would panic loudly rather than pass silently.
 type fakeRegistry struct {
 	xlink.Registry
-	removed      []string
-	storeIndexes []uint64
+	removed     []string
+	raftIndexes []uint64
 }
 
 func (f *fakeRegistry) RemoveLinkDest(id string, raftIndex uint64) {
 	f.removed = append(f.removed, id)
-	f.storeIndexes = append(f.storeIndexes, raftIndex)
+	f.raftIndexes = append(f.raftIndexes, raftIndex)
 }
 
 func Test_LinkDestSubscriber_RemovedForwardsToRegistry(t *testing.T) {
@@ -47,7 +47,7 @@ func Test_LinkDestSubscriber_RemovedForwardsToRegistry(t *testing.T) {
 	sub.OnRouterRemoved("r2")
 
 	req.Equal([]string{"r1", "r2"}, reg.removed)
-	req.Equal([]uint64{0, 0}, reg.storeIndexes,
+	req.Equal([]uint64{0, 0}, reg.raftIndexes,
 		"the data model sequences its own changes, not the one peer state is ordered by")
 }
 

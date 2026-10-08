@@ -87,9 +87,19 @@ func (self *linkMetricsMapper) mapMetrics(_ *metrics_pb.MetricsMessage, event *e
 	}
 }
 
+// ExtractId splits a metric name carrying an entity id into the name it is emitted under and that id.
+// prefix is the namespace the name opens with, suffixLen is how many trailing dot-separated segments name
+// the metric itself, and everything between the two is the id, dots included.
+//
+// A name with no segments to spare for an id is returned unchanged, with an empty id. Callers get that for
+// any name in the namespace that does not carry one, so the namespace is safe to use for metrics that have
+// no entity.
 func ExtractId(name string, prefix string, suffixLen int) (string, string) {
 	rest := strings.TrimPrefix(name, prefix)
 	vals := strings.Split(rest, ".")
+	if len(vals) <= suffixLen {
+		return name, ""
+	}
 	idVals := vals[:len(vals)-suffixLen]
 	entityId := strings.Join(idVals, ".")
 	return prefix + rest[len(entityId)+1:], entityId
