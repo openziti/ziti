@@ -208,6 +208,7 @@ func RegisterDeleteDecoder(env Env, deleter command.EntityDeleter) {
 			Context: change.FromProtoBuf(cmd.Ctx),
 			Deleter: deleter,
 			Id:      cmd.EntityId,
+			Flags:   cmd.Flags,
 		}, nil
 	}))
 }
