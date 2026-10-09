@@ -22,6 +22,8 @@ import (
 
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/stretchr/testify/require"
+	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
 )
 
@@ -106,4 +108,32 @@ func schemaJson(ctx *TestContext, schema map[string]interface{}) string {
 	b, err := json.Marshal(schema)
 	ctx.NoError(err)
 	return string(b)
+}
+
+// Test_L2HostV1Schema verifies that l2.host.v1 resolves the definitions its listenOptions refer
+// to, and does not accept health checks, which don't apply to l2 services.
+func Test_L2HostV1Schema(t *testing.T) {
+	req := require.New(t)
+	schema, err := gojsonschema.NewSchemaLoader().Compile(gojsonschema.NewGoLoader(l2HostV1ConfigType.Schema))
+	req.NoError(err)
+
+	validate := func(payload map[string]interface{}) bool {
+		result, err := schema.Validate(gojsonschema.NewGoLoader(payload))
+		req.NoError(err)
+		return result.Valid()
+	}
+
+	req.True(validate(map[string]interface{}{
+		"bridgeIfs": []interface{}{"eth1"},
+		"listenOptions": map[string]interface{}{
+			"connectTimeout":        "5s",
+			"connectTimeoutSeconds": 5,
+		},
+	}))
+	req.False(validate(map[string]interface{}{
+		"listenOptions": map[string]interface{}{"connectTimeout": "five seconds"},
+	}), "connectTimeout should be validated as a duration")
+	req.False(validate(map[string]interface{}{
+		"portChecks": []interface{}{map[string]interface{}{"address": "localhost:80"}},
+	}), "health checks should not be accepted")
 }

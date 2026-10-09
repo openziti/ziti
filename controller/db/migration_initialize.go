@@ -606,9 +606,12 @@ var l2HostV1ConfigType = &ConfigType{
 	Name:          "l2.host.v1",
 	Target:        ConfigTypeTargetService,
 	Schema: map[string]interface{}{
-		"$id":         "https://ziti-edge.netfoundry.io/schemas/l2.host.v1.schema.json",
-		"definitions": combine(healthCheckSchema["definitions"].(map[string]interface{}), tunnelDefinitions),
-		"type":        "object",
+		"$id": "https://ziti-edge.netfoundry.io/schemas/l2.host.v1.schema.json",
+		// health checks don't apply to l2 services. listenOptions only needs "duration" from the health check definitions
+		"definitions": combine(tunnelDefinitions, map[string]interface{}{
+			"duration": healthCheckSchema["definitions"].(map[string]interface{})["duration"],
+		}),
+		"type": "object",
 		"properties": combine(listenOptions, map[string]interface{}{
 			"bridgeIfs": map[string]interface{}{
 				"allOf": []interface{}{
