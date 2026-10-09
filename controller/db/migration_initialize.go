@@ -17,11 +17,13 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
@@ -1109,8 +1111,50 @@ func (m *Migrations) createOrUpdateConfigType(step *boltz.MigrationStep, configT
 		return
 	}
 	if cfg.Id != configType.Id {
-		step.SetError(fmt.Errorf("config type '%s' already exists with id '%s', but this controller expects id '%s'", configType.Name, cfg.Id, configType.Id))
-		return
+		// a config type with this name was created before it became built-in. Update it in place,
+		// keeping its id, so that references to the config remain valid. Save a copy first if its schema
+		// differs from the built-in one, so the original isn't lost.
+		pfxlog.Logger().Warnf("config type '%s' exists with id '%s' rather than the expected id '%s'. updating it in place",
+			configType.Name, cfg.Id, configType.Id)
+		m.backupConfigTypeIfChanged(step, cfg, configType)
+		if step.GetError() != nil {
+			return
+		}
+		updated := *configType
+		updated.Id = cfg.Id
+		configType = &updated
 	}
 	step.SetError(m.stores.ConfigType.Update(step.Ctx, configType, nil))
+}
+
+func (m *Migrations) backupConfigTypeIfChanged(step *boltz.MigrationStep, existing, builtIn *ConfigType) {
+	existingSchema, err := json.Marshal(existing.Schema)
+	if step.SetError(err) {
+		return
+	}
+	builtInSchema, err := json.Marshal(builtIn.Schema)
+	if step.SetError(err) {
+		return
+	}
+	if string(existingSchema) == string(builtInSchema) {
+		return
+	}
+
+	name := existing.Name + "-replaced"
+	for i := 2; ; i++ {
+		found, err := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), name)
+		if step.SetError(err) {
+			return
+		}
+		if found == nil {
+			break
+		}
+		name = fmt.Sprintf("%s-replaced-%d", existing.Name, i)
+	}
+
+	backup := *existing
+	backup.Id = eid.New()
+	backup.Name = name
+	pfxlog.Logger().Warnf("saving original schema of config type '%s' as config type '%s'", existing.Name, name)
+	step.SetError(m.stores.ConfigType.Create(step.Ctx, &backup))
 }
