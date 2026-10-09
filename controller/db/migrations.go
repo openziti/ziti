@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 48
+	CurrentDbVersion = 49
 	FieldVersion     = "version"
 )
 
@@ -223,6 +223,13 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		// at version 47 stored the stricter schema and are not covered by the
 		// block above, so they need their own refresh.
 		m.createOrUpdateConfigType(step, routerLinkV1ConfigType) // migration 48
+	}
+
+	if step.CurrentVersion < 49 {
+		// host.v1 listenOptions gained listenIdentityType. host.v2 embeds the
+		// host.v1 schema for its terminators, so refresh both.
+		m.createOrUpdateConfigType(step, hostV1ConfigType) // migration 49
+		m.createOrUpdateConfigType(step, hostV2ConfigType)
 	}
 
 	// current version

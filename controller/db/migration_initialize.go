@@ -412,6 +412,11 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 						"type":        "string",
 						"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
 					},
+					"listenIdentityType": map[string]interface{}{
+						"type":        "string",
+						"enum":        []interface{}{"dns"},
+						"description": "Specifies how the hosting tunneler transforms the value of 'identity' before binding. 'dns' lowercases the effective listen identity, so dialing tunnelers that obtained the identity from a DNS query can find the terminator regardless of case.",
+					},
 					"bindUsingEdgeIdentity": map[string]interface{}{
 						"type":        "boolean",
 						"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
