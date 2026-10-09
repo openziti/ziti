@@ -17,6 +17,8 @@
 package db
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -345,6 +347,11 @@ var listenOptions = map[string]interface{}{
 			"identity": map[string]interface{}{
 				"type":        "string",
 				"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+			},
+			"listenIdentityType": map[string]interface{}{
+				"type":        "string",
+				"enum":        []interface{}{"dns"},
+				"description": "Specifies how the hosting tunneler transforms the value of 'identity' before binding. 'dns' lowercases the effective listen identity, so dialing tunnelers that obtained the identity from a DNS query can find the terminator regardless of case.",
 			},
 			"bindUsingEdgeIdentity": map[string]interface{}{
 				"type":        "boolean",
@@ -913,4 +920,41 @@ func (m *Migrations) createOrUpdateConfigType(step *boltz.MigrationStep, configT
 		return
 	}
 	step.SetError(m.stores.ConfigType.Update(step.Ctx, configType, nil))
+}
+
+// syncConfigType creates the given config type if it doesn't exist, or updates the stored schema if it
+// differs from the given schema. Unlike createOrUpdateConfigType, nothing is written if the schema is
+// unchanged, so this is safe to run on every startup.
+func (m *Migrations) syncConfigType(step *boltz.MigrationStep, configType *ConfigType) {
+	cfg, err := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
+	if step.SetError(err) {
+		return
+	}
+	if cfg == nil {
+		step.SetError(m.stores.ConfigType.Create(step.Ctx, configType))
+		return
+	}
+	if cfg.Id != configType.Id {
+		step.SetError(fmt.Errorf("config type '%s' already exists with id '%s', but this controller expects id '%s'", configType.Name, cfg.Id, configType.Id))
+		return
+	}
+
+	// json.Marshal sorts map keys, so this comparison is stable regardless of map iteration order
+	// or of the concrete types used in the in-code schema vs the unmarshalled stored schema
+	current, err := json.Marshal(cfg.Schema)
+	if step.SetError(err) {
+		return
+	}
+	expected, err := json.Marshal(configType.Schema)
+	if step.SetError(err) {
+		return
+	}
+	if bytes.Equal(current, expected) {
+		pfxlog.Logger().Debugf("'%s' config type schema is up to date", configType.Name)
+		return
+	}
+
+	pfxlog.Logger().Infof("updating schema of '%s' config type", configType.Name)
+	cfg.Schema = configType.Schema
+	step.SetError(m.stores.ConfigType.Update(step.Ctx, cfg, boltz.MapFieldChecker{FieldConfigTypeSchema: struct{}{}}))
 }
