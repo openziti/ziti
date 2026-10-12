@@ -365,12 +365,12 @@ func (s *HybridStorage) FlushRevocationBatcher() {
 	s.batcher.Flush()
 }
 
-// Clean removes abandoned auth requests and associated data
+// Clean removes expired auth requests and associated data
 func (s *HybridStorage) Clean() {
 	var deleteKeys []string
-	oldest := time.Now().Add(-10 * time.Minute)
+	now := time.Now()
 	s.authRequests.IterCb(func(key string, v *AuthRequest) {
-		if v.CreationDate.Before(oldest) {
+		if v.IsExpired(now) {
 			deleteKeys = append(deleteKeys, key)
 		}
 	})
@@ -395,10 +395,10 @@ func (s *HybridStorage) Clean() {
 
 // Authenticate will verify supplied credentials and update the primary authentication status of an AuthRequest
 func (s *HybridStorage) Authenticate(authCtx model.AuthContext, id string, configTypes []string) (*AuthRequest, error) {
-	authRequest, ok := s.authRequests.Get(id)
+	authRequest, err := s.GetAuthRequest(id)
 
-	if !ok {
-		return nil, fmt.Errorf("request not found")
+	if err != nil {
+		return nil, err
 	}
 
 	result, err := s.env.GetManagers().Authenticator.Authorize(authCtx)
@@ -479,7 +479,11 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 	code = strings.TrimSpace(code)
 	id = strings.TrimSpace(id)
 
-	if len(code) > 13 || len(id) > 40 {
+	if len(id) == 0 || len(id) > 40 {
+		return nil, errorz.NewUnauthorized()
+	}
+
+	if len(code) > 13 {
 		return nil, errors.New("invalid input")
 	}
 
@@ -487,18 +491,14 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 		return nil, errors.New("code is required")
 	}
 
-	if len(id) == 0 {
-		return nil, errors.New("invalid request")
-	}
+	authRequest, err := s.GetAuthRequest(id)
 
-	authRequest, ok := s.authRequests.Get(id)
-
-	if !ok {
-		return nil, errors.New("request not found")
+	if err != nil {
+		return nil, err
 	}
 
 	if len(authRequest.Amr) == 0 {
-		return nil, errors.New("request not authorized")
+		return nil, errorz.NewUnauthorized()
 	}
 
 	totp, err := s.env.GetManagers().Mfa.ReadOneByIdentityId(authRequest.IdentityId)
@@ -511,7 +511,7 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 		return nil, errors.New("totp not found")
 	}
 
-	ok, _ = s.env.GetManagers().Mfa.Verify(totp, code, ctx)
+	ok, _ := s.env.GetManagers().Mfa.Verify(totp, code, ctx)
 
 	if !ok {
 		return nil, apierror.NewInvalidMfaTokenError()
@@ -530,9 +530,11 @@ func (s *HybridStorage) CreateAuthRequest(ctx context.Context, authReq *oidc.Aut
 		return nil, oidc.ErrServerError()
 	}
 
+	now := time.Now()
 	request := &AuthRequest{
 		AuthRequest:   *authReq,
-		CreationDate:  time.Now(),
+		CreationDate:  now,
+		ExpiresAt:     now.Add(s.config.AuthRequestDuration),
 		IdentityId:    identityId,
 		ApiSessionId:  uuid.NewString(),
 		RemoteAddress: httpRequest.RemoteAddr,
@@ -573,11 +575,11 @@ func (s *HybridStorage) AuthRequestByID(_ context.Context, id string) (op.AuthRe
 	return s.GetAuthRequest(id)
 }
 
-// GetAuthRequest returns an AuthRequest by id
+// GetAuthRequest returns an AuthRequest by id. An unknown or expired id returns an unauthorized ApiError.
 func (s *HybridStorage) GetAuthRequest(id string) (*AuthRequest, error) {
 	request, ok := s.authRequests.Get(id)
-	if !ok {
-		return nil, fmt.Errorf("request not found")
+	if !ok || request.IsExpired(time.Now()) {
+		return nil, errorz.NewUnauthorized()
 	}
 	return request, nil
 }
@@ -1452,14 +1454,17 @@ func (s *HybridStorage) DenyDeviceAuthorization(_ context.Context, userCode stri
 
 // AuthRequestDone is used by testing and is not required to implement op.Storage
 func (s *HybridStorage) AuthRequestDone(id string) error {
-	if req, ok := s.authRequests.Get(id); ok {
-		if req.HasFullAuth() {
-			return nil
-		}
-		return errors.New("additional authentication interactions are required")
+	req, err := s.GetAuthRequest(id)
+
+	if err != nil {
+		return err
 	}
 
-	return errors.New("request not found")
+	if req.HasFullAuth() {
+		return nil
+	}
+
+	return errors.New("additional authentication interactions are required")
 }
 
 // ClientCredentials implements op.ClientCredentialsStorage

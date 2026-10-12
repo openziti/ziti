@@ -35,6 +35,7 @@ type AuthRequest struct {
 	oidc.AuthRequest
 	Id                    string
 	CreationDate          time.Time
+	ExpiresAt             time.Time
 	IdentityId            string
 	AuthTime              time.Time
 	ApiSessionId          string
@@ -57,6 +58,11 @@ type AuthRequest struct {
 	AuthenticatorId         string
 	ImproperClientCertChain bool
 	CsrPem                  string
+}
+
+// IsExpired returns true if the AuthRequest has passed its ExpiresAt as of now.
+func (a *AuthRequest) IsExpired(now time.Time) bool {
+	return !now.Before(a.ExpiresAt)
 }
 
 // GetID returns an AuthRequest's ID and implements op.AuthRequest
