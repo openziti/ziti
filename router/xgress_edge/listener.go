@@ -1291,14 +1291,39 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 		log.Error("failed to update bind, no listener found")
 		return
 	}
-	ctrlCh := self.apiSessionToken.SelectCtrlCh(self.listener.factory.ctrls)
-
-	if ctrlCh == nil {
-		log.Error("no controller available, cannot update terminator")
-		return
+	var cost *uint16
+	if costVal, hasCost := req.GetUint16Header(sdkedge.CostHeader); hasCost {
+		cost = &costVal
 	}
 
+	var precedence *edge_ctrl_pb.TerminatorPrecedence
+	if precedenceData, hasPrecedence := req.Headers[sdkedge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
+		val := edge_ctrl_pb.TerminatorPrecedence_Default
+		edgePrecedence := sdkedge.Precedence(precedenceData[0])
+		if edgePrecedence == sdkedge.PrecedenceRequired {
+			val = edge_ctrl_pb.TerminatorPrecedence_Required
+		} else if edgePrecedence == sdkedge.PrecedenceFailed {
+			val = edge_ctrl_pb.TerminatorPrecedence_Failed
+		}
+		precedence = &val
+	}
+
+	ctrlCh := self.apiSessionToken.SelectModelUpdateCtrlCh(self.listener.factory.ctrls)
+
 	for _, terminator := range terminators {
+		// Recorded before anything is sent, so every later create for the terminator carries the update.
+		if !terminator.updateCostAndPrecedence(cost, precedence) {
+			log.WithField("terminator", terminator.terminatorId).
+				Debug("terminator create pending, the update will be carried by a create")
+			continue
+		}
+
+		if ctrlCh == nil {
+			log.WithField("terminator", terminator.terminatorId).Error("no controller available, cannot update terminator")
+			self.listener.factory.hostedServices.recreateAfterFailedUpdateAsync(terminator)
+			continue
+		}
+
 		request := &edge_ctrl_pb.UpdateTerminatorRequest{
 			SessionToken:    serviceSessionToken.Token(),
 			Fingerprints:    self.fingerprints.Prints(),
@@ -1306,23 +1331,17 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 			ApiSessionToken: serviceSessionToken.ApiSessionToken.GetToken(),
 		}
 
-		if costVal, hasCost := req.GetUint16Header(sdkedge.CostHeader); hasCost {
+		if cost != nil {
 			request.UpdateCost = true
-			request.Cost = uint32(costVal)
+			request.Cost = uint32(*cost)
 		}
 
-		if precedenceData, hasPrecedence := req.Headers[sdkedge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
-			edgePrecedence := sdkedge.Precedence(precedenceData[0])
-			request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Default
+		if precedence != nil {
 			request.UpdatePrecedence = true
-			if edgePrecedence == sdkedge.PrecedenceRequired {
-				request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-			} else if edgePrecedence == sdkedge.PrecedenceFailed {
-				request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
-			}
+			request.Precedence = *precedence
 		}
 
-		log = log.WithField("terminator", terminator.terminatorId).
+		log := log.WithField("terminator", terminator.terminatorId).
 			WithField("precedence", request.Precedence).
 			WithField("cost", request.Cost).
 			WithField("updatingPrecedence", request.UpdatePrecedence).
@@ -1331,9 +1350,10 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 		log.Debug("updating terminator")
 
 		timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
-		responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh.GetDefaultSender())
+		responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
 		if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
-			log.WithError(err).Error("terminator update failed")
+			log.WithError(err).Error("terminator update failed, re-creating terminator")
+			self.listener.factory.hostedServices.recreateAfterFailedUpdateAsync(terminator)
 		} else {
 			log.Debug("terminator updated successfully")
 		}

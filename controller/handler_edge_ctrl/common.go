@@ -544,8 +544,12 @@ func (self *baseSessionRequestContext) verifyTerminatorId(id string) {
 	}
 }
 
+// updateTerminator applies the request's cost and precedence to terminator and persists them. The write
+// is skipped when neither value changes and this controller is a caught-up leader or not clustered. It
+// does nothing if self.err is already set, and records any error there.
 func (self *baseSessionRequestContext) updateTerminator(terminator *model.Terminator, request UpdateTerminatorRequest, ctx *change.Context) {
 	if self.err == nil {
+		prevCost, prevPrecedence := terminator.Cost, terminator.Precedence
 		checker := fields.UpdatedFieldsMap{}
 
 		if request.GetUpdateCost() {
@@ -570,6 +574,13 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *model.Termin
 			}
 
 			checker[db.FieldTerminatorPrecedence] = struct{}{}
+		}
+
+		// Not IsLeader: a leader mid-catch-up can hold a value the cluster has since replaced. A leadership
+		// change around the read can still skip a needed write; that window is accepted.
+		if self.handler.getNetwork().Dispatcher.IsLeaderAndCaughtUp() &&
+			terminator.Cost == prevCost && terminator.Precedence == prevPrecedence {
+			return
 		}
 
 		self.err = internalError(self.handler.getNetwork().Terminator.Update(terminator, checker, ctx))
