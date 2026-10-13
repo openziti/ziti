@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -282,18 +283,22 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 				ctx.Fail("timed out waiting for listener to be established")
 			}
 
-			errC := make(chan error, 1)
+			// the hosting goroutines report failures here rather than asserting on ctx.Req, which
+			// belongs to whichever (sub)test is current and may be reassigned or completed by the time
+			// they run. The first error is kept and checked once the clients are done.
+			hostErrC := make(chan error, 1)
+			reportHostErr := func(err error) {
+				select {
+				case hostErrC <- err:
+				default:
+				}
+			}
+			hosting := &sync.WaitGroup{}
 			done := make(chan struct{})
 
+			hosting.Add(1)
 			go func() {
-				defer func() {
-					val := recover()
-					if val != nil {
-						err := val.(error)
-						errC <- err
-					}
-					close(errC)
-				}()
+				defer hosting.Done()
 
 				go func() {
 					<-done
@@ -302,22 +307,31 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 
 				for {
 					edgeCon, err := listener.AcceptEdge()
-
 					if err != nil {
 						return
 					}
 
+					hosting.Add(1)
 					go func() {
-						conn := ctx.WrapNetConn(edgeCon, err)
+						defer hosting.Done()
+						defer func() {
+							if err := edgeCon.Close(); err != nil {
+								reportHostErr(fmt.Errorf("closing hosted connection: %w", err))
+							}
+						}()
 
-						if listener.IsClosed() || conn.IsClosed() {
+						if listener.IsClosed() || edgeCon.IsClosed() {
 							return
 						}
-						conn.WriteString("hello", time.Second)
-						conn.RequireClose()
+						if err := edgeCon.SetWriteDeadline(time.Now().Add(time.Second)); err != nil {
+							reportHostErr(fmt.Errorf("setting write deadline on hosted connection: %w", err))
+							return
+						}
+						if _, err := edgeCon.Write([]byte("hello")); err != nil {
+							reportHostErr(fmt.Errorf("writing to hosted connection: %w", err))
+						}
 					}()
 				}
-
 			}()
 
 			doneClient1 := make(chan clientDialResult, 1)
@@ -377,6 +391,23 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 				}
 
 				close(done)
+
+				hostingDone := make(chan struct{})
+				go func() {
+					hosting.Wait()
+					close(hostingDone)
+				}()
+				select {
+				case <-hostingDone:
+				case <-time.After(5 * time.Second):
+					ctx.Req.Fail("timed out waiting for hosting goroutines to exit")
+				}
+
+				select {
+				case err := <-hostErrC:
+					ctx.Req.NoError(err, "hosting side failed")
+				default:
+				}
 			})
 		})
 	})
