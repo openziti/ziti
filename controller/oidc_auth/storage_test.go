@@ -67,6 +67,40 @@ func Test_HybridStorage_GetAuthRequest(t *testing.T) {
 	})
 }
 
+func Test_HybridStorage_VerifyTotp(t *testing.T) {
+	for _, code := range []string{"", "12345678901234"} {
+		t.Run("returns 401 UNAUTHORIZED for an unknown auth request id with code '"+code+"'", func(t *testing.T) {
+			req := require.New(t)
+			store := &HybridStorage{authRequests: cmap.New[*AuthRequest](), codes: cmap.New[string]()}
+
+			authRequest, err := store.VerifyTotp(nil, code, "unknown")
+
+			req.Nil(authRequest)
+			apiErr := &errorz.ApiError{}
+			req.True(errors.As(err, &apiErr), "expected an ApiError, got %v", err)
+			req.Equal(errorz.UnauthorizedCode, apiErr.AppCode)
+		})
+
+		t.Run("returns 401 UNAUTHORIZED for an expired auth request with code '"+code+"'", func(t *testing.T) {
+			req := require.New(t)
+			store := &HybridStorage{authRequests: cmap.New[*AuthRequest](), codes: cmap.New[string]()}
+			store.authRequests.Set("expired", &AuthRequest{
+				Id:         "expired",
+				IdentityId: "identity",
+				Amr:        map[string]struct{}{"pwd": {}},
+				ExpiresAt:  time.Now().Add(-time.Second),
+			})
+
+			authRequest, err := store.VerifyTotp(nil, code, "expired")
+
+			req.Nil(authRequest)
+			apiErr := &errorz.ApiError{}
+			req.True(errors.As(err, &apiErr), "expected an ApiError, got %v", err)
+			req.Equal(errorz.UnauthorizedCode, apiErr.AppCode)
+		})
+	}
+}
+
 func Test_HybridStorage_Clean(t *testing.T) {
 	t.Run("removes expired auth requests and their codes and keeps the rest", func(t *testing.T) {
 		req := require.New(t)

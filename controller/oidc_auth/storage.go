@@ -483,14 +483,6 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 		return nil, errorz.NewUnauthorized()
 	}
 
-	if len(code) > 13 {
-		return nil, errors.New("invalid input")
-	}
-
-	if len(code) == 0 {
-		return nil, errors.New("code is required")
-	}
-
 	authRequest, err := s.GetAuthRequest(id)
 
 	if err != nil {
@@ -499,6 +491,14 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 
 	if len(authRequest.Amr) == 0 {
 		return nil, errorz.NewUnauthorized()
+	}
+
+	if len(code) > 13 {
+		return nil, errors.New("invalid input")
+	}
+
+	if len(code) == 0 {
+		return nil, errors.New("code is required")
 	}
 
 	totp, err := s.env.GetManagers().Mfa.ReadOneByIdentityId(authRequest.IdentityId)

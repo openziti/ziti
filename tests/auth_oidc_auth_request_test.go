@@ -67,6 +67,41 @@ func Test_OIDC_AuthRequest_Expiration(t *testing.T) {
 	})
 }
 
+func Test_OIDC_AuthRequest_HtmlPasswordLoginWithTotp(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	clientHelper := ctx.NewEdgeClientApi(nil)
+	adminCreds := ctx.NewAdminCredentials()
+	loginUrl := "https://" + ctx.ApiHost + "/oidc/login"
+
+	t.Run("POST password as HTML renders the TOTP page for an identity with TOTP enrolled", func(t *testing.T) {
+		ctx.NextTest(t)
+		_, err := clientHelper.Authenticate(adminCreds, nil)
+		ctx.Req.NoError(err)
+		_, _, err = clientHelper.EnrollTotpMfa()
+		ctx.Req.NoError(err)
+		result, err := clientHelper.OidcAuthorize(adminCreds)
+		ctx.Req.NoError(err)
+
+		resp, err := result.Client.R().
+			SetHeader("accept", oidc_auth.HtmlContentType).
+			SetHeader("content-type", oidc_auth.FormContentType).
+			SetFormData(map[string]string{
+				"id":       result.AuthRequestId,
+				"username": ctx.AdminAuthenticator.Username,
+				"password": ctx.AdminAuthenticator.Password,
+			}).
+			Post(loginUrl + "/password")
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "unexpected status, body: %s", resp.String())
+		ctx.Req.Contains(resp.String(), `action="/oidc/login/totp"`, "expected the TOTP page")
+		ctx.Req.Contains(resp.String(), "display: none;", "expected no error on the TOTP page")
+	})
+}
+
 func Test_OIDC_AuthRequest_UnknownId(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
@@ -98,6 +133,65 @@ func Test_OIDC_AuthRequest_UnknownId(t *testing.T) {
 		})
 	}
 
+	for _, method := range []string{"password", "username", "cert", "ext-jwt"} {
+		t.Run("GET "+method+" as JSON returns 401 UNAUTHORIZED for an unknown auth request id", func(t *testing.T) {
+			ctx.NextTest(t)
+			apiErr := &rest_model.APIError{}
+
+			resp, err := ctx.newAnonymousClientApiRequest().
+				SetHeader("accept", oidc_auth.JsonContentType).
+				Get(loginUrl + "/" + method + "?authRequestID=" + uuid.NewString())
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode(), "unexpected status, body: %s", resp.String())
+			ctx.Req.NoError(apiErr.UnmarshalBinary(resp.Body()), "expected a JSON API error, body: %s", resp.String())
+			ctx.Req.Equal(errorz.UnauthorizedCode, apiErr.Code)
+		})
+	}
+
+	for _, method := range []string{"password", "username"} {
+		t.Run("GET "+method+" as HTML returns 401 with a timed out message for an unknown auth request id", func(t *testing.T) {
+			ctx.NextTest(t)
+
+			resp, err := ctx.newAnonymousClientApiRequest().
+				SetHeader("accept", oidc_auth.HtmlContentType).
+				Get(loginUrl + "/" + method + "?authRequestID=" + uuid.NewString())
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode(), "unexpected status, body: %s", resp.String())
+			ctx.Req.Contains(resp.Header().Get("content-type"), oidc_auth.HtmlContentType)
+			ctx.Req.Contains(resp.String(), "Login timed out. Return to your application to start a new login.")
+		})
+	}
+
+	for _, method := range []string{"cert", "ext-jwt"} {
+		t.Run("GET "+method+" as HTML returns 401 for an unknown auth request id", func(t *testing.T) {
+			ctx.NextTest(t)
+
+			resp, err := ctx.newAnonymousClientApiRequest().
+				SetHeader("accept", oidc_auth.HtmlContentType).
+				Get(loginUrl + "/" + method + "?authRequestID=" + uuid.NewString())
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode(), "unexpected status, body: %s", resp.String())
+		})
+	}
+
+	t.Run("GET username as HTML renders the login page for a live auth request id", func(t *testing.T) {
+		ctx.NextTest(t)
+		result, err := clientHelper.OidcAuthorize(adminCreds)
+		ctx.Req.NoError(err)
+
+		resp, err := result.Client.R().
+			SetHeader("accept", oidc_auth.HtmlContentType).
+			Get(loginUrl + "/username?authRequestID=" + result.AuthRequestId)
+
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "unexpected status, body: %s", resp.String())
+		ctx.Req.Equal(result.AuthRequestId, resp.Header().Get(oidc_auth.AuthRequestIdHeader))
+		ctx.Req.NotContains(resp.String(), "Login timed out")
+	})
+
 	t.Run("GET auth-queries returns 401 UNAUTHORIZED for an unknown auth request id", func(t *testing.T) {
 		ctx.NextTest(t)
 		apiErr := &rest_model.APIError{}
@@ -127,6 +221,24 @@ func Test_OIDC_AuthRequest_UnknownId(t *testing.T) {
 		ctx.Req.NoError(apiErr.UnmarshalBinary(resp.Body()))
 		ctx.Req.Equal(errorz.UnauthorizedCode, apiErr.Code)
 	})
+
+	for _, code := range []string{"", "12345678901234"} {
+		t.Run("POST totp as JSON returns 401 UNAUTHORIZED for an unknown auth request id with code '"+code+"'", func(t *testing.T) {
+			ctx.NextTest(t)
+			apiErr := &rest_model.APIError{}
+
+			resp, err := ctx.newAnonymousClientApiRequest().
+				SetHeader("accept", oidc_auth.JsonContentType).
+				SetHeader("content-type", oidc_auth.JsonContentType).
+				SetBody(map[string]string{"id": uuid.NewString(), "code": code}).
+				Post(loginUrl + "/totp")
+
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode(), "unexpected status, body: %s", resp.String())
+			ctx.Req.NoError(apiErr.UnmarshalBinary(resp.Body()))
+			ctx.Req.Equal(errorz.UnauthorizedCode, apiErr.Code)
+		})
+	}
 
 	t.Run("POST totp as HTML returns 401 without internal error text for an unknown auth request id", func(t *testing.T) {
 		ctx.NextTest(t)

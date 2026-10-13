@@ -75,6 +75,9 @@ var (
 	totpTemplate  *template.Template
 )
 
+// loginTimedOutMessage is shown on a login page requested with an unknown or expired auth request id.
+const loginTimedOutMessage = "Login timed out. Return to your application to start a new login."
+
 // init loads page templates and makes them ready for use
 func init() {
 	var err error
@@ -156,6 +159,16 @@ func (l *login) genericHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.FormValue(queryAuthRequestID)
+
+	if _, err = l.store.GetAuthRequest(id); err != nil {
+		if responseType, _ := negotiateResponseContentType(r); responseType == HtmlContentType {
+			http.Error(w, loginTimedOutMessage, http.StatusUnauthorized)
+			return
+		}
+		renderJsonError(w, err)
+		return
+	}
+
 	w.Header().Set(AuthRequestIdHeader, id)
 	_, _ = w.Write([]byte("please POST to this URL"))
 }
@@ -168,25 +181,33 @@ func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := r.FormValue(queryAuthRequestID)
+
+	if _, err = l.store.GetAuthRequest(id); err != nil {
+		if responseType, _ := negotiateResponseContentType(r); responseType == HtmlContentType {
+			renderLogin(w, http.StatusUnauthorized, id, loginTimedOutMessage)
+			return
+		}
+		renderJsonError(w, err)
+		return
+	}
+
 	w.Header().Set(AuthRequestIdHeader, id)
-	renderLogin(w, http.StatusOK, id, nil)
+	renderLogin(w, http.StatusOK, id, "")
 }
 
-func renderLogin(w http.ResponseWriter, status int, id string, err error) {
-	renderPage(w, loginTemplate, status, id, err, nil)
+func renderLogin(w http.ResponseWriter, status int, id string, errMsg string) {
+	renderPage(w, loginTemplate, status, id, errMsg, nil)
 }
 
-func renderTotp(w http.ResponseWriter, status int, id string, err error, additionalData any) {
-	renderPage(w, totpTemplate, status, id, err, additionalData)
+func renderTotp(w http.ResponseWriter, status int, id string, errMsg string, additionalData any) {
+	renderPage(w, totpTemplate, status, id, errMsg, additionalData)
 }
 
-func renderPage(w http.ResponseWriter, pageTemplate *template.Template, status int, id string, err error, additionalData any) {
+func renderPage(w http.ResponseWriter, pageTemplate *template.Template, status int, id string, errMsg string, additionalData any) {
 	w.Header().Set("content-type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	var errMsg string
 	errDisplay := "none"
-	if err != nil {
-		errMsg = err.Error()
+	if errMsg != "" {
 		errDisplay = "block"
 	}
 	data := &struct {
@@ -203,7 +224,7 @@ func renderPage(w http.ResponseWriter, pageTemplate *template.Template, status i
 
 	templateErr := pageTemplate.Execute(w, data)
 	if templateErr != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, templateErr.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -268,15 +289,15 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 			}
 			renderJsonApiError(w, verifyApiErr)
 		} else if isUnauthorized {
-			renderTotp(w, http.StatusUnauthorized, id, errors.New(verifyApiErr.Message), nil)
+			renderTotp(w, http.StatusUnauthorized, id, verifyApiErr.Message, nil)
 		} else {
-			renderTotp(w, http.StatusOK, id, verifyErr, nil)
+			renderTotp(w, http.StatusOK, id, verifyErr.Error(), nil)
 		}
 		return
 	}
 
 	if !authRequest.HasAmr(AuthMethodSecondaryTotp) {
-		renderTotp(w, http.StatusOK, id, errors.New("TOTP supplied but not enabled or required on identity"), nil)
+		renderTotp(w, http.StatusOK, id, "TOTP supplied but not enabled or required on identity", nil)
 		return
 	}
 
@@ -344,7 +365,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		if responseType == HtmlContentType {
 
 			if method == AuthMethodPassword {
-				renderLogin(w, authApiErr.Status, credentials.AuthRequestId, authApiErr)
+				renderLogin(w, authApiErr.Status, credentials.AuthRequestId, authApiErr.Error())
 				return
 			}
 
@@ -385,7 +406,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	if !authRequest.HasSecondaryAuth() {
 		if responseType == HtmlContentType {
-			renderTotp(w, http.StatusOK, credentials.AuthRequestId, err, authRequest.GetAuthQueries())
+			renderTotp(w, http.StatusOK, credentials.AuthRequestId, "", authRequest.GetAuthQueries())
 		} else {
 			l.renderAuthStateJson(w, authRequest)
 		}
