@@ -1,5 +1,7 @@
+//go:build !unix
+
 /*
-	Copyright 2019 NetFoundry Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,19 +16,24 @@
 	limitations under the License.
 */
 
-package xgress_geneve
+package profiler
 
 import (
-	"github.com/openziti/sdk-golang/v2/xgress"
-	"github.com/pkg/errors"
+	"runtime"
+
+	"github.com/michaelquigley/pfxlog"
 )
 
-type listener struct{}
+type CPU struct{}
 
-func (self *listener) Listen(string, xgress.BindHandler) error {
-	return errors.New("geneve not supported in windows")
+func NewCPU(path string) (*CPU, error) {
+	return NewCPUWithShutdown(path, nil)
 }
 
-func (self *listener) Close() error {
-    return nil
+func NewCPUWithShutdown(path string, shutdownC <-chan struct{}) (*CPU, error) {
+	return &CPU{}, nil
+}
+
+func (cpu *CPU) Run() {
+	pfxlog.Logger().Infof("cpu profiling not (currently) supported on %s", runtime.GOOS)
 }

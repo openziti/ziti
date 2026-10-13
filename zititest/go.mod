@@ -154,7 +154,6 @@ require (
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/judedaryl/go-arrayutils v0.0.1 // indirect
 	github.com/kataras/go-events v0.0.3 // indirect
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.14 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
@@ -244,7 +243,6 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
-	gopkg.in/AlecAivazis/survey.v1 v1.8.8 // indirect
 	gopkg.in/resty.v1 v1.12.0 // indirect
 	nhooyr.io/websocket v1.8.17 // indirect
 	rsc.io/goversion v1.2.0 // indirect
