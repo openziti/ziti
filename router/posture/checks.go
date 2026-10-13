@@ -54,7 +54,22 @@ func (cache *Cache) onUpdate(data *InstanceData) {
 //   - apiSessionId: The API session ID for this posture instance
 //   - response: The posture response containing device state information
 func (cache *Cache) AddResponses(identityId, apiSessionId string, responses *edge_client_pb.PostureResponses) {
-	instance := cache.apiSessionInstances.Upsert(apiSessionId, nil, func(exist bool, valueInMap *Instance, newValue *Instance) *Instance {
+	instance := cache.getOrCreateInstance(identityId, apiSessionId)
+
+	updated := false
+	for _, response := range responses.Responses {
+		next := instance.Apply(response, cache.totpParser)
+		updated = updated || next
+	}
+
+	if updated {
+		instance.emitUpdated()
+	}
+}
+
+// getOrCreateInstance returns the posture instance for an API session, creating it if needed.
+func (cache *Cache) getOrCreateInstance(identityId, apiSessionId string) *Instance {
+	return cache.apiSessionInstances.Upsert(apiSessionId, nil, func(exist bool, valueInMap *Instance, newValue *Instance) *Instance {
 		if !exist {
 			valueInMap = newInstance()
 			valueInMap.ApiSessionId = apiSessionId
@@ -67,14 +82,22 @@ func (cache *Cache) AddResponses(identityId, apiSessionId string, responses *edg
 
 		return valueInMap
 	})
+}
 
-	updated := false
-	for _, response := range responses.Responses {
-		next := instance.Apply(response, cache.totpParser)
-		updated = updated || next
+// SeedMfaFromApiSession sets the MFA-passed time to auth_time when the token attests TOTP, so MFA
+// posture checks pass without a posture TOTP token. An existing MFA-passed time is never moved.
+func (cache *Cache) SeedMfaFromApiSession(identityId, apiSessionId string, claims *common.AccessClaims) {
+	if claims == nil || !claims.TotpComplete() || claims.AuthTime == 0 {
+		return
 	}
 
-	if updated {
+	passedAt := claims.AuthTime.AsTime()
+	if passedAt.IsZero() || passedAt.Unix() <= 0 {
+		return
+	}
+
+	instance := cache.getOrCreateInstance(identityId, apiSessionId)
+	if instance.SeedPassedMfaAt(passedAt) {
 		instance.emitUpdated()
 	}
 }
@@ -423,10 +446,30 @@ func isOsDifferent(old *edge_client_pb.PostureResponse_Os, new *edge_client_pb.P
 	return false
 }
 
-func (instance *Instance) emitUpdated() {
-	instance.Time = time.Now()
+// SeedPassedMfaAt sets PassedMfaAt if it is unset and reports whether it did.
+func (instance *Instance) SeedPassedMfaAt(passedAt time.Time) bool {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
 
+	if instance.PassedMfaAt != nil {
+		return false
+	}
+	instance.PassedMfaAt = &passedAt
+	return true
+}
+
+// Snapshot returns a copy of the posture data taken under the instance lock.
+func (instance *Instance) Snapshot() InstanceData {
+	instance.lock.Lock()
+	defer instance.lock.Unlock()
+	return instance.InstanceData
+}
+
+func (instance *Instance) emitUpdated() {
+	instance.lock.Lock()
+	instance.Time = time.Now()
 	instanceFieldCopy := instance.InstanceData
+	instance.lock.Unlock()
 
 	for _, listener := range instance.updatedListeners {
 		listener(&instanceFieldCopy)
