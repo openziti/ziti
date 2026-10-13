@@ -26,7 +26,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/openziti/edge-api/rest_model"
-	"github.com/openziti/foundation/v2/errorz"
 )
 
 type TotpRequestBody struct {
@@ -223,13 +222,7 @@ func parsePayload(r *http.Request, out AuthRequestIdHolder) error {
 			return err
 		}
 	} else {
-		return &errorz.ApiError{
-			AppCode:     "UNSUPPORTED_MEDIA_TYPE",
-			Message:     fmt.Sprintf("the content type: %s, is not supported (supported: %s, %s)", contentType, FormContentType, JsonContentType),
-			Status:      http.StatusUnsupportedMediaType,
-			Cause:       nil,
-			AppendCause: false,
-		}
+		return newUnsupportedMediaTypeError(contentType)
 	}
 
 	//prefer body, if not set use > query string queryAuthRequestID > query string queryAuthRequestIdAlt

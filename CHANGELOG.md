@@ -16,6 +16,7 @@
 * [Controller Read Throughput Under Load](#controller-read-throughput-under-load) - a bbolt upgrade lifts a ceiling on concurrent read transactions that could stall a busy controller
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
+* [OIDC Auth Request Expiration](#oidc-auth-request-expiration): The OIDC auth request lifetime is configurable and published, and login endpoints return 401 for an unknown or expired auth request
 * [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
@@ -682,6 +683,43 @@ Build flags are not capabilities. `capabilities` on `/version` describes what
 the controller offers over the API, is defined by this repository, and is
 enumerated at `/enumerated-capabilities`. Build flags describe how the binary
 was built, are open-ended, and are enumerated nowhere.
+
+## OIDC Auth Request Expiration
+
+An OIDC auth request is the in-memory state a controller holds while a login is
+in progress, between the authorize redirect and the code exchange. It used to
+expire after a fixed 10 minutes. The value was previously not exposed to
+clients. Its lifetime is now configurable:
+
+```yaml
+edge:
+  oidc:
+    authRequestDuration: 10m
+```
+
+The default is `10m`. Values below `1m` are raised to `1m`. Values above `30m`
+are lowered to `30m`.
+
+The controller publishes the duration in two places. The OIDC discovery
+document carries it as `openziti_auth_request_expiration_seconds`. The auth
+queries response, returned whenever a login step needs more authentication
+instead of redirecting, carries `expiresAt` and `expirationSeconds`:
+
+```json
+{
+  "authQueries": [ ... ],
+  "expiresAt": "2026-10-05T14:10:00.000Z",
+  "expirationSeconds": 600
+}
+```
+
+Every OIDC login endpoint that takes an auth request id now returns 401
+`UNAUTHORIZED` for an unknown or expired id. Before this release,
+`/oidc/login/totp` returned 400 `INVALID TOTP CODE` for that id, the same
+response as a wrong code. `/oidc/login/auth-queries` returned a plain text
+body. A wrong TOTP code
+against a live auth request still returns 400 `INVALID TOTP CODE`. A client
+that gets 401 from a login endpoint should start a new login.
 
 ## Current Beta Features
 
