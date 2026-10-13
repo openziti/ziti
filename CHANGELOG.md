@@ -899,8 +899,4 @@ Thanks to the community members who contributed to this release.
     * [Issue #3864](https://github.com/openziti/ziti/issues/3864) - e2ee: allow hosting SDK to return e2ee public key in the dial response
     * [Issue #3849](https://github.com/openziti/ziti/issues/3849) - Add a recover mechanism for when a controller cluster can't form a quorum
     * [Issue #4138](https://github.com/openziti/ziti/issues/4138) - Add l2 service configuration types
-        * Upgrades no longer fail when creating built-in config types that were previously added manually.
-          The existing type is updated with the built-in schema, and its original schema is saved as
-          `<name>-replaced` if it differed.
-
 
