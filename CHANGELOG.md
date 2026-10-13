@@ -44,6 +44,7 @@ change goes through once the leader is upgraded.
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4585](https://github.com/openziti/ziti/issues/4585) - [Backport-2.0] Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
     * [Issue #4594](https://github.com/openziti/ziti/issues/4594) - [Backport-2.0] CLI id-or-name resolution is duplicated, and the fabric version misreads names starting with 'id'
     * [Issue #4556](https://github.com/openziti/ziti/issues/4556) - [Backport-2.0] transport_udp and proxy_udp listeners can deadlock their own event loop
     * [Issue #4597](https://github.com/openziti/ziti/issues/4597) - [Backport-2.0] Compilation fails on Illumos
