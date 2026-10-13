@@ -385,6 +385,38 @@ func (self *hostedServiceRegistry) queueEstablishTerminatorAsync(terminator *edg
 	})
 }
 
+// reconcileCreate queues a create for terminator unless one is in flight, whose reply instead
+// re-checks recreateNeeded. An established terminator with recreateNeeded set moves back to
+// Establishing first; one that is established and current, or deleting, is left alone. It runs on
+// the event loop.
+func (self *hostedServiceRegistry) reconcileCreate(terminator *edgeTerminator, reason string) {
+	if terminator.operationActive.Load() {
+		return
+	}
+	if terminator.needsRecreate() {
+		terminator.updateState(xgress_common.TerminatorStateEstablished, xgress_common.TerminatorStateEstablishing, reason)
+	}
+	self.queueEstablishTerminatorSync(terminator)
+}
+
+// recreateAfterFailedUpdateAsync marks terminator as possibly out of date at the controller and queues
+// a create carrying its current values, for when an update to the controller fails.
+func (self *hostedServiceRegistry) recreateAfterFailedUpdateAsync(terminator *edgeTerminator) {
+	terminator.markRecreateNeeded()
+	self.queue(&recreateTerminatorEvent{terminator: terminator})
+}
+
+type recreateTerminatorEvent struct {
+	terminator *edgeTerminator
+}
+
+func (self *recreateTerminatorEvent) handle(registry *hostedServiceRegistry) {
+	if current, _ := registry.terminators.Get(self.terminator.terminatorId); current != self.terminator {
+		return
+	}
+	registry.reconcileCreate(self.terminator, "terminator update failed")
+}
+
 func (self *hostedServiceRegistry) queueRemoveTerminatorAsync(terminator *edgeTerminator, reason string) {
 	self.queue(&queueRemoveTerminator{
 		terminator: terminator,
@@ -539,13 +571,14 @@ func (self *hostedServiceRegistry) establishTerminator(terminator *edgeTerminato
 		WithField("terminatorId", terminator.terminatorId).
 		WithField("token", terminator.token)
 
+	cost, precedence, hostData := terminator.takeCreateValues()
 	request := &edge_ctrl_pb.CreateTerminatorV2Request{
 		Address:        terminator.terminatorId,
 		SessionToken:   terminator.token,
 		Fingerprints:   terminator.edgeClientConn.fingerprints.Prints(),
-		PeerData:       terminator.hostData,
-		Cost:           uint32(terminator.cost),
-		Precedence:     terminator.precedence,
+		PeerData:       hostData,
+		Cost:           uint32(cost),
+		Precedence:     precedence,
 		InstanceId:     terminator.instance,
 		InstanceSecret: terminator.instanceSecret,
 	}
@@ -750,6 +783,7 @@ type inspectTerminatorsEvent struct {
 func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
 	var result []*inspect.SdkTerminatorInspectDetail
 	registry.terminators.IterCb(func(key string, terminator *edgeTerminator) {
+		cost, precedence := terminator.getCostAndPrecedence()
 		detail := &inspect.SdkTerminatorInspectDetail{
 			Key:             key,
 			Id:              terminator.terminatorId,
@@ -757,8 +791,8 @@ func (self *inspectTerminatorsEvent) handle(registry *hostedServiceRegistry) {
 			Token:           terminator.token,
 			ListenerId:      terminator.listenerId,
 			Instance:        terminator.instance,
-			Cost:            terminator.cost,
-			Precedence:      terminator.precedence.String(),
+			Cost:            cost,
+			Precedence:      precedence.String(),
 			AssignIds:       terminator.assignIds,
 			UseSdkXgress:    terminator.useSdkXgress,
 			V2:              terminator.v2,
@@ -874,6 +908,10 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 			existing.close(registry, true, false, "found a newer terminator for listener id")
 			existing.setState(xgress_common.TerminatorStateDeleting, "newer terminator found for listener id")
 
+			// The new bind's values replace the adopted terminator's, and a create queued for the
+			// adopted terminator was dropped along with it.
+			registry.reconcileCreate(self.terminator, "took over terminator with different values")
+
 			log = log.WithField("existingTerminatorId", existing.terminatorId)
 			log.Info("taking over terminator from existing bind")
 
@@ -971,7 +1009,11 @@ func (self *markEstablishedEvent) handle(registry *hostedServiceRegistry) {
 		rateLimitCallback.Success()
 	}
 
-	if !self.terminator.updateState(xgress_common.TerminatorStateEstablishing, xgress_common.TerminatorStateEstablished, self.reason) {
+	established, stale := self.terminator.completeEstablish(self.reason)
+	if stale {
+		log.Info("terminator values changed since its create was sent, sending another")
+		registry.queueEstablishTerminatorSync(self.terminator)
+	} else if !established {
 		log.Info("received additional terminator created notification")
 	} else {
 		log.Info("terminator established")
