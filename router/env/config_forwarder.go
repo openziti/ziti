@@ -23,9 +23,16 @@ import (
 )
 
 const (
-	DefaultXgressCloseCheckInterval    = 5 * time.Second
-	DefaultXgressDialDwellTime         = 0
-	DefaultFaultTxInterval             = 15 * time.Second
+	DefaultXgressCloseCheckInterval = 5 * time.Second
+	DefaultXgressDialDwellTime      = 0
+	DefaultFaultTxInterval          = 15 * time.Second
+
+	// DefaultEndpointFaultRetention is how long the router keeps retrying an unsent circuit
+	// endpoint fault before giving up on it. Configured as a duration, such as '5m'. Retention bounds the memory held while a controller
+	// is unreachable, since a fault outlives the circuit it refers to: the set grows with the
+	// teardown rate for as long as the outage lasts. Giving up leaves the controller holding a
+	// circuit the router no longer has, until the controller reconciles circuits on reconnect.
+	DefaultEndpointFaultRetention      = 5 * time.Minute
 	DefaultIdleTxInterval              = 60 * time.Second
 	DefaultIdleCircuitTimeout          = 60 * time.Second
 	DefaultXgressDialWorkerQueueLength = 1000
@@ -54,6 +61,7 @@ const (
 )
 
 type ForwarderOptions struct {
+	EndpointFaultRetention   time.Duration
 	FaultTxInterval          time.Duration
 	IdleCircuitTimeout       time.Duration
 	IdleTxInterval           time.Duration
@@ -72,9 +80,10 @@ type WorkerPoolOptions struct {
 
 func DefaultForwarderOptions() *ForwarderOptions {
 	return &ForwarderOptions{
-		FaultTxInterval:    DefaultFaultTxInterval,
-		IdleCircuitTimeout: DefaultIdleCircuitTimeout,
-		IdleTxInterval:     DefaultIdleTxInterval,
+		EndpointFaultRetention: DefaultEndpointFaultRetention,
+		FaultTxInterval:        DefaultFaultTxInterval,
+		IdleCircuitTimeout:     DefaultIdleCircuitTimeout,
+		IdleTxInterval:         DefaultIdleTxInterval,
 		LinkDial: WorkerPoolOptions{
 			QueueLength: DefaultLinkDialQueueLength,
 			WorkerCount: DefaultLinkDialWorkerCount,
@@ -95,6 +104,18 @@ func DefaultForwarderOptions() *ForwarderOptions {
 
 func LoadForwarderOptions(src map[interface{}]interface{}) (*ForwarderOptions, error) {
 	options := DefaultForwarderOptions()
+
+	if value, found := src["endpointFaultRetention"]; found {
+		val, ok := value.(string)
+		if !ok {
+			return nil, errors.New("invalid value for 'endpointFaultRetention', expected a duration, such as '5m'")
+		}
+
+		var err error
+		if options.EndpointFaultRetention, err = time.ParseDuration(val); err != nil {
+			return nil, errors.Wrap(err, "invalid value for 'endpointFaultRetention'")
+		}
+	}
 
 	if value, found := src["faultTxInterval"]; found {
 		if val, ok := value.(int); ok {
