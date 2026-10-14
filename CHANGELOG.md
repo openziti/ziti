@@ -8,6 +8,7 @@
 
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
     * [Issue #4585](https://github.com/openziti/ziti/issues/4585) - [Backport-2.0] Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
+    * [Issue #4599](https://github.com/openziti/ziti/issues/4599) - [Backport-2.0] ER/T terminator re-create reverts health check cost and precedence
 
 
 # Release 2.0.8

@@ -496,17 +496,18 @@ func (self *HostedServiceRegistry) establishTerminator(terminator *tunnelTermina
 		WithField("service", terminator.context.ServiceName()).
 		WithField("terminatorId", terminator.id)
 
+	cost, listenPrecedence := terminator.getCostAndPrecedence()
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
-	if terminator.context.ListenOptions().Precedence == ziti.PrecedenceRequired {
+	if listenPrecedence == ziti.PrecedenceRequired {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-	} else if terminator.context.ListenOptions().Precedence == ziti.PrecedenceFailed {
+	} else if listenPrecedence == ziti.PrecedenceFailed {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 	}
 
 	request := &edge_ctrl_pb.CreateTunnelTerminatorRequestV2{
 		ServiceId:  terminator.context.ServiceId(),
 		Address:    terminator.id,
-		Cost:       uint32(terminator.context.ListenOptions().Cost),
+		Cost:       uint32(cost),
 		Precedence: precedence,
 		InstanceId: terminator.context.ListenOptions().Identity,
 		StartTime:  start,
@@ -684,13 +685,14 @@ func (self *HostedServiceRegistry) NotifyOfCtrlChange(event routerEnv.CtrlEvent)
 func (self *HostedServiceRegistry) Inspect() *inspect.ErtTerminatorInspectResult {
 	var entries []*inspect.ErtTerminatorInspectDetail
 	self.terminators.IterCb(func(key string, terminator *tunnelTerminator) {
+		cost, precedence := terminator.getCostAndPrecedence()
 		detail := &inspect.ErtTerminatorInspectDetail{
 			Key:             key,
 			Id:              terminator.id,
 			State:           terminator.state.Load().String(),
 			Instance:        terminator.context.ListenOptions().Identity,
-			Cost:            terminator.context.ListenOptions().Cost,
-			Precedence:      terminator.context.ListenOptions().Precedence.String(),
+			Cost:            cost,
+			Precedence:      precedence.String(),
 			OperationActive: terminator.operationActive.Load(),
 			CreateTime:      terminator.createTime.Format("2006-01-02 15:04:05"),
 			LastAttempt:     terminator.lastAttempt.Format("2006-01-02 15:04:05"),
