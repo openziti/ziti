@@ -53,7 +53,7 @@ func (self *removeTerminatorHandler) sendResponse(ctx *RemoveTerminatorRequestCo
 	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTerminatorResponseType), nil)
 	responseMsg.ReplyTo(ctx.msg)
 	if err := self.ch.Send(responseMsg); err != nil {
-		log.WithError(err).WithField("token", ctx.req.SessionToken).Error("failed to send remove terminator response")
+		log.WithError(err).WithField("terminatorId", ctx.req.TerminatorId).Error("failed to send remove terminator response")
 	}
 }
 
@@ -97,7 +97,6 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 	logrus.
 		WithField("routerId", self.ch.Id()).
 		WithField("serviceId", terminator.Service).
-		WithField("token", ctx.req.SessionToken).
 		WithField("terminator", ctx.req.TerminatorId).
 		Info("removed terminator")
 

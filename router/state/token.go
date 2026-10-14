@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"maps"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/go-events"
@@ -174,21 +175,35 @@ func (a *ApiSessionToken) SelectModelUpdateCtrlCh(ctrls env.NetworkControllers) 
 	return ctrls.GetModelUpdateCtrlChannel()
 }
 
-// AddLoggingFields enriches log entries with structured token metadata,
-// providing comprehensive debugging information while protecting sensitive
-// token data through safe identifiers and hashes.
-func (a *ApiSessionToken) AddLoggingFields(logger *logrus.Entry) *logrus.Entry {
-	if a != nil {
-		logger = logger.WithField("apiSessionToken", logrus.Fields{
-			"tokenId":          a.TokenId(),
-			"apiSessionId":     a.ApiSession.Id,
-			"identityId":       a.IdentityId,
-			"type":             a.Type,
-			"certFingerprints": a.CertFingerprints,
-		})
+// LoggingFields returns the fields that identify this api session to a log or an audit
+// trail: which identity authenticated, how, and when the token is valid. The token itself
+// is a credential and never appears among them. Pass the result to
+// logrus.Entry.WithFields.
+func (a *ApiSessionToken) LoggingFields() logrus.Fields {
+	fields := logrus.Fields{}
+
+	if a == nil {
+		return fields
 	}
 
-	return logger
+	fields["apiSessionTokenId"] = a.TokenId()
+	fields["apiSessionType"] = a.Type
+
+	if a.ApiSession != nil {
+		fields["apiSessionId"] = a.ApiSession.Id
+		fields["identityId"] = a.IdentityId
+		fields["apiSessionCertFingerprints"] = a.CertFingerprints
+	}
+
+	maps.Copy(fields, a.Claims.LoggingFields())
+
+	return fields
+}
+
+// AddLoggingFields adds LoggingFields to an existing log entry, for call sites that are
+// building up an entry rather than passing a field set.
+func (a *ApiSessionToken) AddLoggingFields(logger *logrus.Entry) *logrus.Entry {
+	return logger.WithFields(a.LoggingFields())
 }
 
 // RemovedEventName generates a unique event name for session removal notifications,
@@ -336,26 +351,33 @@ func NewServiceSessionTokenFromId(id string) *ServiceSessionToken {
 	}
 }
 
-// AddLoggingFields enriches log entries with service session metadata,
-// including hierarchical API session context for comprehensive audit trails
-// and debugging across the service authorization stack.
-func (s *ServiceSessionToken) AddLoggingFields(logger *logrus.Entry) *logrus.Entry {
-	if s != nil {
-		logger = logger.WithField("serviceSessionToken", logrus.Fields{
-			"serviceId":    s.ServiceId,
-			"apiSessionId": s.Claims.ApiSessionId,
-			"identityId":   s.Claims.IdentityId,
-			"tokenId":      s.Claims.ID,
-			"type":         s.Type,
-		})
+// LoggingFields returns the fields that identify this service session to a log or an audit
+// trail, together with the parent api session's fields, so one call covers the whole
+// service authorization stack. The token itself is a credential and never appears among
+// them. Pass the result to logrus.Entry.WithFields.
+func (s *ServiceSessionToken) LoggingFields() logrus.Fields {
+	fields := logrus.Fields{}
 
-		// Include parent API session context
-		if s.ApiSessionToken != nil {
-			logger = s.ApiSessionToken.AddLoggingFields(logger)
-		}
+	if s == nil {
+		return fields
 	}
 
-	return logger
+	fields["serviceSessionType"] = s.Type
+
+	if s.ServiceId != "" {
+		fields["serviceId"] = s.ServiceId
+	}
+
+	maps.Copy(fields, s.Claims.LoggingFields())
+	maps.Copy(fields, s.ApiSessionToken.LoggingFields())
+
+	return fields
+}
+
+// AddLoggingFields adds LoggingFields to an existing log entry, for call sites that are
+// building up an entry rather than passing a field set.
+func (s *ServiceSessionToken) AddLoggingFields(logger *logrus.Entry) *logrus.Entry {
+	return logger.WithFields(s.LoggingFields())
 }
 
 // IsLegacyApiSession returns true if this service session is associated with

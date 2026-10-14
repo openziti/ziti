@@ -101,7 +101,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 		return
 	}
 
-	log := pfxlog.ContextLogger(self.ch.Label()).WithField("token", ctx.req.GetSessionToken())
+	log := pfxlog.ContextLogger(self.ch.Label()).WithFields(ctx.sessionLoggingFields())
 	responseMsg, err := f(circuitInfo, peerData)
 	if err != nil {
 		log.WithError(err).Error("error generating create circuit response")
@@ -110,7 +110,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 
 	responseMsg.ReplyTo(ctx.msg)
 	if err = self.ch.Send(responseMsg); err != nil {
-		log.WithError(err).WithField("token", ctx.req.GetSessionToken()).Error("failed to send create circuit response")
+		log.WithError(err).Error("failed to send create circuit response")
 	}
 }
 

@@ -89,12 +89,25 @@
 
 ## What's New
 
+* Security fixes (see below)
 * Bug fixes
 
 ### End-to-End Encryption (e2ee) Improvements
 
 * Add support for negotiating e2ee crypto material during Dial/Accept handshake. This allows hosting-side crypto material to be per connection (instead of per terminator) and using TLS stream for e2ee.
 
+## Security Advisories
+
+This release addresses one security advisory. See the linked GitHub Security Advisory for full details,
+impact, and affected versions.
+
+* [GHSA-ccq6-vc5v-4ghh](https://github.com/openziti/ziti/security/advisories/GHSA-ccq6-vc5v-4ghh) (Low): The controller and the router
+  wrote complete service session tokens into structured log fields during edge control operations, several of
+  them at Error or Info, so the values appeared in logs at default verbosity during ordinary operation. A
+  service session token does not authenticate a client on its own, because the controller validates it only
+  against a matching api session token, but logging it placed one half of a credential pair into logging
+  infrastructure, which carries its own access controls, retention, backups and exports. These log events now
+  carry the session id, which is not a credential.
 
 ## Component Updates and Bug Fixes
 

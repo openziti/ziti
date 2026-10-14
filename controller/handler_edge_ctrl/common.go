@@ -3,6 +3,7 @@ package handler_edge_ctrl
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"strings"
 	"time"
@@ -75,7 +76,7 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err controllerEr
 		WithField("operation", ctx.GetHandler().Label())
 
 	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
-		logger = logger.WithField("token", sessionCtx.GetSessionToken())
+		logger = logger.WithFields(sessionCtx.sessionLoggingFields())
 	}
 
 	if mutator, ok := ctx.(responseMutatingRequestContext); ok {
@@ -95,7 +96,7 @@ func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
 		WithField("operation", ctx.GetHandler().Label())
 
 	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
-		logger = logger.WithField("token", sessionCtx.GetSessionToken())
+		logger = logger.WithFields(sessionCtx.sessionLoggingFields())
 	}
 
 	if err != nil {
@@ -110,23 +111,46 @@ type requestContext interface {
 	GetMessage() *channel.Message
 }
 
+// sessionRequestContext is implemented by request contexts that can describe the service
+// session a request was made against. The description is built from ids and the token's
+// validity window, never from the token itself, which is a credential.
 type sessionRequestContext interface {
 	requestContext
-	GetSessionToken() string
+	sessionLoggingFields() logrus.Fields
 }
 
 type baseSessionRequestContext struct {
-	handler      requestHandler
-	msg          *channel.Message
-	err          controllerError
-	sourceRouter *model.Router
-	session      *model.Session
-	apiSession   *model.ApiSession
-	service      *model.EdgeService
-	newSession   bool
-	logContext   logcontext.Context
-	env          model.Env
-	accessClaims *common.AccessClaims
+	handler             requestHandler
+	msg                 *channel.Message
+	err                 controllerError
+	sourceRouter        *model.Router
+	session             *model.Session
+	apiSession          *model.ApiSession
+	service             *model.EdgeService
+	newSession          bool
+	logContext          logcontext.Context
+	env                 model.Env
+	accessClaims        *common.AccessClaims
+	serviceAccessClaims *common.ServiceAccessClaims
+}
+
+// sessionLoggingFields returns the log fields describing the service session this request was
+// made against, empty when no session has been loaded. A JWT service session contributes the
+// token's validity window on top of what the stored session carries. The session token itself
+// is a credential and is never among the fields.
+func (self *baseSessionRequestContext) sessionLoggingFields() logrus.Fields {
+	fields := self.session.LoggingFields()
+	maps.Copy(fields, self.serviceAccessClaims.LoggingFields())
+	return fields
+}
+
+// apiSessionLoggingFields returns the log fields describing the api session this request
+// authenticated with, empty when no api session has been loaded. The api session token is a
+// credential and is never among the fields.
+func (self *baseSessionRequestContext) apiSessionLoggingFields() logrus.Fields {
+	fields := self.apiSession.LoggingFields()
+	maps.Copy(fields, self.accessClaims.LoggingFields())
+	return fields
 }
 
 func (self *baseSessionRequestContext) getApiSessionId() string {
@@ -251,6 +275,8 @@ func (self *baseSessionRequestContext) loadFromTokens(sessionToken, apiSessionTo
 		return
 	}
 
+	self.serviceAccessClaims = serviceAccessClaims
+
 	if self.accessClaims.Subject != serviceAccessClaims.IdentityId {
 		self.err = internalError(fmt.Errorf("access and service tokens do not match, got access identity id %s and service identity id %s", self.accessClaims.Subject, serviceAccessClaims.IdentityId))
 		return
@@ -359,6 +385,8 @@ func (self *baseSessionRequestContext) loadFromBolt(sessionToken string, apiSess
 		}
 		return
 	}
+
+	self.serviceAccessClaims = serviceAccessClaims
 
 	if !serviceAccessClaims.IsLegacy {
 		self.err = internalError(errors.New("legacy api session detected, but session token is not durable"))
