@@ -1,3 +1,5 @@
+//go:build !unix
+
 /*
 	Copyright NetFoundry Inc.
 
@@ -14,14 +16,17 @@
 	limitations under the License.
 */
 
-package tproxy
+package router
 
 import (
-	"github.com/openziti/ziti/v2/tunnel/intercept"
-	"github.com/openziti/ziti/v2/tunnel/intercept/proxy"
-	"github.com/pkg/errors"
+	"github.com/openziti/ziti/v2/router/forwarder"
 )
 
-func New(config Config, alerter proxy.Alerter) (intercept.Interceptor, error) {
-	return nil, errors.New("tproxy not supported on windows")
+type routerMonitor struct{}
+
+func newRouterMonitor(forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *routerMonitor {
+	return &routerMonitor{}
+}
+
+func (routerMonitor *routerMonitor) Monitor() {
 }

@@ -1,4 +1,4 @@
-//go:build windows
+//go:build !linux && !freebsd
 
 /*
 	Copyright NetFoundry Inc.
@@ -16,17 +16,21 @@
 	limitations under the License.
 */
 
-package router
+package xgress_geneve
 
 import (
-	"github.com/openziti/ziti/v2/router/forwarder"
+	"runtime"
+
+	"github.com/openziti/sdk-golang/v2/xgress"
+	"github.com/pkg/errors"
 )
 
-type routerMonitor struct{}
+type listener struct{}
 
-func newRouterMonitor(forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *routerMonitor {
-	return &routerMonitor{}
+func (self *listener) Listen(string, xgress.BindHandler) error {
+	return errors.Errorf("geneve not supported on %s", runtime.GOOS)
 }
 
-func (routerMonitor *routerMonitor) Monitor() {
+func (self *listener) Close() error {
+	return nil
 }
