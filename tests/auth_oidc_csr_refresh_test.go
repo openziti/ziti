@@ -185,17 +185,6 @@ func doRefreshRequest(
 	return result.AccessToken, result.RefreshToken, "", resp.StatusCode()
 }
 
-// doTokenExchangeRequest performs a token exchange grant against the OIDC token endpoint.
-func doTokenExchangeRequest(
-	ctx *TestContext,
-	accessToken string,
-	tlsCerts []cryptoTls.Certificate,
-	csrPem string,
-	expectSessionCert bool,
-) (newAccessToken string, newRefreshToken string, sessionCert string, statusCode int) {
-	return doTokenExchangeRequestForClient(ctx, accessToken, "", tlsCerts, csrPem, expectSessionCert)
-}
-
 // doTokenExchangeRequestForClient performs a token exchange grant, identifying the OAuth client
 // via client_id when clientID is non-empty (required for public clients when no other client
 // authentication is presented).
@@ -296,9 +285,7 @@ func oidcAuthWithCsr(
 		ctx.Req.NoError(exchErr)
 		ctx.Req.NotNil(tokens)
 
-		// The standard exchange returns oidc.Tokens which does not capture session_cert.
-		// Re-read the access/refresh/id tokens from the tokens object.
-		return tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, "", tokens.IDTokenClaims.ClientID
+		return tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.SessionCert, tokens.IDTokenClaims.ClientID
 
 	default:
 		ctx.Req.Fail("unsupported credential type for oidcAuthWithCsr")
@@ -339,7 +326,7 @@ func oidcCertAuthWithCsr(
 	ctx.Req.NoError(exchErr)
 	ctx.Req.NotNil(tokens)
 
-	return tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, "", tokens.IDTokenClaims.ClientID
+	return tokens.AccessToken, tokens.RefreshToken, tokens.IDToken, tokens.SessionCert, tokens.IDTokenClaims.ClientID
 }
 
 // Test_OIDC_CSR_Refresh verifies cert binding during token refresh for UPDB identities
@@ -368,49 +355,37 @@ func Test_OIDC_CSR_Refresh(t *testing.T) {
 	ctx.Req.NoError(err)
 	ctx.Req.NotEmpty(csrPem)
 
-	// Authenticate via OIDC with CSR.
-	accessToken, refreshToken, _, _, clientID := oidcAuthWithCsr(ctx, clientHelper, updbCreds, csrPem)
+	// Authenticate via OIDC with CSR. The token endpoint returns the session cert alongside the
+	// tokens, so no refresh is needed to obtain one.
+	accessToken, refreshToken, _, sessionCertPem, clientID := oidcAuthWithCsr(ctx, clientHelper, updbCreds, csrPem)
 	ctx.Req.NotEmpty(accessToken)
 	ctx.Req.NotEmpty(refreshToken)
+	ctx.Req.NotEmpty(sessionCertPem, "expected a session cert after CSR auth")
 
 	// Parse access token to get initial z_cfs.
 	origClaims, err := parseAccessClaims(accessToken)
 	ctx.Req.NoError(err)
 	ctx.Req.NotEmpty(origClaims.CertFingerprints, "expected z_cfs to be populated after CSR auth")
 
-	// Build TLS cert from the session cert for subsequent requests.
-	// Since the standard exchange does not return session_cert, we use the first refresh
-	// with CSR to obtain a session cert. For now, do a refresh with the CSR to get a session cert.
-	newAccessToken, newRefreshToken, sessionCertPem, status := doRefreshRequest(
-		ctx, refreshToken, clientID, nil, csrPem, true,
-	)
-
-	// If the initial auth already bound certs, a refresh without a matching cert may fail.
-	// In that case, we need to work with what we have.
-	if status == http.StatusOK && sessionCertPem != "" {
-		// We got a session cert on refresh. Use it.
-		accessToken = newAccessToken
-		refreshToken = newRefreshToken
-
-		origClaims, err = parseAccessClaims(accessToken)
-		ctx.Req.NoError(err)
-	}
-
 	// Build session TLS certs from the session cert PEM and CSR key.
-	var sessionTlsCerts []cryptoTls.Certificate
-	if sessionCertPem != "" {
-		sessionTlsCerts, err = buildTlsCertFromPem(sessionCertPem, csrKey)
-		ctx.Req.NoError(err)
-	}
+	sessionTlsCerts, err := buildTlsCertFromPem(sessionCertPem, csrKey)
+	ctx.Req.NoError(err)
 
 	initialCfs := origClaims.CertFingerprints
 
-	t.Run("refresh with matching cert succeeds", func(t *testing.T) {
+	t.Run("the session cert carries clientAuth and serverAuth", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		if sessionTlsCerts == nil {
-			t.Skip("no session cert available for this test")
-		}
+		sessionCerts := nfpem.PemStringToCertificates(sessionCertPem)
+
+		ctx.Req.NotEmpty(sessionCerts)
+		ctx.Req.ElementsMatch([]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+			sessionCerts[0].ExtKeyUsage,
+			"a session cert signed from a CSR on refresh must carry clientAuth and serverAuth")
+	})
+
+	t.Run("refresh with matching cert succeeds", func(t *testing.T) {
+		ctx.NextTest(t)
 
 		_, _, _, statusCode := doRefreshRequest(
 			ctx, refreshToken, clientID, sessionTlsCerts, "", false,
@@ -470,10 +445,6 @@ func Test_OIDC_CSR_Refresh(t *testing.T) {
 	t.Run("refresh without CSR preserves z_cfs", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		if sessionTlsCerts == nil {
-			t.Skip("no session cert available for this test")
-		}
-
 		newAccess, _, _, statusCode := doRefreshRequest(
 			ctx, refreshToken, clientID, sessionTlsCerts, "", false,
 		)
@@ -488,10 +459,6 @@ func Test_OIDC_CSR_Refresh(t *testing.T) {
 	t.Run("z_cfs token cannot transition to empty z_cfs", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		if sessionTlsCerts == nil {
-			t.Skip("no session cert available for this test")
-		}
-
 		newAccess, _, _, statusCode := doRefreshRequest(
 			ctx, refreshToken, clientID, sessionTlsCerts, "", false,
 		)
@@ -505,10 +472,6 @@ func Test_OIDC_CSR_Refresh(t *testing.T) {
 
 	t.Run("refresh with CSR rotates cert", func(t *testing.T) {
 		ctx.NextTest(t)
-
-		if sessionTlsCerts == nil {
-			t.Skip("no session cert available for this test")
-		}
 
 		// Generate a new CSR for rotation.
 		newCsrPem, newCsrKey, genErr := generateCsrPem()
@@ -692,6 +655,12 @@ func Test_OIDC_CSR_Refresh_CertAuth(t *testing.T) {
 			rotatedFp := fingerprintFromPem(newSessionCert)
 			ctx.Req.Contains(newClaims.CertFingerprints, rotatedFp,
 				"z_cfs should contain the new session cert fingerprint")
+
+			rotatedCerts := nfpem.PemStringToCertificates(newSessionCert)
+			ctx.Req.NotEmpty(rotatedCerts)
+			ctx.Req.ElementsMatch([]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+				rotatedCerts[0].ExtKeyUsage,
+				"a rotated session cert must carry clientAuth and serverAuth")
 		}
 	})
 
@@ -772,39 +741,21 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 	updbCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
 	updbCreds.CaPool = ctx.ControllerCaPool()
 
-	accessToken, refreshToken, _, _, clientID := oidcAuthWithCsr(ctx, clientHelper, updbCreds, csrPem)
+	accessToken, _, _, sessionCertPem, clientID := oidcAuthWithCsr(ctx, clientHelper, updbCreds, csrPem)
 	ctx.Req.NotEmpty(accessToken)
+	ctx.Req.NotEmpty(sessionCertPem, "expected a session cert after CSR auth")
 
 	origClaims, err := parseAccessClaims(accessToken)
 	ctx.Req.NoError(err)
 
-	// Do an initial refresh with CSR to get a session cert.
-	newAccess, newRefresh, sessionCertPem, status := doRefreshRequest(
-		ctx, refreshToken, clientID, nil, csrPem, true,
-	)
-	if status == http.StatusOK && newAccess != "" {
-		accessToken = newAccess
-		refreshToken = newRefresh
-		_ = refreshToken
-		origClaims, err = parseAccessClaims(accessToken)
-		ctx.Req.NoError(err)
-	}
-
-	var sessionTlsCerts []cryptoTls.Certificate
-	if sessionCertPem != "" {
-		sessionTlsCerts, err = buildTlsCertFromPem(sessionCertPem, csrKey)
-		ctx.Req.NoError(err)
-	}
+	sessionTlsCerts, err := buildTlsCertFromPem(sessionCertPem, csrKey)
+	ctx.Req.NoError(err)
 
 	t.Run("exchange with matching cert succeeds", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		if sessionTlsCerts == nil {
-			t.Skip("no session cert available")
-		}
-
-		newAccess, _, _, statusCode := doTokenExchangeRequest(
-			ctx, accessToken, sessionTlsCerts, "", false,
+		newAccess, _, _, statusCode := doTokenExchangeRequestForClient(
+			ctx, accessToken, clientID, sessionTlsCerts, "", false,
 		)
 		ctx.Req.Equal(http.StatusOK, statusCode,
 			"token exchange with matching cert should succeed")
@@ -821,8 +772,8 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 		wrongTlsCerts, genErr := generateSelfSignedCertAndKey()
 		ctx.Req.NoError(genErr)
 
-		_, _, _, statusCode := doTokenExchangeRequest(
-			ctx, accessToken, wrongTlsCerts, "", false,
+		_, _, _, statusCode := doTokenExchangeRequestForClient(
+			ctx, accessToken, clientID, wrongTlsCerts, "", false,
 		)
 		ctx.Req.NotEqual(http.StatusOK, statusCode,
 			"token exchange with wrong cert should fail when z_cfs present")
@@ -831,12 +782,8 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 	t.Run("exchange without CSR preserves z_cfs", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		if sessionTlsCerts == nil {
-			t.Skip("no session cert available")
-		}
-
-		newAccess, _, _, statusCode := doTokenExchangeRequest(
-			ctx, accessToken, sessionTlsCerts, "", false,
+		newAccess, _, _, statusCode := doTokenExchangeRequestForClient(
+			ctx, accessToken, clientID, sessionTlsCerts, "", false,
 		)
 		ctx.Req.Equal(http.StatusOK, statusCode)
 
@@ -849,15 +796,11 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 	t.Run("exchange with CSR rotates cert", func(t *testing.T) {
 		ctx.NextTest(t)
 
-		if sessionTlsCerts == nil {
-			t.Skip("no session cert available")
-		}
-
 		newCsrPem, newCsrKey, genErr := generateCsrPem()
 		ctx.Req.NoError(genErr)
 
-		newAccess, _, newSessionCert, statusCode := doTokenExchangeRequest(
-			ctx, accessToken, sessionTlsCerts, newCsrPem, true,
+		newAccess, _, newSessionCert, statusCode := doTokenExchangeRequestForClient(
+			ctx, accessToken, clientID, sessionTlsCerts, newCsrPem, true,
 		)
 		ctx.Req.Equal(http.StatusOK, statusCode,
 			"token exchange with CSR rotation should succeed")
@@ -870,14 +813,20 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 			rotatedFp := fingerprintFromPem(newSessionCert)
 			ctx.Req.Contains(newClaims.CertFingerprints, rotatedFp,
 				"z_cfs should contain the new session cert fingerprint")
+
+			rotatedCerts := nfpem.PemStringToCertificates(newSessionCert)
+			ctx.Req.NotEmpty(rotatedCerts)
+			ctx.Req.ElementsMatch([]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+				rotatedCerts[0].ExtKeyUsage,
+				"a session cert signed from a CSR on token exchange must carry clientAuth and serverAuth")
 		}
 
 		t.Run("after rotation, old cert rejected, new cert accepted", func(t *testing.T) {
 			ctx.NextTest(t)
 
 			// Old cert should fail.
-			_, _, _, oldStatus := doTokenExchangeRequest(
-				ctx, newAccess, sessionTlsCerts, "", false,
+			_, _, _, oldStatus := doTokenExchangeRequestForClient(
+				ctx, newAccess, clientID, sessionTlsCerts, "", false,
 			)
 			ctx.Req.NotEqual(http.StatusOK, oldStatus,
 				"old session cert should be rejected after exchange rotation")
@@ -887,8 +836,8 @@ func Test_OIDC_CSR_TokenExchange(t *testing.T) {
 				newTlsCerts, buildErr := buildTlsCertFromPem(newSessionCert, newCsrKey)
 				ctx.Req.NoError(buildErr)
 
-				_, _, _, newStatus := doTokenExchangeRequest(
-					ctx, newAccess, newTlsCerts, "", false,
+				_, _, _, newStatus := doTokenExchangeRequestForClient(
+					ctx, newAccess, clientID, newTlsCerts, "", false,
 				)
 				ctx.Req.Equal(http.StatusOK, newStatus,
 					"new session cert should be accepted after exchange rotation")

@@ -33,6 +33,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge-api/rest_model"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/oidc_auth"
@@ -127,6 +128,18 @@ func Test_Authenticate_OIDC_CSR(t *testing.T) {
 
 			ctx.Req.Len(accessClaims.CertFingerprints, 1, "updb + CSR should have exactly one cert fingerprint (from the CSR)")
 			ctx.Req.Empty(accessClaims.AuthCertFingerprint, "updb auth should have no auth cert fingerprints")
+		})
+
+		t.Run("the session cert carries clientAuth and serverAuth", func(t *testing.T) {
+			ctx.NextTest(t)
+
+			ctx.Req.NotEmpty(tokens.SessionCert, "auth with a CSR must return a session cert")
+			sessionCerts := nfpem.PemStringToCertificates(tokens.SessionCert)
+
+			ctx.Req.NotEmpty(sessionCerts)
+			ctx.Req.ElementsMatch([]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+				sessionCerts[0].ExtKeyUsage,
+				"a session cert signed from a CSR at authentication must carry clientAuth and serverAuth")
 		})
 	})
 
