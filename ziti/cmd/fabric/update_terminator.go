@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
-	"github.com/openziti/ziti/v2/ziti/util"
 	errors2 "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -76,7 +75,7 @@ func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 
 	change := false
 	if o.Cmd.Flags().Changed("router") {
-		router, err := api.MapNameToID(util.FabricAPI, "routers", &o.Options, o.router)
+		router, err := api.MapFabricNameToID("routers", &o.Options, o.router)
 		if err != nil {
 			return err
 		}

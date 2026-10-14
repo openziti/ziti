@@ -22,7 +22,6 @@ import (
 
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
-	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
@@ -67,7 +66,7 @@ func newUpdateServiceCmd(p common.OptionsProvider) *cobra.Command {
 
 // runUpdateService update a new service on the Ziti Edge Controller
 func runUpdateService(o *updateServiceOptions) error {
-	id, err := api.MapNameToID(util.FabricAPI, "services", &o.Options, o.Args[0])
+	id, err := api.MapFabricNameToID("services", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}

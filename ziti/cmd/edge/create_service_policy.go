@@ -109,7 +109,7 @@ func convertNamesToIds(roles []string, entityType string, o api.Options) ([]stri
 	for _, val := range roles {
 		if strings.HasPrefix(val, "@") {
 			idOrName := strings.TrimPrefix(val, "@")
-			id, err := mapNameToID(entityType, idOrName, o)
+			id, err := api.MapEdgeNameToID(entityType, &o, idOrName)
 			if err != nil {
 				return nil, err
 			}

@@ -108,49 +108,85 @@ func FilterEntitiesOfType(api util.API, entityType string, filter string, logJSO
 	return ListEntitiesOfType(api, entityType, params, logJSON, out, timeout, verbose)
 }
 
-func MapNameToID(api util.API, entityType string, o *Options, idOrName string) (string, error) {
-	result, err := MapNamesToIDs(api, entityType, o, idOrName)
+// MapEdgeNameToID resolves idOrName to the id of one entityType entity in the edge management API, as
+// MapEdgeNamesToIDs does, failing if it matches none or several.
+func MapEdgeNameToID(entityType string, o *Options, idOrName string) (string, error) {
+	return mapNameToID(util.EdgeAPI, entityType, o, idOrName)
+}
+
+// MapEdgeNamesToIDs resolves each value of list to the id of an entityType entity in the edge management API. A value
+// prefixed "id:" is taken as an id without a lookup, one prefixed "name:" matches by name only, and any other value
+// matches by id or name. A value matching several entities is an error. A value matching none is an error, unless
+// skipNotFound is set, in which case it is reported on o.Out and left out of the result. Unless skipNotFound is set,
+// the result holds one id per value of list, in order.
+func MapEdgeNamesToIDs(entityType string, o *Options, skipNotFound bool, list ...string) ([]string, error) {
+	return mapNamesToIDs(util.EdgeAPI, entityType, o, skipNotFound, list...)
+}
+
+// MapFabricNameToID is MapEdgeNameToID for the fabric management API.
+func MapFabricNameToID(entityType string, o *Options, idOrName string) (string, error) {
+	return mapNameToID(util.FabricAPI, entityType, o, idOrName)
+}
+
+// MapFabricNamesToIDs is MapEdgeNamesToIDs for the fabric management API.
+func MapFabricNamesToIDs(entityType string, o *Options, skipNotFound bool, list ...string) ([]string, error) {
+	return mapNamesToIDs(util.FabricAPI, entityType, o, skipNotFound, list...)
+}
+
+func mapNameToID(api util.API, entityType string, o *Options, idOrName string) (string, error) {
+	ids, err := mapNamesToIDs(api, entityType, o, false, idOrName)
 	if err != nil {
 		return "", err
 	}
-	if len(result) != 1 {
-		return "", errors.Errorf("found %v results for input %v when mapping %v to id", len(result), idOrName, entityType)
-	}
-	return result[0], nil
+	return ids[0], nil
 }
 
-func MapNamesToIDs(api util.API, entityType string, o *Options, list ...string) ([]string, error) {
+// mapNamesToIDs implements MapEdgeNamesToIDs and MapFabricNamesToIDs against api.
+func mapNamesToIDs(api util.API, entityType string, o *Options, skipNotFound bool, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
-		if strings.HasPrefix(val, "id") {
-			id := strings.TrimPrefix(val, "id:")
+		id, filter := parseIdOrName(val)
+		if filter == "" {
 			result = append(result, id)
-		} else {
-			query := fmt.Sprintf(`id = "%s" or name="%s"`, val, val)
-			if strings.HasPrefix(val, "name") {
-				name := strings.TrimPrefix(val, "name:")
-				query = fmt.Sprintf(`name="%s"`, name)
-			}
-			list, _, err := FilterEntitiesOfType(api, entityType, query, false, nil, o.Timeout, o.Verbose)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(list) > 1 {
-				fmt.Printf("Found multiple %v matching %v. Please specify which you want by prefixing with id: or name:\n", entityType, val)
-				return nil, errors.Errorf("ambiguous if %v is id or name", val)
-			}
-
-			for _, entity := range list {
-				entityId, _ := entity.Path("id").Data().(string)
-				result = append(result, entityId)
-				if val, found := os.LookupEnv("ZITI_CLI_DEBUG"); found && strings.EqualFold("true", val) {
-					fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
-				}
-			}
+			continue
 		}
+
+		entities, _, err := FilterEntitiesOfType(api, entityType, filter, false, nil, o.Timeout, o.Verbose)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(entities) == 0 {
+			if skipNotFound {
+				o.Printf("no %v found matching %v\n", entityType, val)
+				continue
+			}
+			return nil, errors.Errorf("no %v found matching %v", entityType, val)
+		}
+
+		if len(entities) > 1 {
+			return nil, errors.Errorf("multiple %v match %v, prefix it with id: or name: to choose", entityType, val)
+		}
+
+		entityId, _ := entities[0].Path("id").Data().(string)
+		if debug, found := os.LookupEnv("ZITI_CLI_DEBUG"); found && strings.EqualFold("true", debug) {
+			fmt.Printf("Found %v with id %v for %v\n", entityType, entityId, val)
+		}
+		result = append(result, entityId)
 	}
 	return result, nil
+}
+
+// parseIdOrName returns the id named by an "id:"-prefixed val, with an empty filter. Otherwise it returns the filter
+// that finds the entity val refers to: by name for a "name:" prefix, and by id or name for anything else.
+func parseIdOrName(val string) (id string, filter string) {
+	if id, ok := strings.CutPrefix(val, "id:"); ok {
+		return id, ""
+	}
+	if name, ok := strings.CutPrefix(val, "name:"); ok {
+		return "", fmt.Sprintf(`name="%s"`, name)
+	}
+	return "", fmt.Sprintf(`id="%s" or name="%s"`, val, val)
 }
 
 func RenderTable(o *Options, t table.Writer, pagingInfo *Paging) {

@@ -122,7 +122,7 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func runUpdateExtJwtSigner(options updateExtJwtOptions) error {
-	id, err := mapNameToID("external-jwt-signers", options.nameOrId, options.Options)
+	id, err := api.MapEdgeNameToID("external-jwt-signers", &options.Options, options.nameOrId)
 
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func runUpdateExtJwtSigner(options updateExtJwtOptions) error {
 
 		idOrName := stringz.OrEmpty(options.ExtJwtSigner.EnrollAuthPolicyID)
 
-		resolvedId, err := api.MapNameToID(util.EdgeAPI, "auth-policies", &options.EntityOptions.Options, idOrName)
+		resolvedId, err := api.MapEdgeNameToID("auth-policies", &options.EntityOptions.Options, idOrName)
 		if err != nil {
 			return err
 		}

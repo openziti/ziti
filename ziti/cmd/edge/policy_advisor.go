@@ -104,12 +104,12 @@ func newPolicyAdvisorServicesCmd(out io.Writer, errOut io.Writer) *cobra.Command
 // runIdentitiesPolicyAdvisor create a new policyAdvisor on the Ziti Edge Controller
 func runIdentitiesPolicyAdvisor(o *policyAdvisorOptions) error {
 	if len(o.Args) > 0 {
-		identityId, err := mapNameToID("identities", o.Args[0], o.Options)
+		identityId, err := api.MapEdgeNameToID("identities", &o.Options, o.Args[0])
 		if err != nil {
 			return err
 		}
 		if len(o.Args) > 1 {
-			serviceId, err := mapNameToID("services", o.Args[1], o.Options)
+			serviceId, err := api.MapEdgeNameToID("services", &o.Options, o.Args[1])
 			if err != nil {
 				return err
 			}
@@ -134,13 +134,13 @@ func runIdentitiesPolicyAdvisor(o *policyAdvisorOptions) error {
 // runServicesPolicyAdvisor create a new policyAdvisor on the Ziti Edge Controller
 func runServicesPolicyAdvisor(o *policyAdvisorOptions) error {
 	if len(o.Args) > 0 {
-		serviceId, err := mapNameToID("services", o.Args[0], o.Options)
+		serviceId, err := api.MapEdgeNameToID("services", &o.Options, o.Args[0])
 		if err != nil {
 			return err
 		}
 
 		if len(o.Args) > 1 {
-			identityId, err := mapNameToID("identities", o.Args[1], o.Options)
+			identityId, err := api.MapEdgeNameToID("identities", &o.Options, o.Args[1])
 			if err != nil {
 				return err
 			}

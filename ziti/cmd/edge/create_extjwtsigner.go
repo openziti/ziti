@@ -183,7 +183,7 @@ func runCreateExtJwtSigner(options *createExtJwtSignerOptions) (err error) {
 	if options.ExtJwtSigner.EnrollAuthPolicyID != "" {
 		idOrName := options.ExtJwtSigner.EnrollAuthPolicyID
 
-		resolvedId, err := api.MapNameToID(util.EdgeAPI, "auth-policies", &options.EntityOptions.Options, idOrName)
+		resolvedId, err := api.MapEdgeNameToID("auth-policies", &options.EntityOptions.Options, idOrName)
 		if err != nil {
 			return err
 		}
