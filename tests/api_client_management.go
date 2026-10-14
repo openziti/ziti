@@ -14,6 +14,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_client/current_identity"
+	managementEdgeRouter "github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
@@ -113,6 +114,18 @@ func (helper *ManagementHelperClient) CreateIdentityWithPermissions(name string,
 	}
 
 	resp, err := helper.API.Identity.CreateIdentity(newIdentityParams, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+func (helper *ManagementHelperClient) GetEdgeRouter(edgeRouterId string) (*rest_model.EdgeRouterDetail, error) {
+	resp, err := helper.API.EdgeRouter.DetailEdgeRouter(&managementEdgeRouter.DetailEdgeRouterParams{
+		ID: edgeRouterId,
+	}, nil)
 
 	if err != nil {
 		return nil, rest_util.WrapErr(err)

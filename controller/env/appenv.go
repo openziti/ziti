@@ -797,7 +797,14 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 
 	if host.GetConfig().Edge.Enabled {
 		enrollmentCert := host.GetConfig().Edge.Enrollment.SigningCert.Cert()
-		ae.ApiClientCsrSigner = cert.NewClientSigner(enrollmentCert.Leaf, enrollmentCert.PrivateKey)
+
+		// an identity client certificate is presented as the TLS server certificate by whichever
+		// end of a DirectE2EE connection hosts the connection, so it carries serverAuth alongside
+		// clientAuth. Router and controller certificates are never used that way.
+		apiClientCsrSigner := cert.NewClientSigner(enrollmentCert.Leaf, enrollmentCert.PrivateKey)
+		apiClientCsrSigner.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}
+
+		ae.ApiClientCsrSigner = apiClientCsrSigner
 		ae.ApiServerCsrSigner = cert.NewServerSigner(enrollmentCert.Leaf, enrollmentCert.PrivateKey)
 		ae.ControlClientCsrSigner = cert.NewClientSigner(enrollmentCert.Leaf, enrollmentCert.PrivateKey)
 	}
