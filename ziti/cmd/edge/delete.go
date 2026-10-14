@@ -143,7 +143,7 @@ func runDeleteEntityOfType(o *deleteOptions, entityType string) error {
 	var err error
 	ids := o.Args
 	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" && entityType != "authenticators" && entityType != "enrollments" {
-		if ids, err = mapNamesToIDs(entityType, *o.Options, true, ids...); err != nil {
+		if ids, err = api.MapEdgeNamesToIDs(entityType, o.Options, true, ids...); err != nil {
 			return err
 		}
 	}

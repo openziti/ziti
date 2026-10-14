@@ -59,7 +59,7 @@ func NewReEnrollEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // runReEnrollEdgeRouter implements the command to create a gateway on the edge controller
 func runReEnrollEdgeRouter(o *reEnrollEdgeRouterOptions) error {
-	id, err := mapNameToID("edge-routers", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("edge-routers", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}

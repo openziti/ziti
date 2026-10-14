@@ -90,7 +90,7 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // runUpdateIdentity update a new identity on the Ziti Edge Controller
 func runUpdateIdentity(o *updateIdentityOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("identities", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 	}
 
 	if o.Cmd.Flags().Changed("auth-policy") {
-		authPolicyId, err := mapNameToID("auth-policies", o.authPolicyIdOrName, o.Options)
+		authPolicyId, err := api.MapEdgeNameToID("auth-policies", &o.Options, o.authPolicyIdOrName)
 		if err != nil {
 			return fmt.Errorf("could not fetch auth policy by name or id: %w", err)
 		}
@@ -149,7 +149,7 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 			if v < 0 || v > math.MaxUint16 {
 				return errors.Errorf("hosting costs must be in the range %v-%v", 0, math.MaxUint16)
 			}
-			id, err := mapNameToID("services", k, o.Options)
+			id, err := api.MapEdgeNameToID("services", &o.Options, k)
 			if err != nil {
 				return err
 			}
@@ -162,7 +162,7 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 
 	if o.Cmd.Flags().Changed("service-precedences") {
 		for k, v := range o.servicePrecedences {
-			id, err := mapNameToID("services", k, o.Options)
+			id, err := api.MapEdgeNameToID("services", &o.Options, k)
 			if err != nil {
 				return err
 			}

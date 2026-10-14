@@ -115,7 +115,7 @@ func newUpdateAuthPolicySignerCmd(out io.Writer, errOut io.Writer) *cobra.Comman
 }
 
 func runUpdateAuthPolicySigner(options updateAuthPolicyOptions) error {
-	id, err := mapNameToID("auth-policies", options.nameOrId, options.Options)
+	id, err := api.MapEdgeNameToID("auth-policies", &options.Options, options.nameOrId)
 
 	if err != nil {
 		return err

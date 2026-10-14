@@ -1,3 +1,16 @@
+# Release 2.0.9
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4594](https://github.com/openziti/ziti/issues/4594) - [Backport-2.0] CLI id-or-name resolution is duplicated, and the fabric version misreads names starting with 'id'
+    * [Issue #4375](https://github.com/openziti/ziti/issues/4375) - router on release-v2.0.x never seeds MFA posture from the api session token
+
+
 # Release 2.0.8
 
 ## What's New
