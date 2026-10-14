@@ -25,11 +25,14 @@ import (
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/v2/ziti"
+	"github.com/openziti/sdk-golang/v2/ziti/edge"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	routerEnv "github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/openziti/ziti/v2/tunnel"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // countingCtrlChannel is a channel.Channel that records how many create requests were sent. Only
@@ -45,6 +48,8 @@ type countingCtrlChannel struct {
 
 	// refuseQueue models a full send queue: the sequence is assigned, but the message never goes out.
 	refuseQueue bool
+
+	lastSent *channel.Message
 }
 
 func (self *countingCtrlChannel) Id() string { return "test-ctrl" }
@@ -52,6 +57,7 @@ func (self *countingCtrlChannel) Id() string { return "test-ctrl" }
 // TrySend assigns a sequence as a real sender does, before deciding whether the message is queued, so
 // tests can correlate a response to the attempt that produced it and can model a full send queue.
 func (self *countingCtrlChannel) TrySend(s channel.Sendable) (bool, error) {
+	self.lastSent = s.Msg()
 	s.SetSequence(self.sends.Add(1))
 	if self.afterSetSequence != nil {
 		self.afterSetSequence(s.Sequence())
@@ -407,6 +413,66 @@ func Test_markEstablishedEvent_handle_outstandingCreate(t *testing.T) {
 
 	req.Equal(xgress_common.TerminatorStateEstablished, terminator.state.Load())
 	req.True(terminator.operationActive.Load(), "the unanswered create must still block a queued delete")
+}
+
+// noCtrlTestEnv reaches no controller, so a terminator update fails before anything is sent.
+type noCtrlTestEnv struct {
+	routerEnv.RouterEnv
+}
+
+func (self *noCtrlTestEnv) GetNetworkControllers() routerEnv.NetworkControllers {
+	return &routerEnv.MockNetworkControllers{}
+}
+
+// configuredHostingContext is a hosting context with a configured cost and precedence.
+type configuredHostingContext struct {
+	settleTestHostingContext
+	options *ziti.ListenOptions
+}
+
+func (self *configuredHostingContext) ListenOptions() *ziti.ListenOptions { return self.options }
+
+// Test_tunnelTerminator_createCarriesHealthUpdates verifies a create carries the configured cost and
+// precedence until a health check update replaces them, and the updated values from then on, even when
+// the update itself fails. Inspect reports the same values.
+func Test_tunnelTerminator_createCarriesHealthUpdates(t *testing.T) {
+	req := require.New(t)
+
+	registry, ctrlCh := newSettleTestRegistry()
+	registry.terminators = cmap.New[*tunnelTerminator]()
+
+	hostCtx := &configuredHostingContext{options: &ziti.ListenOptions{Cost: 7, Precedence: ziti.PrecedenceRequired}}
+	terminator := newTunnelTerminator("t1", &fabricProvider{env: &noCtrlTestEnv{}}, hostCtx)
+	terminator.createTime = time.Now().Add(-establishSettleTime - time.Second)
+	registry.terminators.Set(terminator.id, terminator)
+
+	sendCreate := func() *edge_ctrl_pb.CreateTunnelTerminatorRequestV2 {
+		terminator.operationActive.Store(false)
+		registry.establishSet[terminator.id] = terminator
+		registry.evaluateEstablishQueue()
+		request := &edge_ctrl_pb.CreateTunnelTerminatorRequestV2{}
+		req.NoError(proto.Unmarshal(ctrlCh.lastSent.Body, request))
+		return request
+	}
+
+	request := sendCreate()
+	req.Equal(uint32(7), request.Cost)
+	req.Equal(edge_ctrl_pb.TerminatorPrecedence_Required, request.Precedence)
+
+	req.Error(terminator.UpdateCostAndPrecedence(20, edge.PrecedenceFailed))
+	request = sendCreate()
+	req.Equal(uint32(20), request.Cost)
+	req.Equal(edge_ctrl_pb.TerminatorPrecedence_Failed, request.Precedence)
+
+	req.Error(terminator.UpdateCost(30))
+	request = sendCreate()
+	req.Equal(uint32(30), request.Cost)
+	req.Equal(edge_ctrl_pb.TerminatorPrecedence_Failed, request.Precedence, "a cost update leaves precedence as it is")
+
+	entries := registry.Inspect().Entries
+	req.Len(entries, 1)
+	req.Equal(uint16(30), entries[0].Cost)
+	req.Equal(ziti.PrecedenceFailed.String(), entries[0].Precedence)
 }
 
 // deleteQueueTestEnv supplies the only env surface evaluateDeleteQueue reaches once a terminator is
