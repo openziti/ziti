@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/sdk-golang/xgress"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/ziti/v2/common/ctrl_msg"
@@ -151,18 +152,27 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 	id := idgen.MustNewUUIDString()
 	id = self.GetCachedTerminatorId(hostCtx.GetTerminatorIdCacheKey(), id)
 
-	terminator := &tunnelTerminator{
-		id:         id,
-		state:      concurrenz.AtomicValue[xgress_common.TerminatorState]{},
-		provider:   self,
-		context:    hostCtx,
-		createTime: time.Now(),
-	}
-	terminator.state.Store(xgress_common.TerminatorStateEstablishing)
-
+	terminator := newTunnelTerminator(id, self, hostCtx)
 	self.hostedServices.EstablishTerminator(terminator)
 
 	return terminator, nil
+}
+
+// newTunnelTerminator returns an establishing terminator for hostCtx, starting from its configured cost
+// and precedence.
+func newTunnelTerminator(id string, provider *fabricProvider, hostCtx tunnel.HostingContext) *tunnelTerminator {
+	listenOptions := hostCtx.ListenOptions()
+	terminator := &tunnelTerminator{
+		id:         id,
+		state:      concurrenz.AtomicValue[xgress_common.TerminatorState]{},
+		provider:   provider,
+		context:    hostCtx,
+		createTime: time.Now(),
+		cost:       listenOptions.Cost,
+		precedence: listenOptions.Precedence,
+	}
+	terminator.state.Store(xgress_common.TerminatorStateEstablishing)
+	return terminator
 }
 
 func (self *fabricProvider) GetCachedTerminatorId(terminatorKey string, fallback string) string {
@@ -259,6 +269,8 @@ type tunnelTerminator struct {
 	rateLimitCallback rate.RateLimitControl
 	lock              sync.Mutex
 	createRequest     *createRequestId // guarded by lock; nil when no create is awaiting a response
+	cost              uint16           // guarded by lock
+	precedence        ziti.Precedence  // guarded by lock
 }
 
 // createRequestId identifies a create terminator request by the control channel it went out on and
@@ -351,8 +363,27 @@ func (self *tunnelTerminator) UpdateCostAndPrecedence(cost uint16, precedence ed
 	return self.updateCostAndPrecedence(&cost, &precedence)
 }
 
+// updateCostAndPrecedence records cost and precedence, leaving either as it is when nil, then sends them
+// to the controller as an update. Every later create for the terminator carries the recorded values,
+// which stay recorded when the update fails.
 func (self *tunnelTerminator) updateCostAndPrecedence(cost *uint16, precedence *edge.Precedence) error {
+	self.lock.Lock()
+	if cost != nil {
+		self.cost = *cost
+	}
+	if precedence != nil {
+		self.precedence = ziti.Precedence(*precedence)
+	}
+	self.lock.Unlock()
+
 	return self.provider.updateTerminator(self.id, cost, precedence)
+}
+
+// getCostAndPrecedence returns the cost and precedence a create for the terminator carries.
+func (self *tunnelTerminator) getCostAndPrecedence() (uint16, ziti.Precedence) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.cost, self.precedence
 }
 
 func (self *tunnelTerminator) IsEstablishing() bool {

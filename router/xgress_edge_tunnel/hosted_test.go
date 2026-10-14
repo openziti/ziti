@@ -20,12 +20,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/identity"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	routerEnv "github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/xgress_common"
+	"github.com/openziti/ziti/v2/tunnel"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // stubRateLimitControl is a rate.RateLimitControl that records how each outcome was signaled, so
@@ -301,4 +307,107 @@ func TestQueueRemoveTerminatorInFlightHandling(t *testing.T) {
 		req.False(terminator.operationActive.Load(),
 			"the remove that set the marker has ended, so the retry must not wait on it")
 	})
+}
+
+// createTestCtrlChannel is a channel.Channel that keeps the last message sent. Only the methods
+// establishTerminator touches are implemented; the rest panic via the nil embedded interface if the
+// test strays onto an unexpected path.
+type createTestCtrlChannel struct {
+	channel.Channel
+	sends    int32
+	lastSent *channel.Message
+}
+
+func (self *createTestCtrlChannel) Id() string { return "test-ctrl" }
+
+func (self *createTestCtrlChannel) TrySend(s channel.Sendable) (bool, error) {
+	self.lastSent = s.Msg()
+	self.sends++
+	s.SetSequence(self.sends)
+	return true, nil
+}
+
+// createTestEnv supplies the env surface establishTerminator uses: the router id, the model update
+// channel, and a rate limiter that never limits.
+type createTestEnv struct {
+	routerEnv.RouterEnv
+	ctrlCh *createTestCtrlChannel
+}
+
+func (self *createTestEnv) GetRouterId() *identity.TokenId {
+	return &identity.TokenId{Token: "test-router"}
+}
+
+func (self *createTestEnv) GetNetworkControllers() routerEnv.NetworkControllers {
+	return &routerEnv.MockNetworkControllers{Channel: self.ctrlCh}
+}
+
+func (self *createTestEnv) GetCtrlRateLimiter() rate.AdaptiveRateLimitTracker {
+	return rate.NoOpAdaptiveRateLimitTracker{}
+}
+
+// noCtrlTestEnv reaches no controller, so a terminator update fails before anything is sent.
+type noCtrlTestEnv struct {
+	routerEnv.RouterEnv
+}
+
+func (self *noCtrlTestEnv) GetNetworkControllers() routerEnv.NetworkControllers {
+	return &routerEnv.MockNetworkControllers{}
+}
+
+// configuredHostingContext supplies the accessors establishTerminator and Inspect read, with a
+// configured cost and precedence.
+type configuredHostingContext struct {
+	tunnel.HostingContext
+	options *ziti.ListenOptions
+}
+
+func (self *configuredHostingContext) ServiceName() string                { return "test-service" }
+func (self *configuredHostingContext) ServiceId() string                  { return "test-service-id" }
+func (self *configuredHostingContext) ListenOptions() *ziti.ListenOptions { return self.options }
+
+// Test_tunnelTerminator_createCarriesHealthUpdates verifies a create carries the configured cost and
+// precedence until a health check update replaces them, and the updated values from then on, even when
+// the update itself fails. Inspect reports the same values.
+func Test_tunnelTerminator_createCarriesHealthUpdates(t *testing.T) {
+	req := require.New(t)
+
+	ctrlCh := &createTestCtrlChannel{}
+	registry := &HostedServiceRegistry{
+		establishSet: map[string]*tunnelTerminator{},
+		terminators:  cmap.New[*tunnelTerminator](),
+		env:          &createTestEnv{ctrlCh: ctrlCh},
+	}
+
+	hostCtx := &configuredHostingContext{options: &ziti.ListenOptions{Cost: 7, Precedence: ziti.PrecedenceRequired}}
+	terminator := newTunnelTerminator("t1", &fabricProvider{env: &noCtrlTestEnv{}}, hostCtx)
+	registry.terminators.Set(terminator.id, terminator)
+
+	sendCreate := func() *edge_ctrl_pb.CreateTunnelTerminatorRequestV2 {
+		terminator.operationActive.Store(false)
+		registry.establishSet[terminator.id] = terminator
+		registry.evaluateEstablishQueue()
+		request := &edge_ctrl_pb.CreateTunnelTerminatorRequestV2{}
+		req.NoError(proto.Unmarshal(ctrlCh.lastSent.Body, request))
+		return request
+	}
+
+	request := sendCreate()
+	req.Equal(uint32(7), request.Cost)
+	req.Equal(edge_ctrl_pb.TerminatorPrecedence_Required, request.Precedence)
+
+	req.Error(terminator.UpdateCostAndPrecedence(20, edge.PrecedenceFailed))
+	request = sendCreate()
+	req.Equal(uint32(20), request.Cost)
+	req.Equal(edge_ctrl_pb.TerminatorPrecedence_Failed, request.Precedence)
+
+	req.Error(terminator.UpdateCost(30))
+	request = sendCreate()
+	req.Equal(uint32(30), request.Cost)
+	req.Equal(edge_ctrl_pb.TerminatorPrecedence_Failed, request.Precedence, "a cost update leaves precedence as it is")
+
+	entries := registry.Inspect().Entries
+	req.Len(entries, 1)
+	req.Equal(uint16(30), entries[0].Cost)
+	req.Equal(ziti.PrecedenceFailed.String(), entries[0].Precedence)
 }

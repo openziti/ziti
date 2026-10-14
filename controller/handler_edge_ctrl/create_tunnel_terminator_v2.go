@@ -117,6 +117,8 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 
 	terminator := ctx.readExistingTerminator()
 	if terminator != nil {
+		// Cost and precedence aren't applied to an existing terminator: only updates change them, and a
+		// router re-establishing the terminator may send its configured values.
 		if err := ctx.validateExistingTerminator(terminator, ctx.identity.Id, common.TunnelBinding, logger); err != nil {
 			self.returnError(ctx, err, logger)
 			return
