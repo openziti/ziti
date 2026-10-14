@@ -127,8 +127,9 @@ type removeEvent struct {
 }
 
 type mockListener struct {
-	changes []changeEvent
-	removes []removeEvent
+	changes   []changeEvent
+	removes   []removeEvent
+	discarded int
 	// final records the most recent delivered state per key (true=changed,
 	// false=removed) in delivery order, so a test can compare the listener's
 	// converged view against the store.
@@ -154,6 +155,20 @@ func (l *mockListener) EntryRemoved(key string, owner string, version uint64, or
 		l.final = map[string]bool{}
 	}
 	l.final[key] = false
+}
+
+func (l *mockListener) EntriesDiscarded() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.discarded++
+	clear(l.final)
+}
+
+// discardCount returns how many times the listener has been told the type gave up its entries.
+func (l *mockListener) discardCount() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.discarded
 }
 
 // finalState returns the listener's most recently delivered state for a key.
@@ -194,6 +209,20 @@ func newTestStore(peers ...string) (*Store, *mockMesh) {
 	mesh := newMockMesh(peers...)
 	store := NewStore("local", mesh)
 	return store, mesh
+}
+
+// newTestStateTypeWithListener registers the standard test type against any listener, for tests that supply
+// one other than mockListener.
+func newTestStateTypeWithListener(store *Store, listener StateListener[string]) *StateType[string] {
+	return Register[string](store, StateTypeConfig[string]{
+		Name:               "test",
+		RequiredCapability: capabilities.ControllerLinkGossip,
+		Encode:             encodeString,
+		Decode:             decodeString,
+		Tombstones:         true,
+		TombstoneTTL:       time.Minute,
+		Listener:           listener,
+	})
 }
 
 func newTestStateType(store *Store, listener *mockListener) *StateType[string] {
@@ -1639,4 +1668,291 @@ func Test_tombstoneDeadline_UnsetWhenNothingExpires(t *testing.T) {
 	incoming := &entry{Key: "key1", Owner: "owner1", Version: 1, Tombstone: true}
 	sm.clampDeadline(incoming)
 	require.True(t, incoming.ExpiresAt.IsZero(), "a store that expires nothing must not stamp a deadline")
+}
+
+// Test_Discard_TellsTheListenerWithoutRemovingEntries: a listener keeping state derived from the entries has
+// no other way to learn they are gone, since discard reports no removals, and anything it derived that stands
+// for the entries themselves outlives them otherwise.
+func Test_Discard_TellsTheListenerWithoutRemovingEntries(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	listener := &mockListener{}
+	st := newTestStateType(store, listener)
+
+	require.NoError(t, st.Set("key1", "owner1", "value1"))
+	require.NoError(t, st.Set("key2", "owner1", "value2"))
+	require.Equal(t, 0, listener.discardCount())
+
+	require.Equal(t, 2, st.Discard())
+
+	require.Equal(t, 1, listener.discardCount(), "the listener is told once per discard")
+	require.Empty(t, listener.removes, "a discarded entry is not reported as removed; what it described is still live")
+
+	require.NoError(t, st.Set("key3", "owner1", "value3"), "the type accepts writes again once it is usable")
+	require.Equal(t, 1, listener.discardCount())
+}
+
+// gatedListener holds one callback inside the listener until released, so a test can keep a thread parked in
+// the exact window where a discard and an entry callback could be delivered across each other: past
+// notifyEntry's current-entry check, or mid-discard with the map already emptied.
+//
+// state is the listener's own view, which must end up agreeing with the store.
+type gatedListener struct {
+	mu    sync.Mutex
+	state map[string]bool
+
+	blockChanged   bool
+	blockDiscarded bool
+	once           sync.Once
+	entered        chan struct{}
+	release        chan struct{}
+}
+
+func newGatedListener() *gatedListener {
+	return &gatedListener{
+		state:   map[string]bool{},
+		entered: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+}
+
+// park blocks the first matching callback, signalling that it is inside the listener.
+func (l *gatedListener) park(matches bool) {
+	if !matches {
+		return
+	}
+	l.once.Do(func() {
+		close(l.entered)
+		<-l.release
+	})
+}
+
+func (l *gatedListener) EntryChanged(key string, _ string, _ uint64, _ string, _ bool, _ ChangeOrigin) {
+	l.park(l.blockChanged)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.state[key] = true
+}
+
+func (l *gatedListener) EntryRemoved(key string, _ string, _ uint64, _ ChangeOrigin) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.state, key)
+}
+
+func (l *gatedListener) EntriesDiscarded() {
+	l.park(l.blockDiscarded)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	clear(l.state)
+}
+
+func (l *gatedListener) present(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.state[key]
+}
+
+// gateHold is how long a blocked operation is given to prove it is blocked. A discard or an apply over one
+// entry takes microseconds, so completing within this means nothing is holding it. Only ever waited out in
+// full on the passing path, where the operation genuinely cannot proceed.
+const gateHold = 250 * time.Millisecond
+
+// Test_Discard_WaitsForAnEntryCallbackInFlight: a callback that has passed notifyEntry's current-entry check
+// is already committed to delivering, and the check cannot see a discard that has not happened yet. Told its
+// entries are gone first, a listener puts one back and then reports state for a map holding nothing.
+func Test_Discard_WaitsForAnEntryCallbackInFlight(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	listener := newGatedListener()
+	listener.blockChanged = true
+	st := newTestStateTypeWithListener(store, listener)
+
+	go func() {
+		_ = st.Set("key1", "owner1", "value1")
+	}()
+	<-listener.entered
+
+	discardDone := make(chan int, 1)
+	go func() {
+		discardDone <- st.Discard()
+	}()
+
+	select {
+	case <-discardDone:
+		require.Fail(t, "discard completed while an entry callback was still inside the listener")
+	case <-time.After(gateHold):
+	}
+
+	close(listener.release)
+	<-discardDone
+
+	require.False(t, listener.present("key1"),
+		"a callback in flight must not put back state the discard cleared")
+}
+
+// Test_Discard_WaitsForAnEntryWrittenDuringIt: the map accepts writes throughout a discard, so an entry can
+// be stored after the map is emptied and before the listener is told. Reported in that gap, it is wiped by a
+// discard that never held it, leaving the listener short an entry the store has.
+func Test_Discard_WaitsForAnEntryWrittenDuringIt(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	listener := newGatedListener()
+	listener.blockDiscarded = true
+	st := newTestStateTypeWithListener(store, listener)
+
+	require.NoError(t, st.Set("key1", "owner1", "value1"))
+
+	discardDone := make(chan int, 1)
+	go func() {
+		discardDone <- st.Discard()
+	}()
+	<-listener.entered
+
+	setDone := make(chan struct{})
+	go func() {
+		defer close(setDone)
+		_ = st.Set("key2", "owner1", "value2")
+	}()
+
+	select {
+	case <-setDone:
+		require.Fail(t, "an entry callback was delivered while a discard was still inside the listener")
+	case <-time.After(gateHold):
+	}
+
+	close(listener.release)
+	<-discardDone
+	<-setDone
+
+	_, _, ok := st.GetForOwner("owner1", "key2")
+	require.True(t, ok, "a write during a discard keeps its entry; only its callback waits")
+	require.True(t, listener.present("key2"), "the listener must end up agreeing with the store")
+}
+
+// Test_Discard_MarksCompactedOwnersDetached: compaction is the only thing that takes an ownerData out of the
+// owners map, and a writer that resolved the owner before it ran still holds the instance. Unmarked, that
+// writer stores an entry nothing can reach through the map while its callback still reports it.
+func Test_Discard_MarksCompactedOwnersDetached(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	st := newTestStateType(store, nil)
+	sm := store.getStateMap("test")
+
+	// What a writer is holding between resolving the owner and taking its lock.
+	stale := sm.getOrCreateOwner("owner1")
+	require.False(t, stale.detached)
+
+	require.Equal(t, 0, st.Discard())
+
+	_, stillMapped := sm.owners.Get("owner1")
+	require.False(t, stillMapped, "an empty owner is compacted out")
+	require.True(t, stale.detached, "the instance a writer may still hold must say it is no longer the map's")
+
+	od := sm.lockOwnerForWrite("owner1")
+	od.mu.Unlock()
+	require.NotSame(t, stale, od, "a write resolves the owner again rather than using the detached instance")
+}
+
+// Test_LockOwnerForWrite_RefusesADetachedOwner: the window a writer holds a compacted owner across is two
+// instructions wide and nothing in the store can be parked inside it, so the helper's refusal is asserted
+// directly. A detached instance in the map is a state only this test can produce; compaction marks and
+// removes together, which is what ends the retry in production.
+func Test_LockOwnerForWrite_RefusesADetachedOwner(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	newTestStateType(store, nil)
+	sm := store.getStateMap("test")
+
+	// What a writer can be holding: the instance it resolved, compacted out before it took the lock.
+	stale := newOwnerData()
+	stale.detached = true
+	sm.owners.Set("owner1", stale)
+
+	locked := make(chan *ownerData, 1)
+	go func() {
+		od := sm.lockOwnerForWrite("owner1")
+		od.mu.Unlock()
+		locked <- od
+	}()
+
+	select {
+	case <-locked:
+		require.Fail(t, "a write was handed an ownerData that is no longer the owners map's")
+	case <-time.After(gateHold):
+	}
+
+	live := newOwnerData()
+	sm.owners.Set("owner1", live)
+
+	require.Same(t, live, <-locked, "the write must land on the instance that replaced the detached one")
+}
+
+// A removal's callback runs after the owner lock is dropped, so the ownerData it ran against can be compacted
+// and replaced before the callback asks whether the key came back. A compacted instance answers "absent" for
+// every key, so a check against the instance in hand reports the key gone while the store holds it under the
+// instance that replaced it.
+func Test_NotifyRemoval_ChecksTheOwnerCurrentlyInTheMap(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	listener := &mockListener{}
+	st := Register[string](store, StateTypeConfig[string]{
+		Name:               "no_tombstones",
+		RequiredCapability: capabilities.ControllerLinkGossip,
+		Encode:             encodeString,
+		Decode:             decodeString,
+		Tombstones:         false,
+		Listener:           listener,
+	})
+	sm := store.getStateMap("no_tombstones")
+
+	require.NoError(t, st.Set("k1", "owner1", "v1"))
+	present, known := listener.finalState("k1")
+	require.True(t, known && present, "the listener must hold the entry before the removal races it")
+
+	// Hold the per-key notify lock so the removal below parks after emptying the owner and before asking
+	// whether the key is back. That park stands in for the window the owner instance is replaced in, which
+	// nothing in the store can be stopped inside.
+	unlock := sm.notifyLocks.LockFor(notifyKey("owner1", "k1"))
+
+	removed := make(chan struct{})
+	go func() {
+		defer close(removed)
+		sm.delete("k1", "owner1", OriginLocal)
+	}()
+
+	// Once the entry is gone from the store the removal is committed to notifying, and the notify lock is
+	// already held, so it can get no further than the check this test is about.
+	require.Eventually(t, func() bool {
+		_, ok := sm.entryAt("owner1", "k1")
+		return !ok
+	}, time.Second, time.Millisecond, "the removal must reach the store before the owner is compacted")
+
+	// Compacting the now-empty owner is what leaves the parked removal holding an instance the store no
+	// longer reaches.
+	sm.dropOwner("owner1", OriginLocal)
+	_, stillMapped := sm.owners.Get("owner1")
+	require.False(t, stillMapped, "the owner must be compacted for the removal to hold a detached instance")
+
+	// Put the key back under the fresh instance without notifying: what matters is what the parked removal
+	// concludes about a store that holds the key.
+	od := sm.lockOwnerForWrite("owner1")
+	sm.applyEntryLocked(od, &entry{Key: "k1", Owner: "owner1", Version: 99, UpdatedAt: time.Now()})
+	od.mu.Unlock()
+
+	unlock()
+	<-removed
+
+	_, held := sm.entryAt("owner1", "k1")
+	require.True(t, held, "the store must hold the re-added entry")
+
+	present, known = listener.finalState("k1")
+	assert.True(t, known && present,
+		"a removal must not retract a key the store holds under the owner's current instance")
 }

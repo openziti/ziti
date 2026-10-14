@@ -59,8 +59,7 @@ func (s *Store) setConfirmed(ctx context.Context, sm *stateMap, key, owner strin
 		UpdatedAt: time.Now(),
 	}
 
-	od := sm.getOrCreateOwner(owner)
-	od.mu.Lock()
+	od := sm.lockOwnerForWrite(owner)
 	wasSet, isCreate := sm.applyEntryLocked(od, e)
 	od.mu.Unlock()
 
@@ -68,7 +67,7 @@ func (s *Store) setConfirmed(ctx context.Context, sm *stateMap, key, owner strin
 		return nil
 	}
 
-	sm.notifyEntry(od, e, isCreate, OriginLocal)
+	sm.notifyEntry(e, isCreate, OriginLocal)
 
 	peers := s.mesh.PeerIds()
 	if len(peers) == 0 {

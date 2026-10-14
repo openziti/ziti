@@ -121,6 +121,9 @@ func (sm *stateMap) entriesNeededByPeer(digest *gossip_pb.GossipDigest) []*gossi
 	// that would re-enter cmap. Calling hashForOwnerFull inside the IterCb callback would re-acquire the
 	// shard RLock; under writer-priority RWMutex semantics, with a writer queued, that re-acquire deadlocks
 	// against the outer RLock.
+	// Compaction can replace an owner's ownerData between this pass and the reads below, leaving a handle
+	// the store no longer reaches. Safe here only because a compacted instance is empty by the predicate
+	// that removed it, so a stale handle contributes nothing and the round sends less rather than wrong.
 	type ownerEntry struct {
 		owner string
 		od    *ownerData

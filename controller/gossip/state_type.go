@@ -28,6 +28,15 @@ import (
 type StateListener[T any] interface {
 	EntryChanged(key string, value T, version uint64, owner string, isCreate bool, origin ChangeOrigin)
 	EntryRemoved(key string, owner string, version uint64, origin ChangeOrigin)
+
+	// EntriesDiscarded reports that the type has given up every entry it held. This is a weaker statement
+	// than EntryRemoved for each of them: what the entries described is still live and is about to be
+	// reported by other means, so a listener drops state that stands for the entries themselves and keeps
+	// state that stands for what they described.
+	//
+	// Called with no map locks held, and the type accepts writes again as soon as it returns, so a listener
+	// that rebuilds must tolerate a new entry arriving during the call.
+	EntriesDiscarded()
 }
 
 // StateTypeConfig configures a typed gossip state registration.
@@ -186,12 +195,13 @@ func (st *StateType[T]) DeleteByOwnerBefore(owner string, epoch []byte) {
 	st.sm.deleteByOwnerBefore(owner, epoch, OriginLocal)
 }
 
-// Discard drops every entry this state type holds, without notifying listeners and without telling peers.
-// Returns how many entries were dropped.
+// Discard drops every entry this state type holds, without telling peers and without reporting the entries
+// as removed. Returns how many entries were dropped.
 //
-// For abandoning state that can no longer be replicated while what it describes is still live: the listener
-// is not told, so a link built from a discarded entry stays in the link manager and is reported again by
-// whatever means is now in use. Writes are accepted again afterwards.
+// For abandoning state that can no longer be replicated while what it describes is still live: a link built
+// from a discarded entry stays in the link manager and is reported again by whatever means is now in use.
+// The listener is told through EntriesDiscarded, which says only that the entries are gone. Writes are
+// accepted again afterwards.
 func (st *StateType[T]) Discard() int {
 	return st.sm.discard()
 }
@@ -323,6 +333,10 @@ func (a *typedListenerAdapter[T]) entryChanged(key string, value []byte, version
 
 func (a *typedListenerAdapter[T]) entryRemoved(key string, owner string, version uint64, origin ChangeOrigin) {
 	a.listener.EntryRemoved(key, owner, version, origin)
+}
+
+func (a *typedListenerAdapter[T]) entriesDiscarded() {
+	a.listener.EntriesDiscarded()
 }
 
 func runTombstoneReaper(sm *stateMap, store *Store) {

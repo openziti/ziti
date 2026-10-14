@@ -136,6 +136,16 @@ func (l *canaryGossipListener) EntryRemoved(key string, _ string, _ uint64, _ go
 	l.remove(key)
 }
 
+// EntriesDiscarded drops every canary, which stands for the gossip entries rather than for anything the
+// router is still doing. Keeping one would have this controller report a sequence it can no longer advance
+// to routers comparing controllers against each other, and would leave a stale epoch standing as the
+// baseline the next canary is judged against.
+func (l *canaryGossipListener) EntriesDiscarded() {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	clear(l.canaries)
+}
+
 // checkEpoch compares the given epoch against the stored epoch for a router.
 // If the new epoch is newer, old-epoch entries are cleaned up across all gossip
 // store types. Also handles the case where no previous epoch is stored

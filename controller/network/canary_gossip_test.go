@@ -103,3 +103,28 @@ func TestCanary_RestartedSequenceWins(t *testing.T) {
 		require.Equal(t, currentFirst, held.Seq)
 	})
 }
+
+// TestCanary_DiscardedTypeReportsNoCanary: giving up a gossip type leaves what its entries described in
+// place, and a canary describes nothing but the entries. A controller still reporting one reports a sequence
+// it can no longer advance, which is the number routers compare controllers against each other on, and a
+// stale epoch stands as the baseline the next canary is judged against.
+func TestCanary_DiscardedTypeReportsNoCanary(t *testing.T) {
+	const routerId = "r1"
+
+	_, network, _ := newConnectTestNetwork(t)
+
+	require.NoError(t, network.CanaryGossipType.SetWithVersion(routerId, routerId, 42,
+		&CanaryValue{Seq: 42, Epoch: testEpoch(1)}))
+
+	seq, ok := network.GetCanaryForRouter(routerId)
+	require.True(t, ok)
+	require.Equal(t, uint64(42), seq)
+
+	require.Equal(t, 1, network.CanaryGossipType.Discard())
+
+	_, ok = network.GetCanaryForRouter(routerId)
+	require.False(t, ok, "a canary is not reported for a type that has given up its entries")
+
+	_, ok = network.GetCanaryValueForRouter(routerId)
+	require.False(t, ok, "the epoch goes with the canary it arrived on")
+}

@@ -107,8 +107,8 @@ func NewStore(peerId string, mesh Mesh) *Store {
 //
 // A type whose required capability stops holding gives up its contents. What its entries describe stays
 // live: for links, the routers still hold them and report them the pre-gossip way once any controller
-// cannot gossip. So the entries are discarded rather than deleted, and the listeners are not told, which
-// leaves the links in place to be reported again.
+// cannot gossip. So the entries are discarded rather than deleted, and the listeners are told only that the
+// entries are gone, which leaves the links in place to be reported again.
 //
 // Per type rather than per store, because features arrive in different releases: a cluster part-way through
 // an upgrade can support link gossip while not yet supporting whatever the next release adds, and giving up
@@ -249,13 +249,14 @@ type StoreStats struct {
 	Owners int `json:"owners"`
 }
 
-// DiscardAll drops every entry in every registered state type, without notifying listeners and without
-// telling peers. Returns how many entries were dropped per type name.
+// DiscardAll drops every entry in every registered state type, without telling peers and without reporting
+// the entries as removed. Returns how many entries were dropped per type name.
 //
 // For when gossip stops being usable across the cluster: what the entries describe is still live and is
-// about to be reported by other means, so listeners must not be told, and tombstoning would both remove
-// that state everywhere and require minting versions for entries the routers own. Writes are accepted again
-// afterwards, so a store can be abandoned and later refilled.
+// about to be reported by other means, so the entries must not be reported as removed, and tombstoning
+// would both remove that state everywhere and require minting versions for entries the routers own. Each
+// type's listener is told its entries are gone. Writes are accepted again afterwards, so a store can be
+// abandoned and later refilled.
 func (s *Store) DiscardAll() map[string]int {
 	discarded := map[string]int{}
 	s.types.Range(func(key, value any) bool {
@@ -442,6 +443,7 @@ func (e *entry) toProto() *gossip_pb.GossipEntry {
 type untypedListener interface {
 	entryChanged(key string, value []byte, version uint64, owner string, isCreate bool, origin ChangeOrigin)
 	entryRemoved(key string, owner string, version uint64, origin ChangeOrigin)
+	entriesDiscarded()
 }
 
 type stateMapConfig struct {
@@ -473,6 +475,16 @@ type stateMap struct {
 	listener    untypedListener
 	metrics     *stateMapMetrics
 	notifyLocks *concurrency.StripedIdLocker // serializes listener delivery per (owner,key); see notifyEntry
+
+	// discardGate orders entry delivery against a discard. Entry callbacks hold it shared, so they still
+	// deliver concurrently with each other, and discard holds it exclusively across emptying the map and
+	// telling the listener. Without it a callback that has already passed notifyEntry's current-entry check
+	// lands after the listener has been told its entries are gone, putting back state the discard just
+	// cleared, and an entry written during the discard is reported and then cleared by it.
+	//
+	// Separate from notifyLocks, which orders two applies for the same key against each other and says
+	// nothing about a discard, since a discard belongs to no key.
+	discardGate sync.RWMutex
 }
 
 // stateMapMetrics holds the meters maintained for a stateMap. Gauges are
@@ -660,6 +672,11 @@ func (sm *stateMap) registerMetrics(reg metrics.Registry) {
 // reaper, so dropOwner compacts the ownerData synchronously after clearing
 // entries. In both cases, if a new write for the same owner arrives after
 // removal, a fresh non-drained ownerData is created.
+//
+// Compaction marks the ownerData detached under its own lock. A writer resolves the owner before taking the
+// lock, so it can be holding a pointer that is compacted out underneath it; writing to that instance would
+// store an entry no reader can reach while still reporting it to the listener. lockOwnerForWrite is how a
+// writer avoids that.
 type ownerData struct {
 	mu            sync.RWMutex
 	entries       map[string]*entry // key -> entry, including tombstones
@@ -670,6 +687,7 @@ type ownerData struct {
 	maxVersion    uint64            // highest version ever observed for this owner
 	nonTombstones int64             // count of live (non-tombstone) entries
 	drained       bool              // dropOwner called; rejects writes and eligible for compaction
+	detached      bool              // compacted out of sm.owners; a writer holding this pointer must retry
 }
 
 func newOwnerData() *ownerData {
@@ -706,6 +724,23 @@ func (sm *stateMap) getOrCreateOwner(owner string) *ownerData {
 	return result
 }
 
+// lockOwnerForWrite returns the owner's ownerData with its write lock held, having resolved the owner again
+// if the instance it first found was compacted out before the lock was taken. Callers unlock.
+//
+// Every write goes through this rather than getOrCreateOwner plus a lock. A detached instance still answers
+// reads and writes as though it were live, but nothing reaches it through sm.owners, so an entry written
+// there is invisible to the store while its callback still reports it to the listener.
+func (sm *stateMap) lockOwnerForWrite(owner string) *ownerData {
+	for {
+		od := sm.getOrCreateOwner(owner)
+		od.mu.Lock()
+		if !od.detached {
+			return od
+		}
+		od.mu.Unlock()
+	}
+}
+
 func newStateMap(name string, cfg stateMapConfig, store *Store, listener untypedListener) *stateMap {
 	return &stateMap{
 		name:        name,
@@ -732,7 +767,9 @@ func (sm *stateMap) entryAt(owner, key string) (*entry, bool) {
 }
 
 // applyEntryLocked installs incoming into the owner's entries map under
-// owner.mu (already held by the caller). Returns (wasSet, isCreate). When
+// owner.mu (already held by the caller). od must have been resolved through
+// lockOwnerForWrite: a detached instance accepts the entry and reports it to
+// the listener while no reader can reach it. Returns (wasSet, isCreate). When
 // wasSet is false the version check rejected the incoming entry, the owner is
 // drained, or there was no change. Aggregates (maxVersion, nonTombstones,
 // hashDirty, fullHashDirty) are updated in-place. The caller is responsible
@@ -783,8 +820,7 @@ func (sm *stateMap) set(key, owner string, value []byte, origin ChangeOrigin) {
 		UpdatedAt: time.Now(),
 	}
 
-	od := sm.getOrCreateOwner(owner)
-	od.mu.Lock()
+	od := sm.lockOwnerForWrite(owner)
 	wasSet, isCreate := sm.applyEntryLocked(od, e)
 	od.mu.Unlock()
 
@@ -792,7 +828,7 @@ func (sm *stateMap) set(key, owner string, value []byte, origin ChangeOrigin) {
 		return
 	}
 
-	sm.notifyEntry(od, e, isCreate, origin)
+	sm.notifyEntry(e, isCreate, origin)
 
 	if origin == OriginLocal {
 		sm.broadcastDelta(e)
@@ -812,8 +848,7 @@ func (sm *stateMap) applyDeltaFrom(incoming *entry, m *applyMeters) {
 	sm.clampDeadline(incoming)
 	sm.store.observeVersion(incoming.Version)
 
-	od := sm.getOrCreateOwner(incoming.Owner)
-	od.mu.Lock()
+	od := sm.lockOwnerForWrite(incoming.Owner)
 	wasSet, isCreate := sm.applyEntryLocked(od, incoming)
 	od.mu.Unlock()
 
@@ -823,7 +858,7 @@ func (sm *stateMap) applyDeltaFrom(incoming *entry, m *applyMeters) {
 	}
 	m.markApplied()
 
-	sm.notifyEntry(od, incoming, isCreate, OriginGossip)
+	sm.notifyEntry(incoming, isCreate, OriginGossip)
 }
 
 // applyAndBroadcast applies an externally-versioned entry (e.g., from a router's
@@ -844,8 +879,7 @@ func (sm *stateMap) applyEntry(incoming *entry) bool {
 	sm.clampDeadline(incoming)
 	sm.store.observeVersion(incoming.Version)
 
-	od := sm.getOrCreateOwner(incoming.Owner)
-	od.mu.Lock()
+	od := sm.lockOwnerForWrite(incoming.Owner)
 	wasSet, isCreate := sm.applyEntryLocked(od, incoming)
 	od.mu.Unlock()
 
@@ -855,7 +889,7 @@ func (sm *stateMap) applyEntry(incoming *entry) bool {
 	}
 	sm.deltaMeters().markApplied()
 
-	sm.notifyEntry(od, incoming, isCreate, OriginLocal)
+	sm.notifyEntry(incoming, isCreate, OriginLocal)
 	return true
 }
 
@@ -878,13 +912,26 @@ func notifyKey(owner, key string) string {
 // the callback is dropped, since that newer entry delivers the authoritative
 // state. This keeps listener-driven consumers (the link manager, the canary
 // map) consistent with the store.
-func (sm *stateMap) notifyEntry(od *ownerData, e *entry, isCreate bool, origin ChangeOrigin) {
+//
+// The check resolves the owner through sm.owners rather than taking the ownerData the apply used, since
+// compaction can replace the instance between the apply and the callback. Answering from the instance the
+// store currently reaches is what makes "still current" mean what the listener needs it to mean.
+func (sm *stateMap) notifyEntry(e *entry, isCreate bool, origin ChangeOrigin) {
 	if sm.listener == nil {
 		return
 	}
+
+	// Held across the current-entry check and the callback, so a discard cannot land between the two.
+	sm.discardGate.RLock()
+	defer sm.discardGate.RUnlock()
+
 	unlock := sm.notifyLocks.LockFor(notifyKey(e.Owner, e.Key))
 	defer unlock()
 
+	od := sm.getOwner(e.Owner)
+	if od == nil {
+		return
+	}
 	od.mu.RLock()
 	current := od.entries[e.Key] == e
 	od.mu.RUnlock()
@@ -903,18 +950,29 @@ func (sm *stateMap) notifyEntry(od *ownerData, e *entry, isCreate bool, origin C
 // outright (tombstones-disabled state types). Serialized per (owner, key) like
 // notifyEntry; the callback is dropped if a newer apply has re-added the key,
 // since that apply's notifyEntry delivers the live state.
-func (sm *stateMap) notifyRemoval(od *ownerData, key, owner string, version uint64, origin ChangeOrigin) {
+//
+// Presence is read from whichever ownerData sm.owners currently holds, not from the one the removal ran
+// against. A compacted instance reports every key absent, so checking the one in hand would turn "this owner
+// is no longer the map's" into "the key is gone" and retract an entry a later write put back under a fresh
+// instance.
+func (sm *stateMap) notifyRemoval(key, owner string, version uint64, origin ChangeOrigin) {
 	if sm.listener == nil {
 		return
 	}
+
+	sm.discardGate.RLock()
+	defer sm.discardGate.RUnlock()
+
 	unlock := sm.notifyLocks.LockFor(notifyKey(owner, key))
 	defer unlock()
 
-	od.mu.RLock()
-	_, present := od.entries[key]
-	od.mu.RUnlock()
-	if present {
-		return
+	if od := sm.getOwner(owner); od != nil {
+		od.mu.RLock()
+		_, present := od.entries[key]
+		od.mu.RUnlock()
+		if present {
+			return
+		}
 	}
 
 	sm.listener.entryRemoved(key, owner, version, origin)
@@ -968,8 +1026,7 @@ func (sm *stateMap) deleteIf(key, owner string, origin ChangeOrigin, stillWanted
 			ExpiresAt: sm.tombstoneDeadline(),
 		}
 
-		od := sm.getOrCreateOwner(owner)
-		od.mu.Lock()
+		od := sm.lockOwnerForWrite(owner)
 		existing, present := od.entries[key]
 		if stillWanted != nil && !stillWanted(existing, present) {
 			od.mu.Unlock()
@@ -987,14 +1044,13 @@ func (sm *stateMap) deleteIf(key, owner string, origin ChangeOrigin, stillWanted
 			return deleteRejected
 		}
 
-		sm.notifyEntry(od, e, false, origin)
+		sm.notifyEntry(e, false, origin)
 		if origin == OriginLocal {
 			sm.broadcastDelta(e)
 		}
 		return deleteApplied
 	} else {
-		od := sm.getOrCreateOwner(owner)
-		od.mu.Lock()
+		od := sm.lockOwnerForWrite(owner)
 		existing, ok := od.entries[key]
 		if stillWanted != nil && !stillWanted(existing, ok) {
 			od.mu.Unlock()
@@ -1014,7 +1070,7 @@ func (sm *stateMap) deleteIf(key, owner string, origin ChangeOrigin, stillWanted
 		od.mu.Unlock()
 
 		if notify {
-			sm.notifyRemoval(od, key, owner, version, origin)
+			sm.notifyRemoval(key, owner, version, origin)
 		}
 		if !ok {
 			return deleteSkipped
@@ -1032,13 +1088,9 @@ func (sm *stateMap) deleteIf(key, owner string, origin ChangeOrigin, stillWanted
 // types with tombstones=false, entries are simply cleared with no broadcast,
 // since there is no tombstone mechanism to propagate the removal.
 func (sm *stateMap) dropOwner(owner string, origin ChangeOrigin) {
-	od := sm.getOwner(owner)
-	if od == nil {
-		// Mark the owner as drained even if there are no entries yet, so that
-		// any race with an in-flight write is rejected. Create the ownerData
-		// in the cmap so the reaper can find and compact it out.
-		od = sm.getOrCreateOwner(owner)
-	}
+	// Created when absent, so the owner is marked drained even with no entries yet and an in-flight write is
+	// rejected, and so the reaper can find it and compact it out.
+	od := sm.lockOwnerForWrite(owner)
 
 	type tombstoned struct {
 		key     string
@@ -1047,7 +1099,6 @@ func (sm *stateMap) dropOwner(owner string, origin ChangeOrigin) {
 	}
 	var produced []tombstoned
 
-	od.mu.Lock()
 	if od.drained {
 		od.mu.Unlock()
 		return
@@ -1095,12 +1146,12 @@ func (sm *stateMap) dropOwner(owner string, origin ChangeOrigin) {
 	// version-ordered against any concurrent apply for this owner.
 	for _, t := range produced {
 		if t.e != nil {
-			sm.notifyEntry(od, t.e, false, origin)
+			sm.notifyEntry(t.e, false, origin)
 			if origin == OriginLocal {
 				sm.broadcastDelta(t.e)
 			}
 		} else {
-			sm.notifyRemoval(od, t.key, owner, t.version, origin)
+			sm.notifyRemoval(t.key, owner, t.version, origin)
 		}
 	}
 
@@ -1117,21 +1168,36 @@ func (sm *stateMap) dropOwner(owner string, origin ChangeOrigin) {
 			}
 			od.mu.Lock()
 			defer od.mu.Unlock()
-			return od.drained && len(od.entries) == 0
+			if !od.drained || len(od.entries) != 0 {
+				return false
+			}
+			od.detached = true
+			return true
 		})
 	}
 }
 
-// discard drops every entry the map holds, without notifying listeners and without telling peers.
+// discard drops every entry the map holds, without telling peers and without reporting the entries as
+// removed.
 //
 // For abandoning a map whose contents can no longer be trusted while the state they describe is still live
 // and about to be reported by other means. Nothing is tombstoned: a tombstone removes the state from every
 // controller, which is the opposite of what is wanted, and for an entry a router owns it would have to be
 // minted from this controller's clock.
 //
-// Owners are not drained, so the map accepts writes again once it is usable. An emptied owner is compacted
-// out so it stops appearing in digests and owner counts.
+// The listener is told through entriesDiscarded, after the entries are gone and outside every owner lock,
+// so it can drop whatever it derived from them. Entry callbacks are excluded for the whole of it, so one
+// cannot be delivered across the boundary in either direction.
+//
+// Owners are not drained, so the map accepts writes again once it is usable, and a write landing during the
+// discard keeps its entry; only its callback waits. An emptied owner is compacted out so it stops appearing
+// in digests and owner counts.
 func (sm *stateMap) discard() int {
+	// Exclusive for the whole operation, not just the notification: an entry stored between emptying the
+	// map and telling the listener would be reported and then cleared by a discard that never held it.
+	sm.discardGate.Lock()
+	defer sm.discardGate.Unlock()
+
 	discarded := 0
 	var emptied []string
 
@@ -1153,7 +1219,8 @@ func (sm *stateMap) discard() int {
 		}
 	})
 
-	// Re-check emptiness under the owner lock, so a write that raced the pass above keeps its ownerData.
+	// Re-check emptiness under the owner lock, so a write that raced the pass above keeps its ownerData, and
+	// mark what does go as detached, so a writer already holding the pointer retries on its replacement.
 	for _, owner := range emptied {
 		sm.owners.RemoveCb(owner, func(_ string, od *ownerData, exists bool) bool {
 			if !exists {
@@ -1161,8 +1228,16 @@ func (sm *stateMap) discard() int {
 			}
 			od.mu.Lock()
 			defer od.mu.Unlock()
-			return len(od.entries) == 0
+			if len(od.entries) != 0 {
+				return false
+			}
+			od.detached = true
+			return true
 		})
+	}
+
+	if sm.listener != nil {
+		sm.listener.entriesDiscarded()
 	}
 
 	return discarded
@@ -1416,7 +1491,11 @@ func (sm *stateMap) reapTombstones() {
 			}
 			od.mu.Lock()
 			defer od.mu.Unlock()
-			return od.drained && len(od.entries) == 0
+			if !od.drained || len(od.entries) != 0 {
+				return false
+			}
+			od.detached = true
+			return true
 		})
 	}
 }

@@ -247,6 +247,10 @@ func (network *Network) inspectGossipStore() *GossipStoreInspectResult {
 	}
 }
 
+// EntriesDiscarded is a no-op. The links built from these entries are live and are reported again by
+// whatever means replaces gossip, so removing them here would tear down working links.
+func (l *linkGossipListener) EntriesDiscarded() {}
+
 func (l *linkGossipListener) EntryRemoved(key string, owner string, version uint64, _ gossip.ChangeOrigin) {
 	linkId, iteration := ParseLinkGossipKey(key)
 

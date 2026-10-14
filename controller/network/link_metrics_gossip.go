@@ -130,6 +130,10 @@ func (l *linkMetricsGossipListener) EntryRemoved(key string, owner string, _ uin
 	linkMetricsGossipLog.Debug("link-metrics entry removed", "linkId", key, "owner", owner)
 }
 
+// EntriesDiscarded is a no-op. The latencies these entries carried are already applied to live links, and
+// are refreshed by whatever means replaces gossip.
+func (l *linkMetricsGossipListener) EntriesDiscarded() {}
+
 // LinkMetricsInspectResult is the JSON structure returned by the
 // "gossip-link-metrics" inspect key.
 type LinkMetricsInspectResult struct {
