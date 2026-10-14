@@ -115,6 +115,8 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 
 	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil && self.getNetwork().Dispatcher.IsLeader() {
+		// Cost and precedence aren't applied to an existing terminator: only updates change them, and a
+		// router re-establishing the terminator may send its configured values.
 		if err := ctx.validateExistingTerminator(terminator, logger); err != nil {
 			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
 			return
