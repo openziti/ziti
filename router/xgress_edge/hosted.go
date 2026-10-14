@@ -1442,7 +1442,7 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 	}
 
 	log := pfxlog.ContextLogger(self.terminator.edgeClientConn.ch.GetChannel().Label()).
-		WithField("token", self.terminator.serviceSessionToken).
+		WithFields(self.terminator.serviceSessionToken.LoggingFields()).
 		WithField("routerId", self.terminator.edgeClientConn.listener.id.Token).
 		WithField("listenerId", self.terminator.listenerId).
 		WithField("connId", self.terminator.MsgChannel.Id()).

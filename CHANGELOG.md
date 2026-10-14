@@ -73,6 +73,13 @@ and affected versions.
   control port to be admitted as an arbitrary router identity and manipulate that router's fabric terminators,
   faults, and circuit routing. Impact is limited to router data model metadata (service and identity names) and
   control-plane manipulation; it does not by itself grant access to the services the network protects.
+* [GHSA-ccq6-vc5v-4ghh](https://github.com/openziti/ziti/security/advisories/GHSA-ccq6-vc5v-4ghh) (Low): The controller and the router
+  wrote complete service session tokens into structured log fields during edge control operations, several of
+  them at Error or Info, so the values appeared in logs at default verbosity during ordinary operation. A
+  service session token does not authenticate a client on its own, because the controller validates it only
+  against a matching api session token, but logging it placed one half of a credential pair into logging
+  infrastructure, which carries its own access controls, retention, backups and exports. These log events now
+  carry the session id, which is not a credential.
 
 ## Connect-V2: Sessionless SDK Dial
 

@@ -1313,11 +1313,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 
 	if ctrlCh == nil {
 		errStr := "no controller available, cannot create terminator"
-		pfxlog.ContextLogger(ch.Label()).
-			WithField("token", string(req.Body)).
-			WithFields(sdkedge.GetLoggerFields(req)).
-			WithField("routerId", self.listener.id.Token).
-			Error(errStr)
+		log.Error(errStr)
 		self.sendStateClosedReply(errStr, req)
 		return
 	}
