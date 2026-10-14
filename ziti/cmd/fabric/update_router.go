@@ -21,7 +21,6 @@ import (
 
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
-	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/pkg/errors"
 
 	"github.com/Jeffail/gabs"
@@ -75,7 +74,7 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 
 // runUpdateRouter update a new router on the Ziti Edge Controller
 func runUpdateRouter(o *updateRouterOptions) error {
-	id, err := api.MapNameToID(util.FabricAPI, "routers", &o.Options, o.Args[0])
+	id, err := api.MapFabricNameToID("routers", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}

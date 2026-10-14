@@ -118,7 +118,7 @@ func runCreateEnrollmentOtt(options *createEnrollmentOptions) error {
 		return err
 	}
 
-	identityId, err := mapNameToID("identities", options.Args[0], options.Options)
+	identityId, err := api.MapEdgeNameToID("identities", &options.Options, options.Args[0])
 
 	if err != nil {
 		return err
@@ -163,13 +163,13 @@ func runCreateEnrollmentOttCa(options *createEnrollmentOptions) error {
 		return err
 	}
 
-	identityId, err := mapNameToID("identities", options.Args[0], options.Options)
+	identityId, err := api.MapEdgeNameToID("identities", &options.Options, options.Args[0])
 
 	if err != nil {
 		return err
 	}
 
-	caId, err := mapNameToID("cas", options.Args[1], options.Options)
+	caId, err := api.MapEdgeNameToID("cas", &options.Options, options.Args[1])
 
 	if err != nil {
 		return err
@@ -240,7 +240,7 @@ func runCreateEnrollmentUpdb(options *createEnrollmentOptions) error {
 		return err
 	}
 
-	identityId, err := mapNameToID("identities", options.Args[0], options.Options)
+	identityId, err := api.MapEdgeNameToID("identities", &options.Options, options.Args[0])
 
 	if err != nil {
 		return err

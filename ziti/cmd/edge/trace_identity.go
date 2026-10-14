@@ -76,7 +76,7 @@ func newTraceIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func runTraceIdentity(o *traceIdentityOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("identities", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
