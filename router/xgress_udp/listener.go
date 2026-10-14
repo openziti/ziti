@@ -42,6 +42,10 @@ type Session interface {
 	TimeoutNanos() int64
 	MarkActivity()
 	SessionId() string
+	// CloseFromEventLoop closes the session and removes it from its listener immediately. Only the
+	// listener's event loop may call it, since the loop owns the listener's sessions; everything else
+	// calls Close.
+	CloseFromEventLoop()
 }
 
 type EventHandler interface {
