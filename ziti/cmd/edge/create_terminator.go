@@ -69,12 +69,12 @@ func newCreateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 // runCreateTerminator implements the command to create a Terminator
 func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	entityData := gabs.New()
-	service, err := mapNameToID("services", o.Args[0], o.Options)
+	service, err := api.MapEdgeNameToID("services", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
 
-	router, err := mapNameToID("edge-routers", o.Args[1], o.Options)
+	router, err := api.MapEdgeNameToID("edge-routers", &o.Options, o.Args[1])
 	if err != nil {
 		router = o.Args[1] // might be a pure fabric router, id might not be UUID
 	}

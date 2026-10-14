@@ -130,7 +130,7 @@ func updateSelfPassword(current string, new string, options api.Options) error {
 }
 
 func setIdentityPassword(identity, password string, options api.Options) error {
-	id, err := mapIdentityNameToID(identity, options)
+	id, err := api.MapEdgeNameToID("identities", &options, identity)
 
 	if err != nil {
 		return err

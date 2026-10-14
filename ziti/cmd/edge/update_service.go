@@ -77,7 +77,7 @@ func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // runUpdateService update a new service on the Ziti Edge Controller
 func runUpdateService(o *updateServiceOptions) error {
-	id, err := mapNameToID("services", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("services", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func runUpdateService(o *updateServiceOptions) error {
 	}
 
 	if o.Cmd.Flags().Changed("configs") {
-		configs, err := mapNamesToIDs("configs", o.Options, false, o.configs...)
+		configs, err := api.MapEdgeNamesToIDs("configs", &o.Options, false, o.configs...)
 		if err != nil {
 			return err
 		}

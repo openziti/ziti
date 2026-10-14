@@ -71,7 +71,7 @@ func newCreateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // runCreateService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
-	configs, err := mapNamesToIDs("configs", o.Options, false, o.configs...)
+	configs, err := api.MapEdgeNamesToIDs("configs", &o.Options, false, o.configs...)
 	if err != nil {
 		return err
 	}

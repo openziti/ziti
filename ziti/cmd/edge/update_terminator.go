@@ -72,7 +72,7 @@ func newUpdateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 	entityData := gabs.New()
 
-	router, err := mapNameToID("edge-routers", o.router, o.Options)
+	router, err := api.MapEdgeNameToID("edge-routers", &o.Options, o.router)
 	if err != nil {
 		router = o.router // might be a pure fabric router, id might not be UUID
 	}

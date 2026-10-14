@@ -152,7 +152,7 @@ func runDeleteEntityOfType(o *deleteOptions, entityType string) error {
 	var err error
 	ids := o.Args
 	if entityType != "terminators" && entityType != "links" && entityType != "circuits" {
-		ids, err = api.MapNamesToIDs("fabric", entityType, &o.Options, ids...)
+		ids, err = api.MapFabricNamesToIDs(entityType, &o.Options, true, ids...)
 	}
 	if err != nil {
 		return err
