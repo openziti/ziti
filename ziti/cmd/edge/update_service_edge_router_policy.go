@@ -66,7 +66,7 @@ func newUpdateServiceEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra
 }
 
 func runUpdateServiceEdgeRouterPolicy(o *updateServiceEdgeRouterPolicyOptions) error {
-	id, err := mapNameToID("service-edge-router-policies", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("service-edge-router-policies", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}

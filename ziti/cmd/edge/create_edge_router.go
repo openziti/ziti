@@ -89,7 +89,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 		api.SetJSONValue(entityData, api.ParseCtrlChanListeners(o.bootstrapCtrlChanListeners), "ctrlChanListeners")
 	}
 	if len(o.configs) > 0 {
-		configs, err := mapNamesToIDs("configs", o.Options, false, o.configs...)
+		configs, err := api.MapEdgeNamesToIDs("configs", &o.Options, false, o.configs...)
 		if err != nil {
 			return err
 		}

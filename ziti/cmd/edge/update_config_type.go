@@ -67,7 +67,7 @@ func newUpdateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // runUpdateConfigType update a new config on the Ziti Edge Controller
 func (self *updateConfigTypeAction) run() error {
-	id, err := mapNameToID("config-types", self.Args[0], self.Options)
+	id, err := api.MapEdgeNameToID("config-types", &self.Options, self.Args[0])
 	if err != nil {
 		return err
 	}

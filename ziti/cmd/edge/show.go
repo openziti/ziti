@@ -70,7 +70,7 @@ type showConfigAction struct {
 }
 
 func (self *showConfigAction) run(_ *cobra.Command, args []string) error {
-	id, err := mapNameToID("configs", args[0], self.Options)
+	id, err := api.MapEdgeNameToID("configs", &self.Options, args[0])
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ type showConfigTypeAction struct {
 }
 
 func (self *showConfigTypeAction) run(_ *cobra.Command, args []string) error {
-	id, err := mapNameToID("config-types", args[0], self.Options)
+	id, err := api.MapEdgeNameToID("config-types", &self.Options, args[0])
 	if err != nil {
 		return err
 	}

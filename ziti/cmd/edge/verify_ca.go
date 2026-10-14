@@ -134,7 +134,7 @@ func NewVerifyCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 func runValidateCa(options *verifyCaOptions) error {
 	var err error
-	options.caId, err = mapCaNameToID(options.caNameOrId, options.Options)
+	options.caId, err = api.MapEdgeNameToID("cas", &options.Options, options.caNameOrId)
 
 	if err != nil {
 		return err
