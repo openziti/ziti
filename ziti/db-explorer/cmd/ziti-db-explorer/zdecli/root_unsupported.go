@@ -1,5 +1,7 @@
+//go:build !linux && !darwin && !freebsd && !windows
+
 /*
-	Copyright 2019 NetFoundry Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -14,19 +16,23 @@
 	limitations under the License.
 */
 
-package xgress_geneve
+package zdecli
 
 import (
-	"github.com/openziti/sdk-golang/xgress"
+	"fmt"
+	"runtime"
+
 	"github.com/pkg/errors"
 )
 
-type listener struct{}
+// CommandName allow usage and such to be altered to fit a hosting executable
+var CommandName = "ziti-db-explorer"
 
-func (self *listener) Listen(string, xgress.BindHandler) error {
-	return errors.New("geneve not supported in darwin")
+// Run always returns an error, since the interactive shell's prompt library does not build on this platform.
+func Run(string, string) error {
+	return errors.Errorf("the interactive database explorer is not supported on %s", runtime.GOOS)
 }
 
-func (self *listener) Close() error {
-	return nil
+func PrintUsage() {
+	fmt.Printf("'%s' is not supported on %s\n", CommandName, runtime.GOOS)
 }

@@ -1,3 +1,5 @@
+//go:build !linux
+
 /*
 	Copyright NetFoundry Inc.
 
@@ -17,11 +19,13 @@
 package tproxy
 
 import (
+	"runtime"
+
 	"github.com/openziti/ziti/v2/tunnel/intercept"
 	"github.com/openziti/ziti/v2/tunnel/intercept/proxy"
 	"github.com/pkg/errors"
 )
 
-func New(config Config, alerter proxy.Alerter) (intercept.Interceptor, error) {
-	return nil, errors.New("tproxy not supported on FreeBSD")
+func New(Config, proxy.Alerter) (intercept.Interceptor, error) {
+	return nil, errors.Errorf("tproxy not supported on %s", runtime.GOOS)
 }

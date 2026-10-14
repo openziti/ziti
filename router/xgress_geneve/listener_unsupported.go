@@ -1,3 +1,5 @@
+//go:build !linux && !freebsd
+
 /*
 	Copyright NetFoundry Inc.
 
@@ -14,14 +16,21 @@
 	limitations under the License.
 */
 
-package tproxy
+package xgress_geneve
 
 import (
-	"github.com/openziti/ziti/v2/tunnel/intercept"
-	"github.com/openziti/ziti/v2/tunnel/intercept/proxy"
+	"runtime"
+
+	"github.com/openziti/sdk-golang/xgress"
 	"github.com/pkg/errors"
 )
 
-func New(config Config, alerter proxy.Alerter) (intercept.Interceptor, error) {
-	return nil, errors.New("tproxy not supported on windows")
+type listener struct{}
+
+func (self *listener) Listen(string, xgress.BindHandler) error {
+	return errors.Errorf("geneve not supported on %s", runtime.GOOS)
+}
+
+func (self *listener) Close() error {
+	return nil
 }
