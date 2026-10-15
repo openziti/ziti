@@ -47,6 +47,8 @@ type HostingContext interface {
 	GetTerminatorIdCacheKey() string
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
+	// Dial connects to the upstream selected by options, an accepted conn's app data, and reports
+	// whether the returned conn supports half close. It must be safe for concurrent use.
 	Dial(options map[string]interface{}) (net.Conn, bool, error)
 	GetHealthChecks() []health.CheckDefinition
 	GetInitialHealthState() (ziti.Precedence, uint16)
