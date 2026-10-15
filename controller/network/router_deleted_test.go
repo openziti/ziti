@@ -243,3 +243,33 @@ func TestScanForDeadLinks_StillRetiresADialerThatStaysAway(t *testing.T) {
 	_, found := network.Link.Get(link.Id)
 	req.False(found, "a dialer that is still away must have its links retired")
 }
+
+// TestGossipTypes_EverySweepDecisionIsDeliberate guards the invariant the epoch sweep's registry is read
+// under: it is written only while the network is being built and read without a lock from ctrl channel
+// handlers, so it has to be complete before the first router connects. Adding a gossip store type must be
+// a decision about the sweep, taken here, rather than an omission that shows up as entries from a previous
+// router lifetime never being collected.
+func TestGossipTypes_EverySweepDecisionIsDeliberate(t *testing.T) {
+	_, network, _ := newConnectTestNetwork(t)
+
+	inSweep := map[string]bool{}
+	for _, name := range network.GossipStoreTypes() {
+		inSweep[name] = true
+	}
+
+	// Canaries carry the epoch that detects a change of lifetime, so they have to survive the sweep that
+	// epoch drives.
+	excludedFromSweep := map[string]bool{CanaryGossipStoreType: true}
+
+	storeTypes := network.GossipStore.StoreTypes()
+	require.NotEmpty(t, storeTypes, "the store must have its types registered once the network is built")
+
+	for _, storeType := range storeTypes {
+		require.NotEqual(t, inSweep[storeType], excludedFromSweep[storeType],
+			"gossip store %q must either take part in the epoch sweep or be named here as deliberately out of it",
+			storeType)
+	}
+
+	require.True(t, inSweep[LinkGossipStoreType], "links from a previous router lifetime must be swept")
+	require.True(t, inSweep[LinkMetricsGossipStoreType], "link metrics from a previous router lifetime must be swept")
+}

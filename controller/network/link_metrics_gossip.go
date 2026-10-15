@@ -59,7 +59,7 @@ func (network *Network) initLinkMetricsGossip() {
 	})
 
 	network.LinkMetricsType = metricsType
-	network.RegisterGossipType(LinkMetricsGossipStoreType, metricsType)
+	network.registerGossipType(LinkMetricsGossipStoreType, metricsType)
 	network.onRouterDeleted(LinkMetricsGossipStoreType, metricsType.DropOwner)
 }
 

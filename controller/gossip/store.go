@@ -400,6 +400,17 @@ func (s *Store) GetDigestForOwner(storeType, owner string) []*gossip_pb.DigestEn
 	return sm.getDigestForOwner(owner)
 }
 
+// StoreTypes returns the name of every state type registered on the store, in no particular order. For
+// callers that keep their own registry of store types and need to check it against the store's.
+func (s *Store) StoreTypes() []string {
+	var names []string
+	s.types.Range(func(key, _ any) bool {
+		names = append(names, key.(string))
+		return true
+	})
+	return names
+}
+
 func (s *Store) getStateMap(name string) *stateMap {
 	v, ok := s.types.Load(name)
 	if !ok {

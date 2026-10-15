@@ -137,6 +137,11 @@ type Network struct {
 	CanaryGossipType *gossip.StateType[*CanaryValue]
 	// gossipTypes drives the epoch sweep only. Router-deleted cleanup is a separate lifecycle with a
 	// different membership, since canaries carry the epoch that detects a change and so must survive one.
+	//
+	// Written only by initGossip and read without synchronisation by ctrl channel handlers, which exist
+	// only once a router connects and so are ordered after construction. Registering a type later would
+	// race those readers, and the type would in any case be missed by the per-store-type work already done
+	// for every connected router.
 	gossipTypes           map[string]gossip.StateTypeInfo // non-generic lookup by store type
 	routerDeletedCleanups []routerDeletedCleanup
 	canaryListener        *canaryGossipListener
@@ -201,6 +206,7 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 		lastSnapshot:          time.Now().Add(-time.Hour),
 		metricsRegistry:       config.GetMetricsRegistry(),
 		VersionProvider:       config.GetVersionProvider(),
+		gossipTypes:           map[string]gossip.StateTypeInfo{},
 
 		serviceEventMetrics:          serviceEventMetrics,
 		serviceDialSuccessCounter:    serviceEventMetrics.IntervalCounter("service.dial.success", time.Minute),
@@ -289,7 +295,6 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 // A controller that has no peers gets a mesh with none rather than no mesh, so nothing downstream has to
 // special-case single-controller mode.
 func (network *Network) initGossip(peering GossipPeering) {
-
 	mesh := peering.Mesh
 	if mesh == nil {
 		mesh = gossip.NewNoopMesh()
@@ -803,12 +808,10 @@ func (network *Network) ClusterSupports(capability capabilities.ControllerCapabi
 	return mask == nil || mask.IsSet(capability)
 }
 
-// RegisterGossipType registers a gossip state type for non-generic lookup by
-// store type name. Used by the staleness detection logic.
-func (network *Network) RegisterGossipType(name string, t gossip.StateTypeInfo) {
-	if network.gossipTypes == nil {
-		network.gossipTypes = map[string]gossip.StateTypeInfo{}
-	}
+// registerGossipType registers a gossip state type for non-generic lookup by store type name, for the
+// staleness detection logic. Call only from initGossip: the map it writes is read unsynchronised, and the
+// set of types has to be complete before the first router connects.
+func (network *Network) registerGossipType(name string, t gossip.StateTypeInfo) {
 	network.gossipTypes[name] = t
 }
 

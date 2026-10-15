@@ -19,8 +19,10 @@ package model
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/stretchr/testify/require"
 )
@@ -122,4 +124,62 @@ func Test_InspectDeferredReports_RendersTheHeldSet(t *testing.T) {
 	req.Equal("src-1", byLink["l1"].SrcRouterId)
 	req.Equal("src-2", byLink["l2"].SrcRouterId)
 	req.Zero(byLink["l1"].Attempts, "a report that has not been judged yet has made no attempts")
+}
+
+// Test_RetryDeferredReports_KeepsAReportDeferredWhileItRuns: a pass resolves every report it handled by
+// deleting it, which is wrong for one that was deferred again while the pass was running. The motivating
+// case is the destination going between the pass finding it and RouterReportedLink looking again, which
+// hands the report straight back to deferReport; that window cannot be opened from outside, so the guard is
+// exercised here through the other path into it, a router re-announcing the link mid-pass. Either way the
+// fresh deferral has to outlive the pass, since nothing would say the link again.
+func Test_RetryDeferredReports_KeepsAReportDeferredWhileItRuns(t *testing.T) {
+	req := require.New(t)
+	ctx := NewTestContext(t)
+	defer ctx.Cleanup()
+
+	lm := ctx.GetManagers().Link
+	routers := ctx.GetManagers().Router
+
+	src := NewRouter("src", "", "", 0, true)
+	req.NoError(routers.Create(src, change.New()))
+	routers.MarkConnected(src)
+
+	dst := NewRouter("dst", "", "", 0, true)
+	req.NoError(routers.Create(dst, change.New()))
+
+	report := &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l1",
+		DestRouterId: dst.Id,
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	}
+	req.Equal(deferHeld, lm.deferReport(report, src))
+
+	// RouterReportedLink takes the link's stripe before doing anything else, so holding it parks the pass
+	// between taking the report and resolving it.
+	unlock := lm.linkLocks.LockFor(report.Id)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		lm.RetryDeferredReports()
+	}()
+
+	// The pass counts itself against the report while it takes it, under the lock, so an attempt recorded
+	// means the report has been taken and the pass can get no further than the stripe.
+	req.Eventually(func() bool {
+		held := lm.InspectDeferredReports().Reports
+		return len(held) == 1 && held[0].Attempts == 1
+	}, time.Second, time.Millisecond, "the pass must take the report before the link is re-reported")
+
+	req.Equal(deferHeld, lm.deferReport(report, src), "the reporting router announces the link again")
+
+	unlock()
+	<-done
+
+	_, applied := lm.Get(report.Id)
+	req.True(applied, "the pass must still apply the report it took")
+	req.Equal(1, lm.DeferredReportCount(),
+		"a report deferred again while the pass ran must survive it, or nothing says the link again")
 }

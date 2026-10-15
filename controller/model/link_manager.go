@@ -82,6 +82,23 @@ type deferredReport struct {
 	reportedLink *ctrl_pb.RouterLinks_RouterLink
 	srcRouterId  string
 	attempts     int
+
+	// holds counts the times deferReport has held this report. A retry pass records the count it took the
+	// report at and resolves it only while the count still matches, since handling a report can hand it
+	// straight back and that fresh deferral has to outlive the pass that produced it.
+	//
+	// Read and written only under deferredReportsLock.
+	holds uint64
+}
+
+// pendingReport is one held report as a retry pass took it, so the pass can act without holding
+// deferredReportsLock and without reading a struct a concurrent report may be rewriting.
+type pendingReport struct {
+	linkId       string
+	reportedLink *ctrl_pb.RouterLinks_RouterLink
+	srcRouterId  string
+	attempts     int
+	holds        uint64
 }
 
 // deferOutcome says what deferReport did with a report, so a caller reporting on it can say which of the
@@ -285,6 +302,7 @@ func (self *LinkManager) deferReport(reportedLink *ctrl_pb.RouterLinks_RouterLin
 		// is the earlier of the two, so keeping it resolves the report sooner.
 		existing.reportedLink = reportedLink
 		existing.srcRouterId = src.Id
+		existing.holds++
 		return deferHeld
 	}
 
@@ -295,6 +313,7 @@ func (self *LinkManager) deferReport(reportedLink *ctrl_pb.RouterLinks_RouterLin
 	self.deferredReports[reportedLink.Id] = &deferredReport{
 		reportedLink: reportedLink,
 		srcRouterId:  src.Id,
+		holds:        1,
 	}
 	return deferHeld
 }
@@ -323,58 +342,77 @@ func (self *LinkManager) RetryDeferredReports() {
 
 	self.deferredReportsLock.Lock()
 	barrier := self.deferredBarrier
-	pending := make([]*deferredReport, 0, len(self.deferredReports))
-	for _, report := range self.deferredReports {
-		pending = append(pending, report)
-	}
+	empty := len(self.deferredReports) == 0
 	self.deferredReportsLock.Unlock()
 
-	if len(pending) == 0 {
+	if empty {
 		return
 	}
 
 	// Still short of what the cluster had committed when the last pass ran, so nothing here could tell us
-	// anything new yet.
+	// anything new yet. Checked before this pass is counted against any report, so a pass that judges
+	// nothing does not spend an attempt.
 	if self.env.GetRaftIndex() < barrier {
 		return
 	}
 
+	// Copy what each held report says, and count this pass against it, under the lock. A held report is
+	// mutated in place by any concurrent re-report of the same link, so the pass works from a snapshot
+	// rather than reading the shared struct while it runs.
+	self.deferredReportsLock.Lock()
+	pending := make([]pendingReport, 0, len(self.deferredReports))
+	for id, report := range self.deferredReports {
+		report.attempts++
+		pending = append(pending, pendingReport{
+			linkId:       id,
+			reportedLink: report.reportedLink,
+			srcRouterId:  report.srcRouterId,
+			attempts:     report.attempts,
+			holds:        report.holds,
+		})
+	}
+	self.deferredReportsLock.Unlock()
+
 	routers := self.env.GetManagers().Router
-	var resolved []string
+	var resolved []pendingReport
 
 	for _, report := range pending {
-		report.attempts++
-
 		src := routers.GetConnected(report.srcRouterId)
 		if src == nil {
 			// The reporting router has gone. It announces its whole set again when it returns, so there is
 			// nothing left here to hold.
-			resolved = append(resolved, report.reportedLink.Id)
+			resolved = append(resolved, report)
 			continue
 		}
 
 		dst := routers.GetConnected(report.reportedLink.DestRouterId)
 		if dst != nil || self.destinationExists(report.reportedLink.DestRouterId) {
 			self.RouterReportedLink(report.reportedLink, src, dst)
-			resolved = append(resolved, report.reportedLink.Id)
+			resolved = append(resolved, report)
 			linkLog.Info("applied deferred link report once its destination was known",
-				"linkId", report.reportedLink.Id,
+				"linkId", report.linkId,
 				"destRouterId", report.reportedLink.DestRouterId)
 			continue
 		}
 
 		if report.attempts >= maxDeferredReportAttempts {
-			resolved = append(resolved, report.reportedLink.Id)
+			resolved = append(resolved, report)
 			linkLog.Warn("dropping link report naming a destination router that does not exist",
-				"linkId", report.reportedLink.Id,
+				"linkId", report.linkId,
 				"destRouterId", report.reportedLink.DestRouterId,
 				"attempts", report.attempts)
 		}
 	}
 
 	self.deferredReportsLock.Lock()
-	for _, id := range resolved {
-		delete(self.deferredReports, id)
+	for _, report := range resolved {
+		// The destination can go between this pass finding it and RouterReportedLink looking again, which
+		// hands the report back to deferReport. Resolving it here would undo a deferral the link manager
+		// has just decided on, and nothing would say the link again.
+		if held, found := self.deferredReports[report.linkId]; found && held.holds != report.holds {
+			continue
+		}
+		delete(self.deferredReports, report.linkId)
 	}
 	// Anything still held is judged next pass against everything committed as of now.
 	self.deferredBarrier = self.raftCommitIndex()
