@@ -115,8 +115,10 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 		return
 	}
 
-	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
-	if terminator != nil && self.getNetwork().Dispatcher.IsLeader() {
+	terminator := ctx.readExistingTerminator()
+	if terminator != nil {
+		// Cost and precedence aren't applied to an existing terminator: only updates change them, and a
+		// router re-establishing the terminator may send its configured values.
 		if err := ctx.validateExistingTerminator(terminator, ctx.identity.Id, common.TunnelBinding, logger); err != nil {
 			self.returnError(ctx, err, logger)
 			return
@@ -186,4 +188,17 @@ func (self *createTunnelTerminatorV2Handler) CreateTerminator(ctx *createTunnelT
 type createTunnelTerminatorV2RequestContext struct {
 	baseTunnelRequestContext
 	req *edge_ctrl_pb.CreateTunnelTerminatorRequestV2
+}
+
+// readExistingTerminator returns the terminator the request names when this controller is a caught-up
+// leader, or not clustered, and holds it. Otherwise it returns nil, and the caller dispatches the create
+// so the leader decides whether the terminator exists.
+func (self *createTunnelTerminatorV2RequestContext) readExistingTerminator() *model.Terminator {
+	// Not IsLeader: a leader mid-catch-up can hold a terminator the cluster has since deleted. A leader
+	// deposed without knowing it still can; that window is accepted.
+	if !self.handler.getNetwork().Dispatcher.IsLeaderAndCaughtUp() {
+		return nil
+	}
+	terminator, _ := self.handler.getNetwork().Terminator.Read(self.req.Address)
+	return terminator
 }
