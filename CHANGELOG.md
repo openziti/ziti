@@ -13,6 +13,7 @@
     * [Issue #4458](https://github.com/openziti/ziti/issues/4458) - [Backport-1.6] Controller can maintain invalid links when disconnected for longer periods
     * [Issue #4439](https://github.com/openziti/ziti/issues/4439) - [Backport-1.6] Seed the router data model index gate from the applied raft index
     * [Issue #4445](https://github.com/openziti/ziti/issues/4445) - [Backport-1.6] Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
+    * [Issue #4606](https://github.com/openziti/ziti/issues/4606) - [Backport-1.6] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
 
 
 # Release 1.6.21
