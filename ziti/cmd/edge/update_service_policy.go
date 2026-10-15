@@ -68,7 +68,7 @@ func newUpdateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
-	id, err := mapNameToID("service-policies", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("service-policies", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
