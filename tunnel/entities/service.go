@@ -128,7 +128,8 @@ type HostV1Config struct {
 	ListenOptions *HostV1ListenOptions
 	Proxy         *ProxyConfiguration
 
-	allowedAddrs []allowedAddress
+	allowedAddrsOnce sync.Once
+	allowedAddrs     []allowedAddress
 }
 
 func (self *HostV1Config) GetAllowConfig() tunnel.AllowConfig {
@@ -231,20 +232,21 @@ func (self *HostV1Config) GetDialTimeout(defaultTimeout time.Duration) time.Dura
 	return defaultTimeout
 }
 
+// GetAllowedAddresses returns AllowedAddresses parsed into matchers, skipping and logging any that
+// fail to parse. It parses on the first call and is safe for concurrent use; AllowedAddresses must
+// not change after that first call.
 func (self *HostV1Config) GetAllowedAddresses() []allowedAddress {
-	log := pfxlog.Logger()
-	if self.allowedAddrs != nil {
-		return self.allowedAddrs
-	}
-
-	for _, addrStr := range self.AllowedAddresses {
-		if address, err := makeAllowedAddress(addrStr); err == nil {
-			self.allowedAddrs = append(self.allowedAddrs, address)
-		} else {
-			log.WithError(err).Warn("failed to parse allowed address")
+	self.allowedAddrsOnce.Do(func() {
+		var result []allowedAddress
+		for _, addrStr := range self.AllowedAddresses {
+			if address, err := makeAllowedAddress(addrStr); err == nil {
+				result = append(result, address)
+			} else {
+				pfxlog.Logger().WithError(err).Warn("failed to parse allowed address")
+			}
 		}
-	}
-
+		self.allowedAddrs = result
+	})
 	return self.allowedAddrs
 }
 
