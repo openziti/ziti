@@ -59,8 +59,10 @@ func (self *sendClusterMembersHandler) HandleReceive(msg *channel.Message, ch ch
 			return
 		}
 
+		term, isLeader := self.network.Dispatcher.LeadershipTerm()
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
-			IsLeader:    self.network.Dispatcher.IsLeader(),
+			IsLeader:    isLeader,
+			Term:        term,
 			Addresses:   data,
 			Index:       index,
 			Controllers: controllers,
