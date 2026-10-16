@@ -22,13 +22,13 @@ release/
 # ai agents
 .claude
 .mercurius/
-mercurius.yaml
+mercurius.yaml*
 .mcp.json
 
 # mercurius review tooling
 .mcp.json
 .mercurius/
-mercurius.yaml
+mercurius.yaml*
 
 # goland
 .idea
