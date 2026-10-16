@@ -38,7 +38,7 @@ type bindHandler struct {
 	forwarder                  *forwarder.Forwarder
 	xgDialerPool               goroutines.Pool
 	terminatorValidationPool   goroutines.Pool
-	ctrlAddrChangeHandler      channel.ContentTypeReceiver
+	ctrlAddrChangeHandler      *updateCtrlAddressesHandler
 	clusterLeaderChangeHandler channel.ContentTypeReceiver
 }
 
@@ -85,13 +85,15 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder) (ch
 		return nil, fmt.Errorf("error creating terminator validation pool (%w)", err)
 	}
 
+	ctrlAddrChangeHandler := newUpdateCtrlAddressesHandler(routerEnv)
+
 	return &bindHandler{
 		env:                        routerEnv,
 		forwarder:                  forwarder,
 		xgDialerPool:               xgDialerPool,
 		terminatorValidationPool:   terminatorValidationPool,
-		ctrlAddrChangeHandler:      newUpdateCtrlAddressesHandler(routerEnv),
-		clusterLeaderChangeHandler: newUpdateClusterLeaderHandler(routerEnv),
+		ctrlAddrChangeHandler:      ctrlAddrChangeHandler,
+		clusterLeaderChangeHandler: ctrlAddrChangeHandler.clusterLeaderReceiver(),
 	}, nil
 }
 
@@ -115,7 +117,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	channel.AddReceiveHandlers(binding, newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	channel.AddReceiveHandlers(binding, self.env.GetInspectHandler())
 	channel.AddReceiveHandlers(binding, newCheckStaleLinksHandler(self.env))
-	channel.AddReceiveHandlers(binding, newSettingsHandler(self.env))
+	channel.AddReceiveHandlers(binding, newSettingsHandler(self.ctrlAddrChangeHandler))
 	channel.AddReceiveHandlers(binding, newFaultHandler(self.env.GetXlinkRegistry()))
 	channel.AddReceiveHandlers(binding, self.ctrlAddrChangeHandler)
 	channel.AddReceiveHandlers(binding, self.clusterLeaderChangeHandler)
