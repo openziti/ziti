@@ -801,6 +801,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4573](https://github.com/openziti/ziti/issues/4573) - Router can drop controllers on a follower's stale controller list and never re-add them
     * [Issue #3482](https://github.com/openziti/ziti/issues/3482) - Compilation fails on Illumos
     * [Issue #4543](https://github.com/openziti/ziti/issues/4543) - Router deadlocks syncing subscribers when a subscribed identity was deleted or disabled while out of sync
     * [Issue #4542](https://github.com/openziti/ziti/issues/4542) - Disabling a connected router deadlocks the controller
