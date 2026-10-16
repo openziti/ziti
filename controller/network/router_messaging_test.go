@@ -17,6 +17,7 @@
 package network
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -197,6 +199,256 @@ func TestReconcileGossipLinksForRouter_RefusedDeletedDestNotifiesOwner(t *testin
 
 	_, held := network.Link.Get("l0")
 	req.False(held, "a link to a router that does not exist must not be recorded")
+
+	requireRemovalNotice(t, network, dialer.Id, "deleted-router",
+		"refusing the gossip entry must tell its owner the destination is gone")
+}
+
+// TestSweepGossipLinks_AppliesEntriesHeldBackByCatchUp: a gossiped report is not held anywhere, so the
+// store is what asks again. Without the sweep the link waits for its dialer to reconnect, which a gossiping
+// router may not do for days.
+func TestSweepGossipLinks_AppliesEntriesHeldBackByCatchUp(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	ctx.RaftNotCaughtUp = true
+
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("l0", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: "arrives-later", LinkProtocol: "tls", Iteration: 1}))
+
+	_, found := network.Link.Get("l0")
+	req.False(found, "the link must not be built while its destination cannot be judged")
+	req.Zero(network.Link.DeferredReportCount(), "and a gossiped report must not be held a second time")
+
+	req.NotNil(newPersistedRouter(t, network, addr, "arrives-later"))
+	ctx.RaftNotCaughtUp = false
+
+	network.sweepGossipLinks()
+
+	_, found = network.Link.Get("l0")
+	req.True(found, "the sweep must re-ask the store once this controller has caught up")
+}
+
+// TestSweepGossipLinks_KeepsAskingWhileThisControllerIsBehind: the sweep takes the pending set before it
+// applies anything, so an entry it still cannot judge has to put itself back. Otherwise the first pass
+// while behind is also the last one, and the entry is never looked at again.
+func TestSweepGossipLinks_KeepsAskingWhileThisControllerIsBehind(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	ctx.RaftNotCaughtUp = true
+
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("l0", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: "arrives-later", LinkProtocol: "tls", Iteration: 1}))
+
+	for i := 0; i < 3; i++ {
+		network.sweepGossipLinks()
+		_, found := network.Link.Get("l0")
+		req.False(found, "nothing has changed yet, so the answer must not have")
+	}
+
+	req.NotNil(newPersistedRouter(t, network, addr, "arrives-later"))
+	ctx.RaftNotCaughtUp = false
+
+	network.sweepGossipLinks()
+
+	_, found := network.Link.Get("l0")
+	req.True(found, "a sweep that cannot judge an entry must leave itself owed another")
+	req.Zero(network.GossipLinkSweepPendingCount(), "and must stop asking once it has an answer")
+}
+
+// linkEventCapture records the link events a network under test dispatches. The test dispatcher discards
+// them, so a test that is about what is announced has to stand in front of it.
+type linkEventCapture struct {
+	event.Dispatcher
+	lock   sync.Mutex
+	events []*event.LinkEvent
+}
+
+func (self *linkEventCapture) AcceptLinkEvent(evt *event.LinkEvent) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.events = append(self.events, evt)
+}
+
+// typesFor returns the event types announced for linkId, in order.
+func (self *linkEventCapture) typesFor(linkId string) []event.LinkEventType {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	var result []event.LinkEventType
+	for _, evt := range self.events {
+		if evt.LinkId == linkId {
+			result = append(result, evt.EventType)
+		}
+	}
+	return result
+}
+
+// TestReconcileGossipLinksForRouter_DoesNotReannounceLinksItFindsUnchanged: the connect-time walk asks
+// about every entry the router published, and in the ordinary case every one of them is already current.
+// Announcing those puts the router's whole set on the event stream on each connect, as news, when nothing
+// has changed.
+func TestReconcileGossipLinksForRouter_DoesNotReannounceLinksItFindsUnchanged(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+	events := &linkEventCapture{Dispatcher: network.eventDispatcher}
+	network.eventDispatcher = events
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	peer := newPersistedRouter(t, network, addr, "peer")
+	req.NotNil(peer)
+
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("l0", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: peer.Id, LinkProtocol: "tls", Iteration: 1}))
+	req.Equal([]event.LinkEventType{event.LinkFromRouterNew}, events.typesFor("l0"),
+		"the entry arriving is news and must be announced")
+
+	network.ReconcileGossipLinksForRouter(dialer)
+	network.ReconcileGossipLinksForRouter(dialer)
+
+	req.Equal([]event.LinkEventType{event.LinkFromRouterNew}, events.typesFor("l0"),
+		"a walk that finds the link already current has nothing to announce")
+}
+
+// TestSweepGossipLinks_AsksOnlyAboutEntriesItCouldNotJudge: one unknown destination must not put the whole
+// store through the sweep. The sweep runs every cycle for as long as catch-up lasts, and a full-store pass
+// would re-apply every established link each time, at exactly the moment this controller is already behind.
+func TestSweepGossipLinks_AsksOnlyAboutEntriesItCouldNotJudge(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+	events := &linkEventCapture{Dispatcher: network.eventDispatcher}
+	network.eventDispatcher = events
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	peer := newPersistedRouter(t, network, addr, "peer")
+	req.NotNil(peer)
+
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("established", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "established", DestRouterId: peer.Id, LinkProtocol: "tls", Iteration: 1}))
+	link, found := network.Link.Get("established")
+	req.True(found)
+
+	// Taken out of the link manager but left in the store, so that a pass over the whole store would put it
+	// back and a pass over the pending entries alone would not. The sweep is not a store-to-manager
+	// reconciler: entries whose notification was missed are the connect-time walk's business, and doing
+	// that work every cycle is the cost this is about.
+	req.True(network.Link.Remove(link))
+
+	ctx.RaftNotCaughtUp = true
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("pending", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "pending", DestRouterId: "arrives-later", LinkProtocol: "tls", Iteration: 1}))
+
+	req.Equal(1, network.GossipLinkSweepPendingCount(),
+		"only the entry that could not be judged is owed another look")
+
+	before := events.typesFor("established")
+	network.sweepGossipLinks()
+
+	_, found = network.Link.Get("established")
+	req.False(found, "the sweep must ask only about the entries it could not judge")
+	req.Equal(before, events.typesFor("established"), "and announce nothing for the rest")
+	req.Equal(1, network.GossipLinkSweepPendingCount(), "the pending entry is still pending")
+}
+
+// TestSweepGossipLinks_AppliesUnderTheStoresDeliveryLock: the sweep reads an entry and acts on it, and the
+// two have to be one step. If the store can deliver for that key in between, a tombstone's callback removes
+// the link and the sweep then rebuilds it from a value the store has already retired.
+func TestSweepGossipLinks_AppliesUnderTheStoresDeliveryLock(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	ctx.RaftNotCaughtUp = true
+
+	key := LinkGossipKey("l0", 1)
+	req.NoError(network.LinkGossipType.Set(key, dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: "arrives-later", LinkProtocol: "tls", Iteration: 1}))
+	req.Equal(1, network.GossipLinkSweepPendingCount())
+
+	req.NotNil(newPersistedRouter(t, network, addr, "arrives-later"))
+	ctx.RaftNotCaughtUp = false
+
+	// Holding the key's delivery lock stands in for a removal being delivered for it: what matters is that
+	// the sweep cannot read and apply across that, whichever of the two is inside.
+	inside := make(chan struct{})
+	release := make(chan struct{})
+	held := make(chan struct{})
+	go func() {
+		defer close(held)
+		network.LinkGossipType.WithEntry(dialer.Id, key, func(_ *ctrl_pb.RouterLinks_RouterLink, _ bool) {
+			close(inside)
+			<-release
+		})
+	}()
+	<-inside
+
+	swept := make(chan struct{})
+	go func() {
+		defer close(swept)
+		network.sweepGossipLinks()
+	}()
+
+	require.Never(t, func() bool {
+		_, found := network.Link.Get("l0")
+		return found
+	}, 100*time.Millisecond, 10*time.Millisecond,
+		"the sweep must not apply an entry while the store's delivery for its key is held")
+
+	close(release)
+	<-held
+	<-swept
+
+	_, found := network.Link.Get("l0")
+	req.True(found, "and must apply it once the key is free")
+}
+
+// TestApplyGossipLinkEntries_SkipsAnEntryRetiredSinceTheWalk: a store walk names entries rather than
+// carrying what they said, because applying one reaches the link manager and so has to happen after the
+// walk. In that gap the dialer can retire the link, and rebuilding it from what the walk saw would undo a
+// tombstone that has already been applied.
+func TestApplyGossipLinkEntries_SkipsAnEntryRetiredSinceTheWalk(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	peer := newPersistedRouter(t, network, addr, "peer")
+	req.NotNil(peer)
+
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("l0", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: peer.Id, LinkProtocol: "tls", Iteration: 1}))
+
+	refs := network.collectGossipLinkRefsForOwner(dialer.Id)
+	req.Len(refs, 1)
+
+	network.LinkGossipType.Delete(LinkGossipKey("l0", 1), dialer.Id)
+	_, found := network.Link.Get("l0")
+	req.False(found, "the tombstone must have removed the link before the walk's references are used")
+
+	applied, _ := network.applyGossipLinkEntries(refs)
+
+	req.Zero(applied)
+	_, found = network.Link.Get("l0")
+	req.False(found, "a walk must not rebuild a link whose entry was retired since it ran")
+}
+
+// TestSweepGossipLinks_SettlesAGenuinelyDeletedDestination is what bounds the sweep in place of an attempt
+// count. Once this controller is current, the entry is refused rather than left pending, its owner is told
+// the destination is gone, and the owner retires the entry out of the store.
+func TestSweepGossipLinks_SettlesAGenuinelyDeletedDestination(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("l0", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: "deleted-router", LinkProtocol: "tls", Iteration: 1}))
+
+	_, found := network.Link.Get("l0")
+	req.False(found, "a link to a router that does not exist must not be recorded")
+	req.Zero(network.GossipLinkSweepPendingCount(),
+		"a refusal is an answer, so it must not leave the entry pending")
 
 	requireRemovalNotice(t, network, dialer.Id, "deleted-router",
 		"refusing the gossip entry must tell its owner the destination is gone")

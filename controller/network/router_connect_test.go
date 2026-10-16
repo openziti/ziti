@@ -509,14 +509,14 @@ func TestLinkGossipListener_EntryRemovedRequiresEndpoint(t *testing.T) {
 
 	newLink := func(t *testing.T) *model.Link {
 		t.Helper()
-		link, created := network.Link.RouterReportedLink(&ctrl_pb.RouterLinks_RouterLink{
+		link, outcome := network.Link.RouterReportedLink(&ctrl_pb.RouterLinks_RouterLink{
 			Id:           "l0",
 			DestRouterId: dst.Id,
 			LinkProtocol: "tls",
 			DialAddress:  "tcp:localhost:1234",
 			Iteration:    1,
 		}, src, dst)
-		require.True(t, created)
+		require.Equal(t, model.LinkReportCreated, outcome)
 		require.NotNil(t, link)
 		return link
 	}
@@ -572,8 +572,8 @@ func TestNotifyExistingLink_RefusedReportRaisesNoEvent(t *testing.T) {
 		}
 	}
 
-	link, created := network.Link.RouterReportedLink(report(1), src, dst)
-	require.True(t, created)
+	link, outcome := network.Link.RouterReportedLink(report(1), src, dst)
+	require.Equal(t, model.LinkReportCreated, outcome)
 	require.NotNil(t, link)
 
 	// The reporting router has to be the current connection to get as far as the report.
@@ -628,8 +628,8 @@ func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
 	network.Link.BuildRouterLinks(dst)
 
 	// Only now does the report land, still carrying the resolution that was accurate when it was taken.
-	link, created := network.Link.RouterReportedLink(report, src, resolved)
-	require.True(t, created)
+	link, outcome := network.Link.RouterReportedLink(report, src, resolved)
+	require.Equal(t, model.LinkReportCreated, outcome)
 	require.NotNil(t, link)
 
 	require.Same(t, dst, link.GetDest(),
@@ -712,8 +712,8 @@ func TestRouterReportedLink_RepairsDestDisplacedMidReport(t *testing.T) {
 		DialAddress:  "tcp:localhost:1234",
 		Iteration:    1,
 	}
-	link, created := network.Link.RouterReportedLink(report, src, resolved)
-	require.True(t, created)
+	link, outcome := network.Link.RouterReportedLink(report, src, resolved)
+	require.Equal(t, model.LinkReportCreated, outcome)
 
 	require.Same(t, secondDst, link.GetDest(),
 		"the link must be pointed at the connection that replaced the one the report resolved")
@@ -752,8 +752,8 @@ func TestRouterReportedLink_RepairsDestOnALaterReport(t *testing.T) {
 		DialAddress:  "tcp:localhost:1234",
 		Iteration:    1,
 	}
-	link, created := network.Link.RouterReportedLink(report, src, firstDst)
-	require.True(t, created)
+	link, outcome := network.Link.RouterReportedLink(report, src, firstDst)
+	require.Equal(t, model.LinkReportCreated, outcome)
 	require.Same(t, firstDst, link.GetDest())
 
 	// The destination is replaced. Its link build repairs links already in the table, so drive the case it
@@ -764,8 +764,8 @@ func TestRouterReportedLink_RepairsDestOnALaterReport(t *testing.T) {
 	connect(secondDst)
 	require.True(t, link.PointDestAt(firstDst), "putting the link back on the displaced instance")
 
-	again, created := network.Link.RouterReportedLink(report, src, firstDst)
-	require.False(t, created, "a report at the same iteration must not rebuild the link")
+	again, outcome := network.Link.RouterReportedLink(report, src, firstDst)
+	require.Equal(t, model.LinkReportCurrent, outcome, "a report at the same iteration must not rebuild the link")
 	require.Same(t, link, again)
 	require.Same(t, secondDst, link.GetDest(), "a later report must repair a displaced destination")
 }
@@ -789,8 +789,8 @@ func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
 		DialAddress:  "tcp:localhost:1234",
 		Iteration:    1,
 	}
-	link, created := network.Link.RouterReportedLink(report, src, nil)
-	require.True(t, created)
+	link, outcome := network.Link.RouterReportedLink(report, src, nil)
+	require.Equal(t, model.LinkReportCreated, outcome)
 	require.Nil(t, link.GetDest(), "the destination was not connected when the link was recorded")
 
 	require.NoError(t, network.QueueRouterConnect(dst))

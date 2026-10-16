@@ -989,6 +989,24 @@ func (sm *stateMap) notifyRemoval(key, owner string, version uint64, origin Chan
 	sm.listener.entryRemoved(key, owner, version, origin)
 }
 
+// withEntryDelivery runs fn under the per-(owner, key) delivery lock and the discard gate, the same pair
+// notifyEntry and notifyRemoval hold around a listener callback.
+//
+// For a caller outside the store that has to read an entry and act on it as one step. Without both, the
+// read and the action straddle a concurrent apply or a discard for that key, and the action is taken on an
+// entry the store has since retired.
+//
+// fn must not call back into the store, which would re-enter these locks.
+func (sm *stateMap) withEntryDelivery(owner, key string, fn func()) {
+	sm.discardGate.RLock()
+	defer sm.discardGate.RUnlock()
+
+	unlock := sm.notifyLocks.LockFor(notifyKey(owner, key))
+	defer unlock()
+
+	fn()
+}
+
 // delete removes the entry for (owner, key), by tombstone where the state type keeps them and outright where
 // it does not, reporting whether the entry went away.
 //

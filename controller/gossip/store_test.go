@@ -1893,6 +1893,69 @@ func Test_LockOwnerForWrite_RefusesADetachedOwner(t *testing.T) {
 	require.Same(t, live, <-locked, "the write must land on the instance that replaced the detached one")
 }
 
+// Test_WithEntry_ExcludesListenerDeliveryForTheKey: a caller that reads an entry and acts on it outside the
+// store needs the read and the action to be one step. If a removal's delivery can run between the two, the
+// callback retracts the entry and the action then puts back what the store has already retired.
+func Test_WithEntry_ExcludesListenerDeliveryForTheKey(t *testing.T) {
+	store, _ := newTestStore()
+	defer store.Stop()
+
+	listener := &mockListener{}
+	st := Register[string](store, StateTypeConfig[string]{
+		Name:               "with_entry",
+		RequiredCapability: capabilities.ControllerLinkGossip,
+		Encode:             encodeString,
+		Decode:             decodeString,
+		Tombstones:         false,
+		Listener:           listener,
+	})
+	sm := store.getStateMap("with_entry")
+
+	require.NoError(t, st.Set("k1", "owner1", "v1"))
+	present, known := listener.finalState("k1")
+	require.True(t, known && present, "the listener must hold the entry before the removal races it")
+
+	inside := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		st.WithEntry("owner1", "k1", func(value string, found bool) {
+			assert.True(t, found)
+			assert.Equal(t, "v1", value)
+			close(inside)
+			<-release
+		})
+	}()
+	<-inside
+
+	removed := make(chan struct{})
+	go func() {
+		defer close(removed)
+		sm.delete("k1", "owner1", OriginLocal)
+	}()
+
+	// The entry leaves the store without waiting on anything. It is the delivery of that removal this is
+	// about, so the removal has to get that far before the assertion below means anything.
+	require.Eventually(t, func() bool {
+		_, ok := sm.entryAt("owner1", "k1")
+		return !ok
+	}, time.Second, time.Millisecond, "the removal must reach the store before its delivery is tested")
+
+	present, known = listener.finalState("k1")
+	require.True(t, known && present,
+		"a removal must not reach the listener while a caller is inside WithEntry for that key")
+
+	close(release)
+	<-done
+	<-removed
+
+	require.Eventually(t, func() bool {
+		present, known := listener.finalState("k1")
+		return known && !present
+	}, time.Second, time.Millisecond, "and must reach it once the caller has left")
+}
+
 // A removal's callback runs after the owner lock is dropped, so the ownerData it ran against can be compacted
 // and replaced before the callback asks whether the key came back. A compacted instance answers "absent" for
 // every key, so a check against the instance in hand reports the key gone while the store holds it under the

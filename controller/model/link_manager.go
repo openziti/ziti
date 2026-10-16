@@ -385,22 +385,30 @@ func (self *LinkManager) RetryDeferredReports() {
 			continue
 		}
 
+		// Asked rather than pre-checked: a destination found here can be gone by the time the report is
+		// applied, and only the answer the report was actually judged on says whether it is settled.
 		dst := routers.GetConnected(report.reportedLink.DestRouterId)
-		if dst != nil || self.destinationExists(report.reportedLink.DestRouterId) {
-			self.RouterReportedLink(report.reportedLink, src, dst)
+		switch _, outcome := self.RouterReportedLink(report.reportedLink, src, dst); outcome {
+		case LinkReportCreated, LinkReportCurrent:
 			resolved = append(resolved, report)
 			linkLog.Info("applied deferred link report once its destination was known",
 				"linkId", report.linkId,
 				"destRouterId", report.reportedLink.DestRouterId)
-			continue
-		}
 
-		if report.attempts >= maxDeferredReportAttempts {
+		case LinkReportRefused:
 			resolved = append(resolved, report)
-			linkLog.Warn("dropping link report naming a destination router that does not exist",
+			linkLog.Info("deferred link report refused once this controller had caught up",
 				"linkId", report.linkId,
-				"destRouterId", report.reportedLink.DestRouterId,
-				"attempts", report.attempts)
+				"destRouterId", report.reportedLink.DestRouterId)
+
+		case LinkReportDestinationUnknown:
+			if report.attempts >= maxDeferredReportAttempts {
+				resolved = append(resolved, report)
+				linkLog.Warn("dropping link report naming a destination router that does not exist",
+					"linkId", report.linkId,
+					"destRouterId", report.reportedLink.DestRouterId,
+					"attempts", report.attempts)
+			}
 		}
 	}
 
@@ -563,16 +571,35 @@ func (self *LinkManager) repairDest(link *Link) {
 	}
 }
 
-// RouterReportedLink records a link a router has reported, returning the link and whether this report created
-// it. There are three outcomes, and callers have to tell them apart:
+// LinkReportOutcome says what RouterReportedLink did with a report, so a caller can tell a refusal that
+// settles the report from one that only means "not yet".
+type LinkReportOutcome int
+
+const (
+	// LinkReportCreated means the link was recorded, either as new or as a newer iteration replacing one.
+	LinkReportCreated LinkReportOutcome = iota
+
+	// LinkReportCurrent means a link at this iteration or newer is already held, and was left untouched.
+	LinkReportCurrent
+
+	// LinkReportDestinationUnknown means the destination could not be found while this controller is still
+	// behind, which is indistinguishable from one that was deleted. Nothing is decided; whoever holds the
+	// report has to ask again once there is a real answer to be had.
+	LinkReportDestinationUnknown
+
+	// LinkReportRefused means the report was rejected on what it says: the destination is gone, or the
+	// reporting router is not the link's source. Asking again changes nothing.
+	LinkReportRefused
+)
+
+// RouterReportedLink records a link a router has reported, returning the link and what became of the report.
+// The link is nil for every outcome but LinkReportCreated and LinkReportCurrent, so a caller using the link
+// checks it rather than the outcome.
 //
-//	(link, true)   the link was created, or an older iteration of it was replaced
-//	(link, false)  the report matched a link already held, which is left untouched
-//	(nil, false)   the report was refused, because the reporting router is not the link's source
-//
-// A nil link is the case worth naming: every caller has to check for it before using the result, since the
-// refusal means there is no link to speak of rather than one that happens to be unchanged.
-func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, bool) {
+// A report that cannot be judged yet is not held here. Reports arriving by gossip are already kept by the
+// gossip store, which is re-walked rather than copied; a report with no such backing is held by
+// RouterReportedLinkDeferrable instead.
+func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, LinkReportOutcome) {
 	// Striped by link id so concurrent reports for different links proceed in
 	// parallel; reports for the same link still serialize. Replaces a single
 	// global mutex that funneled every router's link reports through one lock.
@@ -591,26 +618,13 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 		// the two want opposite answers. Refusing while behind silently drops a link to a router that does
 		// exist, and the reporting router considers it delivered, so nothing ever says it again.
 		if !self.isRaftCaughtUp() {
-			log := linkLog.With(
-				"linkId", reportedLink.Id,
-				"destRouterId", reportedLink.DestRouterId)
-
-			switch self.deferReport(reportedLink, src) {
-			case deferHeld:
-				log.Info("deferring link report naming an unknown destination until this controller catches up")
-			case deferNoSource:
-				log.Warn("dropping link report naming an unknown destination, it names no reporting router")
-			case deferSetFull:
-				log.Warn("dropping link report naming an unknown destination, no room to hold it",
-					"deferredReports", maxDeferredReports)
-			}
-			return nil, false
+			return nil, LinkReportDestinationUnknown
 		}
 
 		linkLog.Warn("ignoring link report naming a destination router that no longer exists",
 			"linkId", reportedLink.Id,
 			"destRouterId", reportedLink.DestRouterId)
-		return nil, false
+		return nil, LinkReportRefused
 	}
 
 	link, _ := self.Get(reportedLink.Id)
@@ -629,7 +643,7 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 				"linkSrcRouterId", existingSrc.Id,
 				"iteration", reportedLink.Iteration,
 				"linkIteration", link.Iteration)
-			return nil, false
+			return nil, LinkReportRefused
 		}
 	}
 
@@ -641,7 +655,7 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 		// has since been replaced. Both are invisible in the table, so a later report is the only thing that
 		// will notice.
 		self.repairDest(link)
-		return link, false
+		return link, LinkReportCurrent
 	}
 
 	// remove the older link before adding the new one
@@ -672,7 +686,35 @@ func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_Ro
 	// the destination's, so the destination may have connected or been replaced since.
 	self.repairDest(link)
 
-	return link, true
+	return link, LinkReportCreated
+}
+
+// RouterReportedLinkDeferrable records a link report that has no other copy anywhere, holding it when the
+// destination cannot be judged yet so it can be asked again once this controller catches up.
+//
+// For reports from routers that do not gossip. A gossiped report is kept by the gossip store and re-walked
+// from there, so it goes to RouterReportedLink and is not held twice.
+func (self *LinkManager) RouterReportedLinkDeferrable(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, LinkReportOutcome) {
+	link, outcome := self.RouterReportedLink(reportedLink, src, dst)
+	if outcome != LinkReportDestinationUnknown {
+		return link, outcome
+	}
+
+	log := linkLog.With(
+		"linkId", reportedLink.Id,
+		"destRouterId", reportedLink.DestRouterId)
+
+	switch self.deferReport(reportedLink, src) {
+	case deferHeld:
+		log.Info("deferring link report naming an unknown destination until this controller catches up")
+	case deferNoSource:
+		log.Warn("dropping link report naming an unknown destination, it names no reporting router")
+	case deferSetFull:
+		log.Warn("dropping link report naming an unknown destination, no room to hold it",
+			"deferredReports", maxDeferredReports)
+	}
+
+	return link, outcome
 }
 
 func (self *LinkManager) Get(linkId string) (*Link, bool) {

@@ -183,3 +183,46 @@ func Test_RetryDeferredReports_KeepsAReportDeferredWhileItRuns(t *testing.T) {
 	req.Equal(1, lm.DeferredReportCount(),
 		"a report deferred again while the pass ran must survive it, or nothing says the link again")
 }
+
+// Test_RouterReportedLink_DefersOnlyForReportsWithNoOtherCopy: a report that cannot be judged yet is held
+// only when nothing else is keeping it. A gossiped report is already in the gossip store and is re-read from
+// there, so holding it here would be a second copy to keep in step with the first. A report from a router
+// that does not gossip has no such backing and is lost if it is not held.
+func Test_RouterReportedLink_DefersOnlyForReportsWithNoOtherCopy(t *testing.T) {
+	req := require.New(t)
+	ctx := NewTestContext(t)
+	defer ctx.Cleanup()
+
+	// Behind rather than caught up, which is what makes a destination unfindable mean "not yet" rather than
+	// "deleted".
+	ctx.RaftNotCaughtUp = true
+
+	lm := ctx.GetManagers().Link
+	routers := ctx.GetManagers().Router
+
+	src := NewRouter("src", "", "", 0, true)
+	req.NoError(routers.Create(src, change.New()))
+	routers.MarkConnected(src)
+
+	report := func(linkId string) *ctrl_pb.RouterLinks_RouterLink {
+		return &ctrl_pb.RouterLinks_RouterLink{
+			Id:           linkId,
+			DestRouterId: "not-applied-here-yet",
+			LinkProtocol: "tls",
+			DialAddress:  "tcp:localhost:1234",
+			Iteration:    1,
+		}
+	}
+
+	link, outcome := lm.RouterReportedLink(report("gossiped"), src, nil)
+	req.Nil(link)
+	req.Equal(LinkReportDestinationUnknown, outcome,
+		"a destination this controller has not applied yet is not an answer either way")
+	req.Zero(lm.DeferredReportCount(),
+		"a gossiped report is kept by the gossip store and must not be held a second time here")
+
+	link, outcome = lm.RouterReportedLinkDeferrable(report("reported"), src, nil)
+	req.Nil(link)
+	req.Equal(LinkReportDestinationUnknown, outcome)
+	req.Equal(1, lm.DeferredReportCount(), "a report with no other copy must be held")
+}

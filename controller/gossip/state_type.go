@@ -230,6 +230,23 @@ func (st *StateType[T]) GetForOwner(owner, key string) (T, uint64, bool) {
 	return val, e.Version, true
 }
 
+// WithEntry runs fn with the entry for (owner, key) as the store currently holds it, ordered against the
+// store's own listener delivery for that key.
+//
+// For a caller that reads an entry and acts on it outside the store, where acting on a retired entry would
+// be wrong: a plain GetForOwner followed by the action straddles a removal, and the action can then undo
+// what the removal's listener callback has already done. found is false when the key is absent or
+// tombstoned, and value is the zero value then.
+//
+// fn runs holding the key's delivery lock, so it must not call back into the store, and it blocks delivery
+// for that key while it runs.
+func (st *StateType[T]) WithEntry(owner, key string, fn func(value T, found bool)) {
+	st.sm.withEntryDelivery(owner, key, func() {
+		value, _, found := st.GetForOwner(owner, key)
+		fn(value, found)
+	})
+}
+
 // Iter calls fn for each non-tombstoned entry across all owners.
 func (st *StateType[T]) Iter(fn func(key string, value T, owner string)) {
 	st.sm.owners.IterCb(func(owner string, od *ownerData) {
