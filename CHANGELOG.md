@@ -871,6 +871,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4573](https://github.com/openziti/ziti/issues/4573) - Router can drop controllers on a follower's stale controller list and never re-add them
     * [Issue #4513](https://github.com/openziti/ziti/issues/4513) - Policy evaluation scans every entity or policy on each write
     * [Issue #4514](https://github.com/openziti/ziti/issues/4514) - Changing a policy's semantic without changing its roles does not re-evaluate its links
     * [Issue #4515](https://github.com/openziti/ziti/issues/4515) - Posture check to service reference counts are only maintained from the posture check side
