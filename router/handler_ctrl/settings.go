@@ -20,13 +20,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
-	"github.com/openziti/ziti/v2/router/env"
 	"google.golang.org/protobuf/proto"
 )
 
 // settingsHandler is a catch-all handler for all settings message (currently only sent on router connect).
 type settingsHandler struct {
-	env env.RouterEnv
+	ctrlAddrs *updateCtrlAddressesHandler
 }
 
 func (handler *settingsHandler) ContentType() int32 {
@@ -44,17 +43,11 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 
 			switch settingType {
 			case int32(ctrl_pb.SettingTypes_NewCtrlAddress):
-				newAddress := string(settingValue)
-				details := handler.env.GetNetworkControllers().GetControllerDetails()
-				details[ch.Id()] = &ctrl_pb.CtrlDetail{
-					Id:        ch.Id(),
-					Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: newAddress}},
+				if newAddress := string(settingValue); newAddress == "" {
+					log.Error("new controller address is empty, ignored")
+				} else {
+					handler.ctrlAddrs.queueNewCtrlAddress(ch.Id(), ch.Label(), newAddress)
 				}
-				var merged []*ctrl_pb.CtrlDetail
-				for _, d := range details {
-					merged = append(merged, d)
-				}
-				handler.env.UpdateCtrlEndpointDetails(merged)
 			default:
 				log.Error("unknown setting type, ignored")
 			}
@@ -64,8 +57,8 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 }
 
-func newSettingsHandler(env env.RouterEnv) channel.TypedReceiveHandler {
+func newSettingsHandler(ctrlAddrs *updateCtrlAddressesHandler) channel.TypedReceiveHandler {
 	return &settingsHandler{
-		env: env,
+		ctrlAddrs: ctrlAddrs,
 	}
 }

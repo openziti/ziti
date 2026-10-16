@@ -57,6 +57,8 @@ ctrl:
     # A listener address which will be sent to connecting routers in order to change their configured controller
     # address. If defined, routers will update address configuration to immediately use the new address for future
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
+    # Ignored by a clustered controller, which sends routers its cluster members' addresses; change
+    # advertiseAddress instead.
     #newListener: tls:localhost:6262
 
 events:
