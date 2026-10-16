@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/router/xlink"
@@ -62,7 +61,6 @@ func (*gcStubRegistry) DialSucceeded(xlink.Xlink) (xlink.Xlink, bool)           
 func (*gcStubRegistry) LinkAccepted(xlink.Xlink) (xlink.Xlink, bool)                             { return nil, false }
 func (*gcStubRegistry) LinkClosed(xlink.Xlink)                                                   {}
 func (*gcStubRegistry) Shutdown()                                                                {}
-func (*gcStubRegistry) SendRouterLinkMessage(xlink.Xlink, ...channel.Channel)                    {}
 func (*gcStubRegistry) Inspect(time.Duration) *inspect.LinksInspectResult                        { return nil }
 func (*gcStubRegistry) DebugForgetLink(string) bool                                              { return false }
 func (*gcStubRegistry) GetLinkKey(string, string, string, string) string                         { return "" }

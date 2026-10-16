@@ -19,7 +19,6 @@ package xlink
 import (
 	"time"
 
-	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/v2/xgress"
@@ -54,9 +53,6 @@ type Registry interface {
 	Iter() <-chan Xlink
 	// Shutdown frees any resources owned by the registry
 	Shutdown()
-
-	// SendRouterLinkMessage will notify the given controllers about the existing link
-	SendRouterLinkMessage(link Xlink, channels ...channel.Channel)
 
 	// Inspect will return debug information about the state of links and the registry
 	Inspect(timeout time.Duration) *inspect.LinksInspectResult

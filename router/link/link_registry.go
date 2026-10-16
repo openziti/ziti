@@ -357,39 +357,6 @@ func (self *linkRegistryImpl) Shutdown() {
 	linkLog.Info("shutdown links in link registry", "linkCount", linkCount)
 }
 
-func (self *linkRegistryImpl) SendRouterLinkMessage(link xlink.Xlink, channels ...channel.Channel) {
-	linkMsg := &ctrl_pb.RouterLinks{
-		Links: []*ctrl_pb.RouterLinks_RouterLink{
-			{
-				Id:           link.Id(),
-				DestRouterId: link.DestinationId(),
-				LinkProtocol: link.LinkProtocol(),
-				DialAddress:  link.DialAddress(),
-				Iteration:    link.Iteration(),
-				ConnState:    link.GetLinkConnState(),
-			},
-		},
-	}
-
-	log := linkLog.With(
-		"linkId", link.Id(),
-		"dest", link.DestinationId(),
-		"linkProtocol", link.LinkProtocol())
-
-	if len(channels) == 0 {
-		log.Info("no controllers available to notify of link")
-	}
-
-	for _, ch := range channels {
-		if link.IsDialed() {
-			if err := protobufs.MarshalTyped(linkMsg).Send(ch); err != nil {
-				log.Error("error sending router link message", "error", err)
-			}
-			log.Info("notified controller of new link", "ctrlId", ch.Id())
-		}
-	}
-}
-
 /* XCtrl implementation so we get reconnect notifications */
 
 func (self *linkRegistryImpl) LoadConfig(map[interface{}]interface{}) error {
