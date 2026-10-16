@@ -2217,11 +2217,13 @@ func (x *CtrlDetail) GetEndpoints() []*CtrlEndpoint {
 }
 
 type UpdateCtrlAddresses struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Addresses     []string               `protobuf:"bytes,1,rep,name=addresses,proto3" json:"addresses,omitempty"`
-	Index         uint64                 `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
-	IsLeader      bool                   `protobuf:"varint,3,opt,name=isLeader,proto3" json:"isLeader,omitempty"`
-	Controllers   []*CtrlDetail          `protobuf:"bytes,4,rep,name=controllers,proto3" json:"controllers,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Addresses   []string               `protobuf:"bytes,1,rep,name=addresses,proto3" json:"addresses,omitempty"`
+	Index       uint64                 `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	IsLeader    bool                   `protobuf:"varint,3,opt,name=isLeader,proto3" json:"isLeader,omitempty"`
+	Controllers []*CtrlDetail          `protobuf:"bytes,4,rep,name=controllers,proto3" json:"controllers,omitempty"`
+	// term is the raft term the sender leads when isLeader is set. 0 from controllers that don't send it.
+	Term          uint64 `protobuf:"varint,5,opt,name=term,proto3" json:"term,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2284,9 +2286,18 @@ func (x *UpdateCtrlAddresses) GetControllers() []*CtrlDetail {
 	return nil
 }
 
+func (x *UpdateCtrlAddresses) GetTerm() uint64 {
+	if x != nil {
+		return x.Term
+	}
+	return 0
+}
+
 type UpdateClusterLeader struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Index         uint64                 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Index uint64                 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	// term is the raft term the sender leads. 0 from controllers that don't send it.
+	Term          uint64 `protobuf:"varint,2,opt,name=term,proto3" json:"term,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2324,6 +2335,13 @@ func (*UpdateClusterLeader) Descriptor() ([]byte, []int) {
 func (x *UpdateClusterLeader) GetIndex() uint64 {
 	if x != nil {
 		return x.Index
+	}
+	return 0
+}
+
+func (x *UpdateClusterLeader) GetTerm() uint64 {
+	if x != nil {
+		return x.Term
 	}
 	return 0
 }
@@ -3354,14 +3372,16 @@ const file_ctrl_proto_rawDesc = "" +
 	"\n" +
 	"CtrlDetail\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x128\n" +
-	"\tendpoints\x18\x02 \x03(\v2\x1a.ziti.ctrl.pb.CtrlEndpointR\tendpoints\"\xa1\x01\n" +
+	"\tendpoints\x18\x02 \x03(\v2\x1a.ziti.ctrl.pb.CtrlEndpointR\tendpoints\"\xb5\x01\n" +
 	"\x13UpdateCtrlAddresses\x12\x1c\n" +
 	"\taddresses\x18\x01 \x03(\tR\taddresses\x12\x14\n" +
 	"\x05index\x18\x02 \x01(\x04R\x05index\x12\x1a\n" +
 	"\bisLeader\x18\x03 \x01(\bR\bisLeader\x12:\n" +
-	"\vcontrollers\x18\x04 \x03(\v2\x18.ziti.ctrl.pb.CtrlDetailR\vcontrollers\"+\n" +
+	"\vcontrollers\x18\x04 \x03(\v2\x18.ziti.ctrl.pb.CtrlDetailR\vcontrollers\x12\x12\n" +
+	"\x04term\x18\x05 \x01(\x04R\x04term\"?\n" +
 	"\x13UpdateClusterLeader\x12\x14\n" +
-	"\x05index\x18\x01 \x01(\x04R\x05index\"\xa0\x01\n" +
+	"\x05index\x18\x01 \x01(\x04R\x05index\x12\x12\n" +
+	"\x04term\x18\x02 \x01(\x04R\x04term\"\xa0\x01\n" +
 	"\x0fPeerStateChange\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12-\n" +
