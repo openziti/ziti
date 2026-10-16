@@ -130,6 +130,14 @@ jobs:
         run: |
           $(go env GOPATH)/bin/upgrade-test exec testIteration
 
+      - name: Stop Fablab
+        # a cancelled step leaves fablab and terraform running, and teardown needs terraform's final state
+        if: always()
+        timeout-minutes: 15
+        uses: ./.github/actions/stop-fablab
+        with:
+          model: upgrade-test
+
       - name: Create Logs Archive
         if: always()
         shell: bash
