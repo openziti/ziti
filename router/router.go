@@ -581,6 +581,11 @@ func (self *Router) Start() error {
 	// and into the registry.
 	self.stateManager.SetRouterConfigSubscriber(state.NewRouterConfigSubscriber(self))
 
+	// Same for Router events: a router deleted while we were disconnected shows up
+	// only as an absence from the next full state, and the link destination it
+	// names has to go with it.
+	self.stateManager.SetRouterEventSubscriber(state.LinkDestSubscriber{Registry: self.xlinkRegistry})
+
 	// Start control plane (must be last)
 	if err := self.startControlPlane(); err != nil {
 		return err
