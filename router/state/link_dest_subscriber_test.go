@@ -89,15 +89,42 @@ func Test_LinkDestSubscriber_FullStateGapReachesRegistry(t *testing.T) {
 	reg := &fakeRegistry{}
 	mgr := &ManagerImpl{}
 
+	// Both models carry the local router's own record, as a source that distributes routers does.
 	existing := common.NewReceiverRouterDataModel("self", closeNotify)
+	existing.Routers.Set("self", &edge_ctrl_pb.DataState_Router{Id: "self"})
 	existing.Routers.Set("keep", &edge_ctrl_pb.DataState_Router{Id: "keep"})
 	existing.Routers.Set("gone", &edge_ctrl_pb.DataState_Router{Id: "gone"})
 	mgr.SetRouterDataModel(existing, false)
 	mgr.SetRouterEventSubscriber(LinkDestSubscriber{Registry: reg})
 
 	updated := common.NewReceiverRouterDataModel("self", closeNotify)
+	updated.Routers.Set("self", &edge_ctrl_pb.DataState_Router{Id: "self"})
 	updated.Routers.Set("keep", &edge_ctrl_pb.DataState_Router{Id: "keep"})
 	mgr.SetRouterDataModel(updated, false)
 
 	req.Equal([]string{"gone"}, reg.removed)
+}
+
+// Test_LinkDestSubscriber_OlderControllerDoesNotClearDestinations: a controller from before routers were
+// distributed in the data model sends a full state carrying none, and the router keeps its destinations
+// rather than reading that as every router in the fleet having been deleted.
+func Test_LinkDestSubscriber_OlderControllerDoesNotClearDestinations(t *testing.T) {
+	req := require.New(t)
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	reg := &fakeRegistry{}
+	mgr := &ManagerImpl{}
+
+	existing := common.NewReceiverRouterDataModel("self", closeNotify)
+	existing.Routers.Set("self", &edge_ctrl_pb.DataState_Router{Id: "self"})
+	existing.Routers.Set("peer1", &edge_ctrl_pb.DataState_Router{Id: "peer1"})
+	existing.Routers.Set("peer2", &edge_ctrl_pb.DataState_Router{Id: "peer2"})
+	mgr.SetRouterDataModel(existing, false)
+	mgr.SetRouterEventSubscriber(LinkDestSubscriber{Registry: reg})
+
+	// The subscription moves to a controller that does not distribute routers at all.
+	mgr.SetRouterDataModel(common.NewReceiverRouterDataModel("self", closeNotify), false)
+
+	req.Empty(reg.removed, "a full state with no routers must not tear down every link destination")
 }
