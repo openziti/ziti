@@ -1093,15 +1093,28 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 	// very router that is being removed.
 	network.Router.MarkDisconnected(r)
 
+	// A router that marks its reconnect announcement a full refresh says, authoritatively, which links it
+	// still has, and the controller prunes the rest against it. There is nothing left here for a disconnect
+	// to clean up, and retiring anyway is worse than useless: the announcement is a bounded, best-effort
+	// send, so an outage that outlives its retries leaves this controller with no links for a router that
+	// is up, until it happens to reconnect again.
+	retireUnannounced := !r.SendsFullRefresh()
+
 	// remove Links for Router, rerouting circuits off any that were connected
 	for _, l := range links {
 		wasUsable := l.IsUsable()
 
-		// A link in gossip is left for gossip to settle, since its dialer may still be connected to another
-		// controller.
-		if l.GetSrc().Id == r.Id && !network.IsLinkInGossip(l) {
-			network.Link.Remove(l)
+		// Neither gossip nor a full refresh will remove this link if it has died, so retire it now. If the
+		// router still has it, its reconnect reports it again.
+		if l.GetSrc().Id == r.Id && retireUnannounced && !network.IsLinkInGossip(l) {
+			network.LinkFaulted(l, false)
+			continue
 		}
+
+		// Every other link is left for something else to settle: its dialer's full refresh prunes it by
+		// omission, or gossip does, and a link this router accepted is its dialer's to report. Circuits move
+		// off all of them regardless: this controller cannot route over a router it cannot reach, whatever
+		// the link says.
 		if wasUsable {
 			network.RerouteLink(l)
 		}
@@ -1139,6 +1152,11 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 
 	dst := network.Router.GetConnected(reportedLink.DestRouterId)
 	link, created := network.Link.RouterReportedLink(reportedLink, src, dst)
+	if link != nil && !created {
+		// A link kept across this router's disconnect names the old connection until something points it at
+		// this one, and the dead link scan judges it by that. Checked current above, under the stripe.
+		network.Link.PointSrcAt(link, src)
+	}
 
 	unlock()
 

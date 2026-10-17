@@ -240,6 +240,22 @@ func (self *LinkManager) ScanForDeadLinks(keep func(*Link) bool) {
 	}
 }
 
+// PointSrcAt points link at src, and adds link to src's link set, when the link names an earlier connection of
+// the same router and is still the link the table holds. src must be that router's current connection: the link
+// manager cannot tell which of two connected objects for one router is current, so it never makes this change
+// on its own.
+func (self *LinkManager) PointSrcAt(link *Link, src *Router) {
+	defer self.linkLocks.LockFor(link.Id)()
+
+	if held, found := self.Get(link.Id); !found || held != link {
+		return
+	}
+	if current := link.GetSrc(); current != nil && current != src && current.Id == src.Id {
+		link.Src.Store(src)
+		src.routerLinks.Add(link, link.DstId)
+	}
+}
+
 // repairDest points link at whichever router is currently connected for its destination id, and adds it to
 // that router's link set. It covers a link recorded while that router was not connected, and one still
 // pointing at a connection that has since been replaced. No-op if the router is absent or the link already

@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/gossip"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,6 +53,8 @@ type fakeCtrlChannel struct {
 // GetDefaultSender returns a sender that records what was sent and reports it written, which is what a
 // SendAndWaitForWire caller blocks on.
 func (f *fakeCtrlChannel) GetDefaultSender() channel.Sender { return f }
+
+func (f *fakeCtrlChannel) GetHighPrioritySender() channel.Sender { return f }
 
 func (f *fakeCtrlChannel) Send(s channel.Sendable) error {
 	f.sendLock.Lock()
@@ -1072,4 +1075,135 @@ func TestDisconnectRouter_RetiresUnpublishedLinksWithoutHA(t *testing.T) {
 
 	_, found := network.Link.Get(link.Id)
 	req.False(found, "a link the dialer will re-announce must be retired when the dialer disconnects")
+}
+
+// TestDisconnectRouter_KeepsLinksOfARouterThatPrunesItsOwn: a router that flags its reconnect announcement
+// a full refresh states authoritatively which links it still has, and the controller prunes against that.
+// Retiring here as well would trade a problem the router already solves for one it cannot: the announcement
+// is bounded and best-effort, so an outage outlasting its retries would leave this controller holding no
+// links for a router that is up.
+func TestDisconnectRouter_KeepsLinksOfARouterThatPrunesItsOwn(t *testing.T) {
+	for _, raft := range []bool{false, true} {
+		t.Run(fmt.Sprintf("raft=%v", raft), func(t *testing.T) {
+			req := require.New(t)
+			_, network, addr := newConnectTestNetwork(t)
+			testConfigOf(t, network).raftEnabled = raft
+
+			peer := newPersistedRouter(t, network, addr, "peer")
+			network.Router.MarkConnected(peer)
+
+			dialer := model.NewRouterForTest("dialer", "", addr, &fakeCtrlChannel{}, 0, false)
+			dialer.MarkSendsFullRefresh()
+			req.NoError(network.Router.Create(dialer, change.New()))
+			req.NoError(network.QueueRouterConnect(dialer))
+
+			link := model.NewTestLink("self-pruned", dialer, peer)
+			link.SetState(model.Connected)
+			network.Link.Add(link)
+			req.False(network.IsLinkInGossip(link), "the link is reported, not gossiped")
+
+			network.DisconnectRouter(dialer)
+
+			held, found := network.Link.Get(link.Id)
+			req.True(found, "a link its dialer prunes on reconnect must survive the disconnect")
+			req.True(held.IsUsable(), "and be left usable, since this controller cannot route over it either way")
+		})
+	}
+}
+
+// TestDisconnectRouter_QuickReconnectKeepsLinksOfARouterThatPrunesItsOwn covers a link kept across its dialer's
+// disconnect, which still names the old connection as its source. The new connection's report has to point it
+// at the new one, or a dead link scan that runs before the reconnect's link build retires a link the router
+// still has. The connections here are registered without that build, so the report is all that can.
+func TestDisconnectRouter_QuickReconnectKeepsLinksOfARouterThatPrunesItsOwn(t *testing.T) {
+	for _, raft := range []bool{false, true} {
+		t.Run(fmt.Sprintf("raft=%v", raft), func(t *testing.T) {
+			req := require.New(t)
+			_, network, addr := newConnectTestNetwork(t)
+			testConfigOf(t, network).raftEnabled = raft
+
+			peer := newPersistedRouter(t, network, addr, "peer")
+			network.Router.MarkConnected(peer)
+			newPersistedRouter(t, network, addr, "dialer")
+			connect := func() *model.Router {
+				r := model.NewRouterForTest("dialer", "", addr, &fakeCtrlChannel{}, 0, false)
+				r.MarkSendsFullRefresh()
+				network.Router.MarkConnected(r)
+				return r
+			}
+			report := &ctrl_pb.RouterLinks_RouterLink{
+				Id:           "self-pruned",
+				DestRouterId: peer.Id,
+				LinkProtocol: "tls",
+				DialAddress:  "tcp:localhost:1234",
+				Iteration:    1,
+			}
+
+			first := connect()
+			network.NotifyExistingLink(first, report)
+			_, found := network.Link.Get(report.Id)
+			req.True(found)
+
+			network.DisconnectRouter(first)
+
+			second := connect()
+			network.NotifyExistingLink(second, report)
+
+			network.Link.ScanForDeadLinks(nil)
+
+			_, found = network.Link.Get(report.Id)
+			req.True(found, "a link the reconnected router still has must survive the dead link scan")
+		})
+	}
+}
+
+// TestDisconnectRouter_MovesCircuitsOffLinksTheRouterAccepted: circuits come off every usable link of a router
+// that has gone, the ones its neighbours dialed as well as its own. Here the router's neighbours dialed both
+// of its links and there is no other way round, so the circuit through it is removed.
+func TestDisconnectRouter_MovesCircuitsOffLinksTheRouterAccepted(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	connect := func(id string) *model.Router {
+		newPersistedRouter(t, network, addr, id)
+		r := model.NewRouterForTest(id, "", addr, &fakeCtrlChannel{}, 0, false)
+		req.NoError(network.QueueRouterConnect(r))
+		req.Eventually(func() bool { return network.Router.GetConnected(id) == r }, 2*time.Second, 10*time.Millisecond)
+		return r
+	}
+	ingress := connect("ingress")
+	transit := connect("transit")
+	egress := connect("egress")
+
+	for _, link := range []*model.Link{
+		model.NewTestLink("ingress-transit", ingress, transit),
+		model.NewTestLink("egress-transit", egress, transit),
+	} {
+		link.SetState(model.Connected)
+		network.Link.Add(link)
+	}
+
+	path, pathErr := network.CreatePathWithNodes([]*model.Router{ingress, transit, egress})
+	req.NoError(pathErr)
+	circuit := &model.Circuit{
+		Id:        "through-transit",
+		ServiceId: "svc",
+		Path:      path,
+		Terminator: &model.RoutingTerminator{Terminator: &model.Terminator{
+			BaseEntity: models.BaseEntity{Id: "t0"},
+			Service:    "svc",
+			Router:     egress.Id,
+			Binding:    "transport",
+			Address:    "tcp:localhost:1001",
+		}},
+		CreatedAt: time.Now(),
+	}
+	network.Circuit.Add(circuit)
+
+	network.DisconnectRouter(transit)
+
+	req.Eventually(func() bool {
+		_, found := network.Circuit.Get(circuit.Id)
+		return !found
+	}, 5*time.Second, 10*time.Millisecond, "a circuit through a router that has gone must come off its links")
 }
