@@ -18,13 +18,14 @@ package model
 
 import (
 	"fmt"
+	"runtime/debug"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/db"
 	"go.etcd.io/bbolt"
-	"runtime/debug"
-	"time"
 )
 
 func NewPostureResponseManager(env Env) *PostureResponseManager {
@@ -146,8 +147,10 @@ func (self *PostureResponseManager) postureDataUpdated(env Env, identityId strin
 			return fmt.Errorf("could not query for api sessions for identity: %v", err)
 		}
 
+		// Reads below must use tx. A second read transaction opened on this goroutine deadlocks
+		// against a commit that is waiting to remap the db file.
 		for _, apiSessionId := range apiSessionIds {
-			result, err := self.env.GetManagers().Session.Query(fmt.Sprintf(`apiSession = "%v"`, apiSessionId))
+			result, err := self.env.GetManagers().Session.queryInTx(tx, fmt.Sprintf(`apiSession = "%v"`, apiSessionId))
 
 			if err != nil {
 				return fmt.Errorf("could not query for sessions: %v", err)
@@ -162,7 +165,7 @@ func (self *PostureResponseManager) postureDataUpdated(env Env, identityId strin
 				//if we have evaluated positive access before, don't do it again
 				if !isEvaluatedService {
 					validServices[session.ServiceId] = false
-					policyPostureChecks := self.env.GetManagers().EdgeService.GetPolicyPostureChecks(identityId, session.ServiceId)
+					policyPostureChecks := self.env.GetManagers().EdgeService.getPolicyPostureChecksInTx(tx, identityId, session.ServiceId)
 
 					if len(policyPostureChecks) == 0 {
 						isValidService = true
