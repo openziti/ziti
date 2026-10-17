@@ -71,7 +71,6 @@ func newConnectTestNetwork(t *testing.T) (*model.TestContext, *Network, transpor
 
 	return ctx, network, addr
 }
-
 // TestConnectRouter_RejectsAndKicksWhenBusy: a connect into an occupied slot returns ErrConnectRejected,
 // kicks the occupant (whose teardown clears the slot), and a subsequent redial then connects cleanly.
 func TestConnectRouter_RejectsAndKicksWhenBusy(t *testing.T) {
@@ -389,6 +388,8 @@ func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
 
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	// The destination has to exist, since a report naming one that does not is refused.
+	require.NoError(t, network.Router.Create(dst, change.New()))
 	require.NoError(t, network.ConnectRouter(src))
 
 	report := &ctrl_pb.RouterLinks_RouterLink{
@@ -590,6 +591,8 @@ func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
 
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	// The destination has to exist, since a report naming one that does not is refused.
+	require.NoError(t, network.Router.Create(dst, change.New()))
 	require.NoError(t, network.ConnectRouter(src))
 
 	// A link recorded while its destination was not connected, so it points at nothing.
