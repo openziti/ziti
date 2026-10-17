@@ -61,6 +61,7 @@ func NewLinkRegistry(routerEnv Env) xlink.Registry {
 		events:                 make(chan event, 16),
 		env:                    routerEnv,
 		destinations:           map[string]*linkDest{},
+		removedDests:           map[string]removedDest{},
 		linkStateQueue:         &linkStateHeap{},
 		triggerNotifyC:         make(chan struct{}, 1),
 		ctrlSynchronizer:       newCtrlSynchronizer(),
@@ -89,7 +90,11 @@ type linkRegistryImpl struct {
 	// fullRefreshSendTimeout bounds one attempt at the reconnect announcement. A field so tests can reach the
 	// timeout, which is the only way to tell a message that was queued and then discarded from one that
 	// reached the wire.
-	fullRefreshSendTimeout   time.Duration
+	fullRefreshSendTimeout time.Duration
+	// removedDests remembers, per destination, the controller store index a removal was computed against, so
+	// a report of that destination computed against an older index cannot bring it back. Entries are dropped
+	// by a newer report and swept by evaluateDestinations; see removedDestTTL.
+	removedDests             map[string]removedDest
 	linkStateQueue           *linkStateHeap
 	events                   chan event
 	triggerNotifyC           chan struct{}
@@ -552,13 +557,14 @@ func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
+func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, storeIndex uint64, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
 	updateEvent := &linkDestUpdate{
-		id:        id,
-		ctrlId:    ctrlId,
-		version:   version,
-		healthy:   healthy,
-		listeners: listeners,
+		id:         id,
+		ctrlId:     ctrlId,
+		storeIndex: storeIndex,
+		version:    version,
+		healthy:    healthy,
+		listeners:  listeners,
 	}
 
 	self.queueEvent(updateEvent)
@@ -588,9 +594,10 @@ func (self *linkRegistryImpl) GetDestinationListeners() (map[string][]*ctrl_pb.L
 	return nil, false
 }
 
-func (self *linkRegistryImpl) RemoveLinkDest(id string) {
+func (self *linkRegistryImpl) RemoveLinkDest(id string, storeIndex uint64) {
 	self.queueEvent(&removeLinkDest{
-		id: id,
+		id:         id,
+		storeIndex: storeIndex,
 	})
 }
 
@@ -723,6 +730,12 @@ func (self *linkRegistryImpl) sendLinkFaultDirect(link xlink.Xlink) {
 	})
 }
 
+// removedDestTTL is how long a removed destination is remembered so a peer state computed before the removal
+// cannot recreate it. A controller computes peer state against its own store, so one lagging in replication
+// reports from before the removal for as long as it lags. The bound is far longer than any lag or outage a
+// working cluster sees; a controller lagging past it removes the destination again once it applies the delete.
+const removedDestTTL = 48 * time.Hour
+
 func (self *linkRegistryImpl) evaluateDestinations() {
 	for destId, dest := range self.destinations {
 		hasEstablishedLinks := false
@@ -750,6 +763,13 @@ func (self *linkRegistryImpl) evaluateDestinations() {
 		// has nothing to dial, it should also be removed
 		if len(dest.linkMap) == 0 || (!dest.healthy && !hasEstablishedLinks && time.Since(dest.unhealthyAt) > 48*time.Hour) {
 			delete(self.destinations, destId)
+		}
+	}
+
+	now := time.Now()
+	for destId, removed := range self.removedDests {
+		if now.Sub(removed.at) > removedDestTTL {
+			delete(self.removedDests, destId)
 		}
 	}
 }

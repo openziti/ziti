@@ -506,7 +506,7 @@ func Test_LinkRegistry_RescanForDialOpportunities(t *testing.T) {
 	// matching dialer yet, so the listener doesn't produce a linkState.
 	destId := "peer-router-1"
 	tenv.setDialers(nil)
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -537,7 +537,7 @@ func Test_LinkRegistry_RescanIsNoopWhenNoMatches(t *testing.T) {
 	// shouldn't create a state because there's no group intersection.
 	destId := "peer-router-2"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"b"}}})
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -604,6 +604,7 @@ func newReconnectTestRegistry(t *testing.T) (*linkRegistryImpl, *testEnv) {
 		events:           make(chan event, 16),
 		triggerNotifyC:   make(chan struct{}, 1),
 		ctrlSynchronizer: newCtrlSynchronizer(),
+		removedDests:     map[string]removedDest{},
 		// Production's pacing is not this test's concern; the timeout has to stay reachable, though, since it
 		// is what distinguishes a discarded message from a delivered one.
 		fullRefreshSendTimeout: 20 * time.Millisecond,
@@ -960,7 +961,7 @@ func Test_LinkRegistry_RescanDetachesRemovedDialerPairing(t *testing.T) {
 	// A matching dialer + listener produces a linkState.
 	destId := "peer-router-3"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"a"}}})
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 	req.Eventually(func() bool {
@@ -1154,7 +1155,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
 
 	destId := "peer-router-1"
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -1165,7 +1166,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 
 	// PeerState_Unhealthy carries no listeners, so the cache empties. It has to
 	// drop out entirely rather than appear with an empty set.
-	reg.UpdateLinkDest("ctrl1", destId, "v0", false, nil)
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", false, nil)
 
 	req.Eventually(func() bool {
 		snapshot, ok := reg.GetDestinationListeners()
@@ -1268,7 +1269,7 @@ func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
 	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
 	destId := "doomed-dest"
 
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
 	})
 	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
@@ -1284,7 +1285,7 @@ func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
 	state := <-stateC
 	req.NotNil(state)
 
-	reg.RemoveLinkDest(destId)
+	reg.RemoveLinkDest(destId, 0)
 
 	// Queue it as the only due entry: scheduled to dial, with its destination removed out from under it.
 	statusC := make(chan linkStatus, 1)
@@ -1305,3 +1306,204 @@ func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
 type funcEvent func(*linkRegistryImpl)
 
 func (self funcEvent) Handle(registry *linkRegistryImpl) { self(registry) }
+
+// destPresentProbe reports whether a destination is held at all, which the link count cannot: a destination
+// with no links and one that was never created both count zero. Runs on the event loop for the same reason
+// destLinkCountProbe does.
+type destPresentProbe struct {
+	destId string
+	out    chan bool
+}
+
+func (p destPresentProbe) Handle(reg *linkRegistryImpl) {
+	_, ok := reg.destinations[p.destId]
+	p.out <- ok
+}
+
+func destPresent(t *testing.T, reg *linkRegistryImpl, destId string) bool {
+	t.Helper()
+	probe := destPresentProbe{destId: destId, out: make(chan bool, 1)}
+	reg.queueEvent(probe)
+	select {
+	case present := <-probe.out:
+		return present
+	case <-time.After(2 * time.Second):
+		t.Fatal("registry event loop did not answer the destination probe")
+		return false
+	}
+}
+
+func peerListeners() []*ctrl_pb.Listener {
+	return []*ctrl_pb.Listener{{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}}}
+}
+
+// Test_LinkRegistry_StaleUpdateCannotResurrectRemovedDest is the ordering the store index exists for.
+// Controllers compute peer state independently and nothing sequences their messages, so a report computed
+// before a router was deleted can arrive after the removal. Applied, it recreates the destination, and the
+// router dials an address that now answers for somebody else.
+func Test_LinkRegistry_StaleUpdateCannotResurrectRemovedDest(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "deleted-router"
+
+	reg.UpdateLinkDest("ctrl1", 100, destId, "v0", true, peerListeners())
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.RemoveLinkDest(destId, 110)
+	req.Eventually(func() bool { return !destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	// Computed by another controller before it applied the delete, and delivered late.
+	reg.UpdateLinkDest("ctrl2", 105, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "a report older than the removal must not bring the destination back")
+
+	// Same store state, and still older than the removal: a router being deleted stays in a controller's
+	// connected map until its control channel teardown runs, so it can still be reported as healthy.
+	reg.UpdateLinkDest("ctrl3", 110, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "a report level with the removal must not bring the destination back")
+}
+
+// Test_LinkRegistry_NewerUpdateClearsRemoval: the marker must not outlive its purpose. Nothing else would
+// clear it, and a destination that genuinely exists at a later index has to be able to come back.
+func Test_LinkRegistry_NewerUpdateClearsRemoval(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "recreated-router"
+
+	reg.RemoveLinkDest(destId, 110)
+	reg.UpdateLinkDest("ctrl1", 120, destId, "v0", true, peerListeners())
+
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond,
+		"a report newer than the removal must be applied")
+
+	req.Eventually(func() bool {
+		probe := removedDestProbe{destId: destId, out: make(chan bool, 1)}
+		reg.queueEvent(probe)
+		return !<-probe.out
+	}, 2*time.Second, 25*time.Millisecond, "and must clear the marker rather than leave it to the sweep")
+}
+
+type removedDestProbe struct {
+	destId string
+	out    chan bool
+}
+
+func (p removedDestProbe) Handle(reg *linkRegistryImpl) {
+	_, ok := reg.removedDests[p.destId]
+	p.out <- ok
+}
+
+// Test_LinkRegistry_UnindexedRemovalDoesNotBlockUpdates: a controller without raft has no index to offer, and
+// a zero one says nothing about order. Refusing reports on the strength of it would strand every destination
+// a standalone controller ever removed.
+func Test_LinkRegistry_UnindexedRemovalDoesNotBlockUpdates(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "peer-router"
+
+	reg.RemoveLinkDest(destId, 0)
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, peerListeners())
+
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+}
+
+// Test_LinkRegistry_UnindexedUpdateCannotResurrectRemovedDest: a controller from before store indexes sends
+// none, so its report says nothing about whether it was computed before a removal. During a rolling upgrade,
+// one computed before the router was deleted can arrive after an indexed removal.
+func Test_LinkRegistry_UnindexedUpdateCannotResurrectRemovedDest(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "deleted-router"
+
+	reg.UpdateLinkDest("ctrl1", 100, destId, "v0", true, peerListeners())
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.RemoveLinkDest(destId, 110)
+	req.Eventually(func() bool { return !destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.UpdateLinkDest("older-ctrl", 0, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "an unindexed report must not bring the destination back")
+
+	reg.UpdateLinkDest("ctrl2", 105, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "nor clear the removal for a later stale report")
+
+	reg.UpdateLinkDest("ctrl1", 120, destId, "v0", true, peerListeners())
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond,
+		"a report indexed after the removal still brings it back")
+}
+
+// Test_LinkRegistry_RemovalOutlastsALaggingController: a controller computes peer state against its own store,
+// so one lagging in replication reports a deleted router from before the removal for as long as it lags. The
+// marker has to outlast that lag, and is still swept once its lifetime is up.
+func Test_LinkRegistry_RemovalOutlastsALaggingController(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	destId := "deleted-router"
+	removedAgo := func(age time.Duration) {
+		marker := reg.removedDests[destId]
+		marker.at = time.Now().Add(-age)
+		reg.removedDests[destId] = marker
+	}
+
+	(&linkDestUpdate{id: destId, ctrlId: "ctrl1", storeIndex: 100, healthy: true, listeners: peerListeners()}).Handle(reg)
+	(&removeLinkDest{id: destId, storeIndex: 110}).Handle(reg)
+	req.NotContains(reg.destinations, destId)
+
+	removedAgo(time.Hour)
+	reg.evaluateDestinations()
+	(&linkDestUpdate{id: destId, ctrlId: "lagging", storeIndex: 105, healthy: true, listeners: peerListeners()}).Handle(reg)
+	req.NotContains(reg.destinations, destId, "a report from before the removal must not bring the destination back an hour on")
+
+	removedAgo(removedDestTTL + time.Minute)
+	reg.evaluateDestinations()
+	req.NotContains(reg.removedDests, destId, "the marker is swept once its lifetime is up")
+}
+
+// Test_LinkRegistry_LaggingControllerHealthIsNotSuppressed: the index orders existence, which the store
+// answers, not health, which is each controller's own view of what it is connected to. A controller behind on
+// replication reports a low index alongside a perfectly good health report, and dropping that would strand a
+// destination that is up.
+func Test_LinkRegistry_LaggingControllerHealthIsNotSuppressed(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "live-router"
+
+	reg.UpdateLinkDest("ctrl1", 200, destId, "v0", false, nil)
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.UpdateLinkDest("ctrl2", 150, destId, "v0", true, peerListeners())
+
+	req.Eventually(func() bool {
+		probe := destHealthyProbe{destId: destId, out: make(chan bool, 1)}
+		reg.queueEvent(probe)
+		return <-probe.out
+	}, 2*time.Second, 25*time.Millisecond,
+		"health from a controller behind on replication must still be applied")
+}
+
+type destHealthyProbe struct {
+	destId string
+	out    chan bool
+}
+
+func (p destHealthyProbe) Handle(reg *linkRegistryImpl) {
+	if d, ok := reg.destinations[p.destId]; ok {
+		p.out <- d.healthy
+		return
+	}
+	p.out <- false
+}

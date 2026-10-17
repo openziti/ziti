@@ -53,6 +53,13 @@ func newLinkDest(destId string) *linkDest {
 	}
 }
 
+// removedDest marks a destination this router was told is gone, so a peer state computed before the removal
+// cannot recreate it. Router ids are never reused, so the marker is settled fact rather than a guess.
+type removedDest struct {
+	storeIndex uint64
+	at         time.Time
+}
+
 type linkDest struct {
 	id          string
 	version     concurrenz.AtomicValue[string]
