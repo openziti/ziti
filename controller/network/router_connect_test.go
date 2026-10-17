@@ -71,6 +71,17 @@ func newConnectTestNetwork(t *testing.T) (*model.TestContext, *Network, transpor
 
 	return ctx, network, addr
 }
+
+// testConfigOf returns the config a test network was built with, for a test that needs to change what the
+// controller answers about itself. IsLeader reads raft state from the config, so this is how a test says
+// whether it is clustered and whether it is the leader.
+func testConfigOf(t *testing.T, network *Network) *testConfig {
+	t.Helper()
+	cfg, ok := network.config.(*testConfig)
+	require.True(t, ok, "test network was not built by newConnectTestNetwork")
+	return cfg
+}
+
 // TestConnectRouter_RejectsAndKicksWhenBusy: a connect into an occupied slot returns ErrConnectRejected,
 // kicks the occupant (whose teardown clears the slot), and a subsequent redial then connects cleanly.
 func TestConnectRouter_RejectsAndKicksWhenBusy(t *testing.T) {

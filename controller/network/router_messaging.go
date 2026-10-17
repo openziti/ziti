@@ -125,6 +125,20 @@ func (self *RouterMessaging) TerminatorCreated(terminator *db.Terminator) {
 	})
 }
 
+// NotifyRouterRemoved queues a peer-state change telling notifyRouterId that routerId is gone, for a
+// router that evidently missed the removal the first time.
+//
+// Peer state is otherwise only recomputed when a router connects or disconnects, and a deleted router does
+// neither again, so a removal that does not land is never repeated. This is the way to say it a second
+// time. The state itself is still computed at send time by syncStates, so a router that turns out to exist
+// after all is reported as it actually is rather than as removed.
+func (self *RouterMessaging) NotifyRouterRemoved(notifyRouterId string, routerId string) {
+	self.queueEvent(&routerRemovalNoticeEvent{
+		notifyRouterId: notifyRouterId,
+		routerId:       routerId,
+	})
+}
+
 func (self *RouterMessaging) routerChanged(routerId string, connected bool) {
 	self.queueEvent(&routerChangedEvent{
 		routerId:  routerId,
@@ -469,6 +483,22 @@ func (self *RouterMessaging) Inspect() (*inspect.RouterMessagingState, error) {
 type routerChangedEvent struct {
 	routerId  string
 	connected bool
+}
+
+// routerRemovalNoticeEvent re-queues one router's state for one other router. Unlike routerChangedEvent it
+// names its audience, since the router that needs telling is the one still reporting links to the removed
+// router, not every connected router.
+type routerRemovalNoticeEvent struct {
+	notifyRouterId string
+	routerId       string
+}
+
+func (self *routerRemovalNoticeEvent) handle(c *RouterMessaging) {
+	pfxlog.Logger().
+		WithField("notifyRouterId", self.notifyRouterId).
+		WithField("routerId", self.routerId).
+		Info("re-asserting router removal to router still referencing it")
+	c.getRouterStates(self.notifyRouterId).stateUpdated(self.routerId)
 }
 
 func (self *routerChangedEvent) handle(c *RouterMessaging) {

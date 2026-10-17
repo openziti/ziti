@@ -643,6 +643,13 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		network.NotifyLinkIdEvent(reportedLink.Id, event.LinkFromRouterDisconnectedDest)
 	}
 
+	if link == nil {
+		// Refused; RouterReportedLink has already said why. A report naming a destination that no longer
+		// exists is also the evidence that the router never got the removal, so answer it with one.
+		network.notifyDestinationRemovedIfGone(src, reportedLink.DestRouterId, dst)
+		return
+	}
+
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")
@@ -650,6 +657,55 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
 		log.Info("router reported link already known")
 	}
+}
+
+// notifyDestinationRemovedIfGone tells srcRouter that destRouterId is gone, when a link report or gossip
+// entry naming it has been refused. dst is the destination's connection here, if any.
+func (network *Network) notifyDestinationRemovedIfGone(srcRouter *model.Router, destRouterId string, dst *model.Router) {
+	if network.shouldNotifyDestinationRemoved(srcRouter, destRouterId, dst) {
+		network.RouterMessaging.NotifyRouterRemoved(srcRouter.Id, destRouterId)
+	}
+}
+
+// shouldNotifyDestinationRemoved reports whether to re-assert a removal for destRouterId to srcRouter. dst
+// is the destination's connection here, if any.
+//
+// Peer state is only recomputed when a router connects or disconnects, and a deleted router does neither
+// again, so a removal a router misses is never repeated and it dials the dead destination forever. A link
+// report or a gossip entry naming the destination is the evidence that it was missed, and both repeat, so
+// the correction repeats with them.
+//
+// Every router that names the destination is told, whatever it supports. A router in link gossip learns of
+// deletions from the router data model instead, but only where its controllers distribute routers there,
+// and the statement is true regardless of who hears it.
+//
+// Leader only. This is an unsolicited assertion rather than a reaction to a local event, and it tears links
+// down: a controller lagging on a create would otherwise tell a router to drop a destination that is fine.
+// One controller saying it is enough, since the reports that prompt it repeat.
+func (network *Network) shouldNotifyDestinationRemoved(srcRouter *model.Router, destRouterId string, dst *model.Router) bool {
+	if srcRouter == nil || destRouterId == "" || dst != nil {
+		return false
+	}
+
+	if !network.IsLeader() {
+		return false
+	}
+
+	// A gossip entry names its dialer whether or not that router is connected here, and a router this
+	// controller does not hold is one it cannot tell.
+	if network.Router.GetConnected(srcRouter.Id) == nil {
+		return false
+	}
+
+	exists, err := network.Router.Exists(destRouterId)
+	if err != nil {
+		// Saying a router is gone on the strength of a failed read would have the reporting router tear
+		// down links to one that is probably fine.
+		pfxlog.Logger().WithError(err).WithField("routerId", destRouterId).
+			Error("failed to check if reported link destination exists")
+		return false
+	}
+	return !exists
 }
 
 func (network *Network) LinkFaulted(link *model.Link, dupe bool) {
