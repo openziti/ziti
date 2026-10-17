@@ -445,16 +445,23 @@ func TestRouterDelete_DropsTheLinkIndex(t *testing.T) {
 
 	gone := newPersistedRouter(t, network, addr, "r0")
 	peer := newPersistedRouter(t, network, addr, "r1")
+	other := newPersistedRouter(t, network, addr, "r2")
 	network.Link.Add(model.NewTestLink("l0", gone, peer))
+	network.Link.Add(model.NewTestLink("l1", peer, other))
 
 	require.Len(t, network.Link.LinksForRouter(gone.Id), 1)
-	require.Len(t, network.Link.LinksForRouter(peer.Id), 1)
+	require.Len(t, network.Link.LinksForRouter(peer.Id), 2)
 
 	require.NoError(t, network.Router.Delete(gone.Id, change.New()))
 
 	require.Eventually(t, func() bool { return len(network.Link.LinksForRouter(gone.Id)) == 0 },
 		2*time.Second, 10*time.Millisecond, "deleting a router must drop its link index")
-	require.Len(t, network.Link.LinksForRouter(peer.Id), 1, "the other endpoint's index must be untouched")
+
+	// The deleted router's links are retired outright, so the endpoint on the far side loses them too. A
+	// link between two surviving routers is what must be left alone.
+	require.Eventually(t, func() bool { return len(network.Link.LinksForRouter(peer.Id)) == 1 },
+		2*time.Second, 10*time.Millisecond, "the deleted router's link must be retired from the far endpoint too")
+	require.Len(t, network.Link.LinksForRouter(other.Id), 1, "a link between surviving routers must be untouched")
 }
 
 // TestRouterDelete_KeepsTheIndexOfAReusedId covers the delete cleanup running late against an id that has
