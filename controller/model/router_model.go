@@ -54,6 +54,10 @@ type Router struct {
 	Control     ctrlchan.CtrlChannel
 	Connected   atomic.Bool
 	ConnectTime time.Time
+	// sendsFullRefresh records that this router has announced its link set as a full refresh, which is a
+	// router saying it will state authoritatively on every connect which links it still has. Observed
+	// rather than configured, since the routers it distinguishes are released and cannot gain a capability.
+	sendsFullRefresh atomic.Bool
 	// VersionInfo is reported in the router's hello and is not persisted, so it is only populated on the
 	// instance built for a control-channel connection. It is nil on an instance loaded from the database.
 	// Read it from GetConnected rather than from whatever instance is to hand.
@@ -204,6 +208,19 @@ func (entity *Router) GetLinkListeners() []*ctrl_pb.Listener {
 	entity.mu.RLock()
 	defer entity.mu.RUnlock()
 	return entity.listeners
+}
+
+// MarkSendsFullRefresh records that this router announces its links as a full refresh. Called when such an
+// announcement arrives; a router that has made one makes one on every connect.
+func (entity *Router) MarkSendsFullRefresh() {
+	entity.sendsFullRefresh.Store(true)
+}
+
+// SendsFullRefresh reports whether this router prunes its own stale links, by announcing on connect which
+// links it still has. False for a router that has not said so, including one that has not yet announced
+// anything, which is the safe way round: the cost is a stale link rather than a missing one.
+func (entity *Router) SendsFullRefresh() bool {
+	return entity.sendsFullRefresh.Load()
 }
 
 func (entity *Router) HasCapability(capability capabilities.RouterCapability) bool {

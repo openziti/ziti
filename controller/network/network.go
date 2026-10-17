@@ -624,11 +624,25 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 	// very router that is being removed.
 	network.Router.MarkDisconnected(r)
 
+	// A router that marks its reconnect announcement a full refresh says, authoritatively, which links it
+	// still has, and the controller prunes the rest against it. There is nothing left here for a disconnect
+	// to clean up, and retiring anyway is worse than useless: the announcement is a bounded, best-effort
+	// send, so an outage that outlives its retries leaves this controller with no links for a router that
+	// is up, until it happens to reconnect again.
+	retireUnannounced := !r.SendsFullRefresh()
+
 	// remove Links for Router, rerouting circuits off any that were connected
 	for _, l := range links {
 		wasConnected := l.CurrentState().Mode == model.Connected
-		if l.Src.Id == r.Id {
-			network.Link.Remove(l)
+		if l.Src.Id != r.Id {
+			continue
+		}
+
+		// A link its dialer does not prune itself is known only from that router's reports, under ids it
+		// will never mention again. This is the only removal such a link will get.
+		if retireUnannounced {
+			network.LinkFaulted(l, false)
+			continue
 		}
 		if wasConnected {
 			network.RerouteLink(l)
