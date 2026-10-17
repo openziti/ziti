@@ -347,7 +347,9 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
 
 	// The destination is left unconnected: only the source router's disconnect can recreate a stale link,
-	// so connecting a second router would add the peer-state sync to the race for no extra coverage.
+	// so connecting a second router would add the peer-state sync to the race for no extra coverage. It has
+	// to exist, since a report naming one that does not is refused.
+	newPersistedRouter(t, network, addr, "r2")
 	for i := 0; i < 200; i++ {
 		r := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
 		require.NoError(t, network.ConnectRouter(r))
@@ -380,6 +382,26 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 	}
 }
 
+// TestNotifyExistingLink_RefusesGoneDestination: a report naming a destination that is neither connected nor
+// stored records no link.
+func TestNotifyExistingLink_RefusesGoneDestination(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.ConnectRouter(src))
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: "gone",
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	})
+
+	_, found := network.Link.Get("l0")
+	require.False(t, found, "a link to a destination that no longer exists must not be recorded")
+}
+
 // TestRouterReportedLink_RepairsDestConnectedMidReport drives the interleave where both paths that pair a
 // link with its destination miss: the report resolves the destination before the link is in the table, and
 // the destination's own link build runs before the link lands there. The destination connects through
@@ -389,6 +411,8 @@ func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
 
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	// The destination has to exist, since a report naming one that does not is refused.
+	require.NoError(t, network.Router.Create(dst, change.New()))
 	require.NoError(t, network.ConnectRouter(src))
 
 	report := &ctrl_pb.RouterLinks_RouterLink{
@@ -590,6 +614,8 @@ func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
 
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	// The destination has to exist, since a report naming one that does not is refused.
+	require.NoError(t, network.Router.Create(dst, change.New()))
 	require.NoError(t, network.ConnectRouter(src))
 
 	// A link recorded while its destination was not connected, so it points at nothing.

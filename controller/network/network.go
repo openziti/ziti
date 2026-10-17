@@ -643,6 +643,11 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		network.NotifyLinkIdEvent(reportedLink.Id, event.LinkFromRouterDisconnectedDest)
 	}
 
+	if link == nil {
+		// Refused; RouterReportedLink has already said why.
+		return
+	}
+
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")

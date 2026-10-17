@@ -194,11 +194,38 @@ func (self *LinkManager) repairDest(link *Link) {
 	}
 }
 
+// destinationExists reports whether routerId names a router that still exists. The router cache answers
+// most calls without a bolt transaction; a miss falls through to the store.
+//
+// True when there is no one to ask, so a link report is never refused on the strength of a missing lookup.
+func (self *LinkManager) destinationExists(routerId string) bool {
+	if self.env == nil {
+		return true
+	}
+	router, err := self.env.GetManagers().Router.Read(routerId)
+	return err == nil && router != nil
+}
+
 func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, bool) {
 	// Striped by link id so concurrent reports for different links proceed in
 	// parallel; reports for the same link still serialize. Replaces a single
 	// global mutex that funneled every router's link reports through one lock.
 	defer self.linkLocks.LockFor(reportedLink.Id)()
+
+	// A nil dst means the destination is not connected here, which is ordinary: the link is recorded and
+	// repaired when that router connects. It also covers a router that has been deleted, and that link can
+	// never be repaired, since a recreated router is assigned a new id. Left alone it is a link to an entity
+	// that does not exist: it counts, it validates, it offers itself for routing, and it cannot even be
+	// rendered by the API, which fails the whole listing rather than one row.
+	//
+	// The routers that dialed it do not know the router is gone and re-announce the link on every reconnect,
+	// so refusing here is what stops it coming back.
+	if dst == nil && !self.destinationExists(reportedLink.DestRouterId) {
+		linkLog.Warn("ignoring link report naming a destination router that no longer exists",
+			"linkId", reportedLink.Id,
+			"destRouterId", reportedLink.DestRouterId)
+		return nil, false
+	}
 
 	link, _ := self.Get(reportedLink.Id)
 	if link != nil && link.Iteration >= reportedLink.Iteration {
