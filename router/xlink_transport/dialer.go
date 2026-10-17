@@ -422,7 +422,7 @@ func (self *splitDialBindHandler) bindPayloadChannel(binding channel.Binding) er
 		if err := verifyDialedPeer(binding.GetChannel().Id(), self.link.routerId, self.link.id); err != nil {
 			return err
 		}
-		self.link.payloadCh = binding.GetChannel()
+		self.link.payloadCh.Store(binding.GetChannel())
 		bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
 		if err := bindHandler.BindChannel(binding); err != nil {
 			return errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", self.link.id)
@@ -436,7 +436,7 @@ func (self *splitDialBindHandler) bindAckChannel(binding channel.Binding) error 
 		if err := verifyDialedPeer(binding.GetChannel().Id(), self.link.routerId, self.link.id); err != nil {
 			return err
 		}
-		self.link.ackCh = binding.GetChannel()
+		self.link.ackCh.Store(binding.GetChannel())
 		bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, false, false)
 		if err := bindHandler.BindChannel(binding); err != nil {
 			return errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", self.link.id)
