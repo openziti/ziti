@@ -41,7 +41,9 @@ func (self LinkDestSubscriber) OnRouterChanged(*edge_ctrl_pb.DataState_Router) {
 // OnRouterRemoved implements common.RouterEventSubscriber. Removing a destination the registry does not
 // know about is a no-op, so unknown ids need no filtering.
 func (self LinkDestSubscriber) OnRouterRemoved(routerId string) {
-	self.RemoveLinkDest(routerId)
+	// No store index: the router data model carries its own, in a different sequence from the one peer state
+	// is ordered by. Removing without one still removes; it just cannot refuse a later stale report.
+	self.RemoveLinkDest(routerId, 0)
 }
 
 // ensure interface compliance

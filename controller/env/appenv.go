@@ -506,6 +506,15 @@ func (ae *AppEnv) GetRaftInfo() (string, string, string) {
 	return ae.HostController.GetRaftInfo()
 }
 
+// GetStoreIndex returns the index of the last change applied to this controller's store, or zero when
+// running without raft, where there is no index and nothing to order against.
+func (ae *AppEnv) GetStoreIndex() uint64 {
+	if !ae.HostController.IsRaftEnabled() {
+		return 0
+	}
+	return ae.HostController.GetRaftIndex()
+}
+
 // GetApiAddresses returns the controller's API addresses and their fingerprint hash.
 func (ae *AppEnv) GetApiAddresses() (map[string][]event.ApiAddress, []byte) {
 	return ae.HostController.GetApiAddresses()
