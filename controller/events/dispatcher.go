@@ -21,9 +21,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -143,8 +143,8 @@ func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
 	self.initUsageEvents()
 	self.initEntityChangeEvents(n)
 
-	self.AddMetricsMapper(ctrlChannelMetricsMapper{}.mapMetrics)
-	self.AddMetricsMapper((&linkMetricsMapper{network: n}).mapMetrics)
+	self.addMetricsMapper(ctrlChannelMetricsMapper{}.mapMetrics)
+	self.addMetricsMapper((&linkMetricsMapper{network: n}).mapMetrics)
 }
 
 func (self *Dispatcher) InitializeEdgeEvents(stores *db.Stores) {
@@ -166,7 +166,15 @@ func (self *Dispatcher) InitializeEdgeEvents(stores *db.Stores) {
 	}
 }
 
-func (self *Dispatcher) AddMetricsMapper(mapper event.MetricsMapper) {
+// addMetricsMapper registers a metrics mapper. Deliberately not exported, and deliberately absent from
+// event.Dispatcher: the metric filter's fast path decides whether to build an event at all by predicting the
+// name the metric will be emitted under, so every rewrite a mapper performs has to be reproduced in
+// mapMetricName. A mapper registered from outside this package could rewrite a name to anything, and the fast
+// path would discard metrics a filter written against the new name selects.
+//
+// So adding a mapper means teaching mapMetricName the same rewrite, and Test_splitMetricName_matchesTheMappers
+// is what holds the two together.
+func (self *Dispatcher) addMetricsMapper(mapper event.MetricsMapper) {
 	self.metricsMappers.Append(mapper)
 }
 
