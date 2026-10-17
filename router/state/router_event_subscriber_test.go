@@ -39,9 +39,18 @@ func (r *recordingRouterSub) OnRouterRemoved(routerId string) {
 	r.removed = append(r.removed, routerId)
 }
 
-// newRdmWithRouters builds a model holding the given routers. The value of each
+// newRdmWithRouters builds a model holding the given routers, as a source that distributes routers sends
+// it: such a source sends all of them, so the local router's own record is always there. The value of each
 // entry becomes the router's Name, so a test can make two records differ.
 func newRdmWithRouters(routers map[string]string) *common.RouterDataModel {
+	rdm := newRdmWithoutSelf(routers)
+	rdm.Routers.Set("self", &edge_ctrl_pb.DataState_Router{Id: "self"})
+	return rdm
+}
+
+// newRdmWithoutSelf builds a model whose router set omits the local router, which is what a source that
+// does not distribute routers produces: with no routers at all, or with whatever a stale set left behind.
+func newRdmWithoutSelf(routers map[string]string) *common.RouterDataModel {
 	rdm := common.NewBareRouterDataModel("self")
 	for id, name := range routers {
 		rdm.Routers.Set(id, &edge_ctrl_pb.DataState_Router{Id: id, Name: name})
@@ -68,20 +77,59 @@ func Test_DispatchRouterDiff_OnlyNewState_AllChanged(t *testing.T) {
 	dispatchRouterDiff(nil, newRdmWithRouters(map[string]string{"r1": "one", "r2": "two"}), rec)
 
 	req.Empty(rec.removed)
-	req.ElementsMatch([]string{"r1", "r2"}, rec.changed)
+	req.ElementsMatch([]string{"r1", "r2", "self"}, rec.changed)
 }
 
-// Test_DispatchRouterDiff_OnlyOldState_AllRemoved is the case the diff exists for:
-// a full state carries nothing at all for a deleted router, so its absence from the
-// new model is the only evidence it is gone.
-func Test_DispatchRouterDiff_OnlyOldState_AllRemoved(t *testing.T) {
+// Test_DispatchRouterDiff_AbsentFromNewStateIsRemoved is the case the diff exists for: a full state carries
+// nothing at all for a deleted router, so its absence from the new model is the only evidence it is gone.
+func Test_DispatchRouterDiff_AbsentFromNewStateIsRemoved(t *testing.T) {
 	req := require.New(t)
 	rec := &recordingRouterSub{}
 
-	dispatchRouterDiff(newRdmWithRouters(map[string]string{"r1": "one", "r2": "two"}), nil, rec)
+	dispatchRouterDiff(newRdmWithRouters(map[string]string{"r1": "one", "r2": "two"}), newRdmWithRouters(nil), rec)
 
 	req.Empty(rec.changed)
 	req.ElementsMatch([]string{"r1", "r2"}, rec.removed)
+}
+
+// Test_DispatchRouterDiff_SourceWithoutRoutersRemovesNothing is the one that matters in a mixed-version
+// cluster. A controller from before routers were distributed in the data model sends a full state with none
+// of them, and reading that as a deletion of every router drops every link destination this router has.
+func Test_DispatchRouterDiff_SourceWithoutRoutersRemovesNothing(t *testing.T) {
+	req := require.New(t)
+	rec := &recordingRouterSub{}
+
+	oldRdm := newRdmWithRouters(map[string]string{"r1": "one", "r2": "two"})
+
+	dispatchRouterDiff(oldRdm, newRdmWithoutSelf(nil), rec)
+
+	req.Empty(rec.removed, "an empty router set is evidence of nothing, not of a fleet-wide deletion")
+	req.Empty(rec.changed)
+}
+
+// Test_DispatchRouterDiff_NewStateWithoutSelfRemovesNothing: a source that distributes routers sends all of
+// them, so one whose set omits this router is not a source to read deletions from, however many it carries.
+func Test_DispatchRouterDiff_NewStateWithoutSelfRemovesNothing(t *testing.T) {
+	req := require.New(t)
+	rec := &recordingRouterSub{}
+
+	oldRdm := newRdmWithRouters(map[string]string{"r1": "one", "gone": "bye"})
+
+	dispatchRouterDiff(oldRdm, newRdmWithoutSelf(map[string]string{"r1": "one"}), rec)
+
+	req.Empty(rec.removed)
+}
+
+// Test_DispatchRouterDiff_NilNewStateRemovesNothing: there is no model to have carried routers, so there is
+// nothing to conclude from what it does not hold.
+func Test_DispatchRouterDiff_NilNewStateRemovesNothing(t *testing.T) {
+	req := require.New(t)
+	rec := &recordingRouterSub{}
+
+	dispatchRouterDiff(newRdmWithRouters(map[string]string{"r1": "one"}), nil, rec)
+
+	req.Empty(rec.removed)
+	req.Empty(rec.changed)
 }
 
 func Test_DispatchRouterDiff_MixedAddRemoveKeep(t *testing.T) {
@@ -136,17 +184,20 @@ func Test_SetRouterDataModel_DispatchesRouterDiff(t *testing.T) {
 	mgr := &ManagerImpl{}
 	rec := &recordingRouterSub{}
 
+	// Both models carry the local router's own record, as a source that distributes routers does.
 	existing := common.NewReceiverRouterDataModel("self", closeNotify)
+	existing.Routers.Set("self", &edge_ctrl_pb.DataState_Router{Id: "self"})
 	existing.Routers.Set("keep", &edge_ctrl_pb.DataState_Router{Id: "keep"})
 	existing.Routers.Set("gone", &edge_ctrl_pb.DataState_Router{Id: "gone"})
 	mgr.SetRouterDataModel(existing, false)
 
 	mgr.SetRouterEventSubscriber(rec)
-	req.ElementsMatch([]string{"keep", "gone"}, rec.changed, "attach should bootstrap against the current model")
+	req.ElementsMatch([]string{"self", "keep", "gone"}, rec.changed, "attach should bootstrap against the current model")
 	req.Empty(rec.removed)
 	rec.changed = nil
 
 	updated := common.NewReceiverRouterDataModel("self", closeNotify)
+	updated.Routers.Set("self", &edge_ctrl_pb.DataState_Router{Id: "self"})
 	updated.Routers.Set("keep", &edge_ctrl_pb.DataState_Router{Id: "keep"})
 	updated.Routers.Set("added", &edge_ctrl_pb.DataState_Router{Id: "added"})
 	mgr.SetRouterDataModel(updated, false)
