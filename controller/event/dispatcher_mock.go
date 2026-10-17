@@ -98,8 +98,6 @@ func (d DispatcherMock) AddLinkEventHandler(LinkEventHandler) {}
 
 func (d DispatcherMock) RemoveLinkEventHandler(LinkEventHandler) {}
 
-func (d DispatcherMock) AddMetricsMapper(MetricsMapper) {}
-
 func (d DispatcherMock) AddMetricsEventHandler(MetricsEventHandler) {}
 
 func (d DispatcherMock) RemoveMetricsEventHandler(MetricsEventHandler) {}
