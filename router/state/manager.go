@@ -248,6 +248,12 @@ type Manager interface {
 	// configs that vanish during a full-state resync are surfaced as removals.
 	SetRouterConfigSubscriber(s common.RouterConfigEventSubscriber)
 
+	// SetRouterEventSubscriber registers the subscriber that receives Router
+	// entity events. The manager attaches the subscriber to the current RDM (if
+	// any) and re-attaches it to any subsequent RDM provided via
+	// SetRouterDataModel, so the subscription survives a full-state resync.
+	SetRouterEventSubscriber(s common.RouterEventSubscriber)
+
 	// GetRouterDataModelPool returns the goroutine pool used for processing
 	// router data model events and updates.
 	GetRouterDataModelPool() goroutines.Pool
@@ -638,6 +644,10 @@ type ManagerImpl struct {
 	// survives full-state resyncs that swap the RDM out from under us. Read/
 	// written under rdmLock so attach is serialized with SetRouterDataModel.
 	routerConfigSubscriber common.RouterConfigEventSubscriber
+
+	// routerSubscriber receives Router entity events. Stored on the manager for
+	// the same reason as routerConfigSubscriber, and read/written under rdmLock.
+	routerSubscriber common.RouterEventSubscriber
 
 	postureCache *posture.Cache
 
@@ -1159,6 +1169,10 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 		model.SetRouterConfigSubscriber(self.routerConfigSubscriber)
 	}
 
+	if self.routerSubscriber != nil {
+		model.SetRouterSubscriber(self.routerSubscriber)
+	}
+
 	self.routerDataModel.Store(model)
 
 	// Clear the replace-in-progress flag before syncing subscribers. The model is
@@ -1181,6 +1195,14 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 	// HandleConfigEvent, which also fires after rdm.Configs is updated.
 	if self.routerConfigSubscriber != nil {
 		dispatchRouterConfigDiff(existing, model, self.routerConfigSubscriber)
+	}
+
+	// Same transition point for Router entities. This is the only place a delete
+	// that happened while this router was disconnected can be noticed: a full state
+	// carries a Create for every router that exists and nothing at all for one that
+	// has been removed.
+	if self.routerSubscriber != nil {
+		dispatchRouterDiff(existing, model, self.routerSubscriber)
 	}
 
 	if resetSubscription {
@@ -1213,6 +1235,25 @@ func (self *ManagerImpl) SetRouterConfigSubscriber(s common.RouterConfigEventSub
 	// the RDM. Treats "before the subscriber was set" as an empty prior state,
 	// so the diff is just "everything in current."
 	dispatchRouterConfigDiff(nil, current, s)
+}
+
+// SetRouterEventSubscriber registers the subscriber and attaches it to the
+// current RDM. Called once at router startup.
+func (self *ManagerImpl) SetRouterEventSubscriber(s common.RouterEventSubscriber) {
+	self.rdmLock.Lock()
+	defer self.rdmLock.Unlock()
+
+	self.routerSubscriber = s
+	current := self.routerDataModel.Load()
+	if current != nil {
+		current.SetRouterSubscriber(s)
+	}
+	if s == nil {
+		return
+	}
+	// Bootstrap, as for configs: "before the subscriber was set" is an empty prior
+	// state, so the diff is everything in current.
+	dispatchRouterDiff(nil, current, s)
 }
 
 // dispatchRouterConfigDiff walks router-target Configs in oldRdm and newRdm,
@@ -1270,6 +1311,45 @@ func collectRouterConfigTypes(rdm *common.RouterDataModel) map[string]string {
 		out[ct.Name] = cfg.DataJson
 	})
 	return out
+}
+
+// dispatchRouterDiff replays the Router events implied by moving from oldRdm to
+// newRdm: OnRouterRemoved for routers present in old but absent from new, and
+// OnRouterChanged for routers that are new or whose record differs. Either RDM
+// may be nil.
+//
+// Unchanged routers are skipped. The fast path through HandleRouterEvent
+// dispatches via the subscriber attached to the RDM; this covers the transition
+// points (subscriber attach, RDM swap) where those events never fire.
+func dispatchRouterDiff(oldRdm, newRdm *common.RouterDataModel, sub common.RouterEventSubscriber) {
+	if sub == nil {
+		return
+	}
+	oldRouters := collectRouters(oldRdm)
+	newRouters := collectRouters(newRdm)
+
+	for id := range oldRouters {
+		if _, stillPresent := newRouters[id]; !stillPresent {
+			sub.OnRouterRemoved(id)
+		}
+	}
+	for id, router := range newRouters {
+		if router == nil {
+			continue
+		}
+		if prev, ok := oldRouters[id]; ok && proto.Equal(prev, router) {
+			continue
+		}
+		sub.OnRouterChanged(router)
+	}
+}
+
+// collectRouters snapshots rdm.Routers, returning nil when rdm is nil.
+func collectRouters(rdm *common.RouterDataModel) map[string]*edge_ctrl_pb.DataState_Router {
+	if rdm == nil {
+		return nil
+	}
+	return rdm.Routers.Items()
 }
 
 func (self *ManagerImpl) ResyncRouterDataModel() {
