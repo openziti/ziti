@@ -38,6 +38,7 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/apierror"
@@ -132,6 +133,7 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		indexTracker:           NewIndexTracker(),
 		migrationMgr:           migrationMgr,
 		clusterEvents:          make(chan raft.Observation, 16),
+		clusterCapabilityCheck: make(chan struct{}, 1),
 		raftRateLimiter:        command.NewAdaptiveRateLimitTracker(env.GetRaftRateLimiterConfig(), env.GetMetricsRegistry(), env.GetCloseNotify()),
 		decoders:               command.NewDecoders(),
 		advertiseReconcileWake: make(chan struct{}, 1),
@@ -168,6 +170,14 @@ type Controller struct {
 	leaderTerm                uint64
 	leaderCaughtUp            atomic.Bool
 	clusterEvents             chan raft.Observation
+	clusterCapability         *clusterCapabilityTracker
+	clusterCapabilities       atomic.Pointer[capabilities.Mask[capabilities.ControllerCapability]]
+	clusterCapabilityHandlers concurrenz.CopyOnWriteSlice[func(mask *capabilities.Mask[capabilities.ControllerCapability])]
+	clusterCapabilityLock     sync.Mutex
+	// clusterCapabilityCheck asks the event loop to re-derive the cluster's capabilities. Capacity one and
+	// written without blocking: a signal that finds one already pending has nothing to add, and the peer
+	// observer that writes it runs under the mesh lock, so it must never wait.
+	clusterCapabilityCheck    chan struct{}
 	raftRateLimiter           rate.AdaptiveRateLimitTracker
 	decoders                  command.Decoders
 	advertiseReconcileRunning atomic.Bool
@@ -268,6 +278,97 @@ func (self *Controller) GetRaft() *raft.Raft {
 // Raft.AppliedIndex(), which advances when a commit is handed to the FSM, not when the FSM has finished it.
 func (self *Controller) GetAppliedIndex() uint64 {
 	return self.indexTracker.Index()
+}
+
+// RegisterClusterCapabilityHandler registers a handler for which capabilities every member of the cluster
+// supports. The handler is called at once with the current answer, and again whenever it changes.
+//
+// The immediate call is what lets a consumer start correct rather than assuming an answer: a store that
+// began by assuming its feature was usable would accept entries it is about to give up.
+func (self *Controller) RegisterClusterCapabilityHandler(f func(mask *capabilities.Mask[capabilities.ControllerCapability])) {
+	// Serialized against a transition so a handler registered while one is in flight is not either called
+	// twice with the same answer or missed by both.
+	self.clusterCapabilityLock.Lock()
+	defer self.clusterCapabilityLock.Unlock()
+
+	self.clusterCapabilityHandlers.Append(f)
+	// Nothing to report while the answer is unknown; the consumer keeps whatever default it starts with,
+	// and hears from the first evaluation that does know.
+	if mask := self.clusterCapabilities.Load(); mask != nil {
+		f(mask)
+	}
+}
+
+// requestClusterCapabilityCheck asks the event loop to re-derive the cluster's capabilities.
+//
+// Never blocks, so it is safe from the peer observer, which runs while the mesh holds its lock. A signal
+// dropped because one is already pending loses nothing: the pending one will read the state as it stands
+// when it runs.
+func (self *Controller) requestClusterCapabilityCheck() {
+	select {
+	case self.clusterCapabilityCheck <- struct{}{}:
+	default:
+	}
+}
+
+// evaluateClusterCapabilities re-derives the cluster's capabilities and reports a change to the handlers.
+// Runs on the event loop, off the mesh lock, since a handler gives up a gossip store and so takes locks of
+// its own.
+func (self *Controller) evaluateClusterCapabilities() {
+	mask, known := self.deriveClusterCapabilities()
+	if !known {
+		// Nothing is reported while a member has not been observed, so consumers keep the last answer
+		// rather than being told the cluster supports nothing on the strength of not having looked yet.
+		return
+	}
+	self.reportClusterCapabilities(mask)
+}
+
+// reportClusterCapabilities records a known answer and tells the handlers, if it differs from the last one.
+func (self *Controller) reportClusterCapabilities(mask *capabilities.Mask[capabilities.ControllerCapability]) {
+	self.clusterCapabilityLock.Lock()
+	defer self.clusterCapabilityLock.Unlock()
+
+	if previous := self.clusterCapabilities.Load(); previous != nil && previous.Equals(mask) {
+		return
+	}
+	self.clusterCapabilities.Store(mask)
+
+	pfxlog.Logger().WithField("linkGossip", mask.IsSet(capabilities.ControllerLinkGossip)).
+		Info("cluster-wide controller capabilities changed")
+	for _, handler := range self.clusterCapabilityHandlers.Value() {
+		handler(mask)
+	}
+}
+
+// deriveClusterCapabilities returns the capabilities every raft member is known to support, and whether
+// that answer is known at all.
+//
+// Cluster-wide rather than per-connection on purpose. A router can only see the controllers it is connected
+// to, so its own view changes with its connectivity and two routers can reach different answers at the same
+// moment. Every controller derives this from raft membership instead, so they all give the same answer and
+// a router losing a connection cannot change it.
+//
+// Not known until every member has been observed, which is what keeps a restarted controller from telling
+// its routers the cluster supports nothing while its peers are still saying otherwise.
+func (self *Controller) deriveClusterCapabilities() (*capabilities.Mask[capabilities.ControllerCapability], bool) {
+	if self.Raft == nil || self.clusterCapability == nil {
+		return nil, false
+	}
+
+	future := self.Raft.GetConfiguration()
+	if err := future.Error(); err != nil {
+		pfxlog.Logger().WithError(err).Debug("unable to read raft configuration, cluster capabilities unknown")
+		return nil, false
+	}
+
+	servers := future.Configuration().Servers
+	members := make([]raft.ServerID, 0, len(servers))
+	for _, server := range servers {
+		members = append(members, server.ID)
+	}
+
+	return self.clusterCapability.clusterMask(members)
 }
 
 // GetMesh returns the related Mesh instance
@@ -613,7 +714,18 @@ func (self *Controller) Init() error {
 
 	helloHeaderProviders := self.env.GetHelloHeaderProviders()
 
+	self.clusterCapability = newClusterCapabilityTracker(raft.ServerID(self.env.GetId().Token))
+
 	self.Mesh = mesh.New(self, localAddr, helloHeaderProviders)
+
+	// Observed as peers become known rather than read when asked. A peer that connects and disconnects
+	// between two reads would otherwise never be seen, so an older controller could join and drop unnoticed
+	// and leave this reporting a capable cluster.
+	self.Mesh.RegisterPeerObserver(func(peer *mesh.Peer) {
+		self.clusterCapability.observe(peer.Id, peer.Capabilities)
+		self.requestClusterCapabilityCheck()
+	})
+
 	self.Mesh.RegisterClusterStateHandler(func(state mesh.ClusterState) {
 		obs := raft.Observation{
 			Raft: self.Raft,
@@ -646,7 +758,10 @@ func (self *Controller) Init() error {
 	r.RegisterObserver(raft.NewObserver(self.clusterEvents, true, func(o *raft.Observation) bool {
 		_, isRaftState := o.Data.(raft.RaftState)
 		_, isLeaderState := o.Data.(raft.LeaderObservation)
-		return isRaftState || isLeaderState
+		// Membership decides which members gossip availability is derived over, so a peer joining or
+		// leaving changes the answer even when no peer connection did.
+		_, isPeerChange := o.Data.(raft.PeerObservation)
+		return isRaftState || isLeaderState || isPeerChange
 	}))
 
 	rc := r.ReloadableConfig()
@@ -656,6 +771,9 @@ func (self *Controller) Init() error {
 	}
 
 	self.Raft = r
+	if mask, known := self.deriveClusterCapabilities(); known {
+		self.clusterCapabilities.Store(mask)
+	}
 
 	return nil
 }
@@ -869,6 +987,9 @@ func (self *Controller) eventLoop() {
 		select {
 		case observation := <-self.clusterEvents:
 			self.processRaftObservation(observation, eventState)
+			self.evaluateClusterCapabilities()
+		case <-self.clusterCapabilityCheck:
+			self.evaluateClusterCapabilities()
 		case <-leaderTicker.C:
 			if !eventState.warningEmitted && !eventState.hasLeader && time.Since(eventState.noLeaderAt) > self.Config.WarnWhenLeaderlessFor {
 				pfxlog.Logger().WithField("timeSinceLeader", time.Since(eventState.noLeaderAt).String()).

@@ -16,7 +16,10 @@
 
 package capabilities
 
-import "math/big"
+import (
+	"bytes"
+	"math/big"
+)
 
 // maskBits is the width, in bit positions, of a capability mask. Negative
 // capabilities index down from the top of this range, so -1 is bit maskBits-1.
@@ -73,6 +76,29 @@ func (m *Mask[T]) IsSet(capability T) bool {
 // Bytes returns the big-endian byte encoding of the mask, suitable for a
 // capabilities header. It round-trips through MaskFromBytes.
 func (m *Mask[T]) Bytes() []byte {
+	return m.bits.Bytes()
+}
+
+// And returns the capabilities set in both masks. A nil or empty mask on either side yields an empty
+// result, which is what makes it safe to fold over a set that may include a party nothing is known about.
+func (m *Mask[T]) And(other *Mask[T]) *Mask[T] {
+	if m == nil || m.bits == nil || other == nil || other.bits == nil {
+		return NewMask[T]()
+	}
+	return &Mask[T]{bits: new(big.Int).And(m.bits, other.bits)}
+}
+
+// Equals reports whether both masks have the same capabilities set. A nil mask equals an empty one, since
+// neither has any capability set.
+func (m *Mask[T]) Equals(other *Mask[T]) bool {
+	return bytes.Equal(m.safeBytes(), other.safeBytes())
+}
+
+// safeBytes is Bytes with nil tolerated, so comparisons need not special-case an unset mask.
+func (m *Mask[T]) safeBytes() []byte {
+	if m == nil || m.bits == nil {
+		return nil
+	}
 	return m.bits.Bytes()
 }
 
