@@ -210,8 +210,39 @@ func (network *Network) IsLeader() bool {
 
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
-	self.Link.RouterDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
+	// Before the index drop: retirement reads the per-router index to find what to retire, and dropping it
+	// first leaves the links in place on the surviving endpoint.
+	self.retireLinksForDeletedRouter(id)
+	self.Link.RouterDeleted(id)
+}
+
+// retireLinksForDeletedRouter removes every link with the deleted router at either end.
+//
+// Dropping the router's index alone left those links in the link table and in the surviving endpoint's set,
+// where nothing would remove them: a fleet that churns routers accumulated links to routers that were not
+// there, and each one still counted, still validated and still offered itself for routing.
+//
+// Retired the way a fault is rather than merely deleted, so circuits using the link are rerouted and the
+// removal reaches the event stream.
+//
+// Retires by id, and deliberately does not check whether the id has since come back. Store commit handlers
+// run after bolt releases the writer lock, so this can land late; an id that was deleted and recreated in
+// that window would have the new router's links retired. Reaching it needs a router created with a chosen
+// id, which only the deprecated create-outside-enrollment path allows, and needs the delete and recreate to
+// land inside that window. Guarding it is not worth the machinery.
+func (network *Network) retireLinksForDeletedRouter(routerId string) {
+	links := network.Link.LinksForRouter(routerId)
+	if len(links) == 0 {
+		return
+	}
+
+	for _, link := range links {
+		network.LinkFaulted(link, false)
+	}
+
+	pfxlog.Logger().WithField("routerId", routerId).WithField("links", len(links)).
+		Info("removed links belonging to a deleted router")
 }
 
 func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Command, error) {

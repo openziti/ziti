@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/response"
 	"github.com/openziti/ziti/v2/controller/rest_model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 const EntityNameLink = "links"
@@ -42,8 +43,28 @@ func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 	return links
 }
 
+// routerRef renders a reference to one end of a link. router is nil for an end this controller cannot
+// resolve; the reference then carries the id alone, since that is all that is known about it.
+func routerRef(routerId string, router *model.Router) *rest_model.EntityRef {
+	if router != nil {
+		return ToFabricEntityRef(router.Name, router, FabricRouterLinkFactory)
+	}
+	return &rest_model.EntityRef{
+		Entity: FabricRouterLinkFactory.EntityName(),
+		ID:     routerId,
+		Links: rest_model.Links{
+			EntityNameSelf: FabricRouterLinkFactory.SelfLinkFromId(routerId),
+		},
+	}
+}
+
 func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.Link) (interface{}, error) {
-	n := ae.GetHostController().GetNetwork()
+	return linkToRestModel(link, ae.GetHostController().GetNetwork().Router.Read)
+}
+
+// linkToRestModel renders link. readRouter loads the destination router when the link does not hold it. A
+// destination readRouter does not find renders by id; any other error from it is returned.
+func linkToRestModel(link *model.Link, readRouter func(id string) (*model.Router, error)) (*rest_model.LinkDetail, error) {
 	iteration := int64(link.Iteration)
 	staticCost := int64(link.StaticCost)
 	linkStateStr := link.CurrentState().Mode.String()
@@ -52,17 +73,20 @@ func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.
 
 	destRouter := link.GetDest()
 	if destRouter == nil {
-		var err error
-		destRouter, err = n.Router.Read(link.DstId)
-		if err != nil {
+		// A miss is not an error here: a link can name a destination deleted since the link was recorded,
+		// until the controller retires it. The link has to render either way, and failing would fail the
+		// whole listing rather than this row.
+		loaded, err := readRouter(link.DstId)
+		if err != nil && !boltz.IsErrNotFoundErr(err) {
 			return nil, err
 		}
+		destRouter = loaded
 	}
 
 	ret := &rest_model.LinkDetail{
 		Cost:          &link.Cost,
 		DestLatency:   &link.DstLatency,
-		DestRouter:    ToFabricEntityRef(destRouter.Name, destRouter, FabricRouterLinkFactory),
+		DestRouter:    routerRef(link.DstId, destRouter),
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
