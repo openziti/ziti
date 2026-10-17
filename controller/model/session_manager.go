@@ -25,14 +25,14 @@ import (
 	"github.com/lucsky/cuid"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -394,6 +394,15 @@ func (self *SessionManager) Query(query string) (*SessionListResult, error) {
 	result := &SessionListResult{manager: self}
 	err := self.ListWithHandler(query, result.collect)
 	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// queryInTx is Query within the caller's read transaction.
+func (self *SessionManager) queryInTx(tx *bbolt.Tx, query string) (*SessionListResult, error) {
+	result := &SessionListResult{manager: self}
+	if err := self.ListWithTx(tx, query, result.collect); err != nil {
 		return nil, err
 	}
 	return result, nil

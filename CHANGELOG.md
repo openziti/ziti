@@ -1,3 +1,15 @@
+# Release 2.0.9
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
+
+
 # Release 2.0.8
 
 ## What's New
