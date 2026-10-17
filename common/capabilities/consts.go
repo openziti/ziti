@@ -54,10 +54,12 @@ const (
 	// session tokens as JWTs, carrying identity and service information
 	ControllerSupportsJWTLegacySessions ControllerCapability = 6
 
+	// 7 is ControllerAsyncTerminatorRemove.
+
 	// ControllerLinkGossip indicates the controller distributes link state via gossip.
 	// Routers seeing this on all connected controllers may report links to a single
 	// controller instead of all.
-	ControllerLinkGossip ControllerCapability = 7
+	ControllerLinkGossip ControllerCapability = 8
 )
 
 // RouterCapability is the type for capabilities a router advertises. Router
