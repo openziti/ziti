@@ -1,0 +1,370 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+package gossip
+
+import (
+	"context"
+	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/ziti/v2/common/capabilities"
+)
+
+// StateListener receives notifications when gossip state changes.
+type StateListener[T any] interface {
+	EntryChanged(key string, value T, version uint64, owner string, isCreate bool, origin ChangeOrigin)
+	EntryRemoved(key string, owner string, version uint64, origin ChangeOrigin)
+
+	// EntriesDiscarded reports that the type has given up every entry it held. This is a weaker statement
+	// than EntryRemoved for each of them: what the entries described is still live and is about to be
+	// reported by other means, so a listener drops state that stands for the entries themselves and keeps
+	// state that stands for what they described.
+	//
+	// Called with no map locks held, and the type accepts writes again as soon as it returns, so a listener
+	// that rebuilds must tolerate a new entry arriving during the call.
+	EntriesDiscarded()
+}
+
+// StateTypeConfig configures a typed gossip state registration.
+type StateTypeConfig[T any] struct {
+	Name string
+	// RequiredCapability is the controller capability every cluster member must support for this type to be
+	// usable. Types that travel together share one, so they are given up and resumed together.
+	//
+	// Required. Every gossip type needs every controller to understand it, so there is no such thing as an
+	// ungated one, and leaving it unset would make a type silently ignore the cluster's capabilities.
+	RequiredCapability  capabilities.ControllerCapability
+	Encode              func(T) ([]byte, error)
+	Decode              func([]byte) (T, error)
+	Tombstones          bool
+	TombstoneTTL        time.Duration
+	AntiEntropy         bool
+	AntiEntropyInterval time.Duration
+	Listener            StateListener[T]
+}
+
+// StateTypeInfo provides non-generic access to gossip state metadata.
+type StateTypeInfo interface {
+	MaxVersionForOwner(owner string) uint64
+	NonTombstoneCount(owner string) int64
+	HashForOwner(owner string) uint64
+	DropOwner(owner string)
+	DeleteByOwnerBefore(owner string, epoch []byte)
+}
+
+// StateType is a typed handle to a gossip stateMap.
+type StateType[T any] struct {
+	sm     *stateMap
+	encode func(T) ([]byte, error)
+	decode func([]byte) (T, error)
+}
+
+// Register creates a new typed gossip state in the store and starts any
+// background goroutines (anti-entropy, tombstone reaping).
+func Register[T any](store *Store, config StateTypeConfig[T]) *StateType[T] {
+	// A programming error, caught where it is made rather than as a type that quietly ignores whether the
+	// cluster can carry it. The capability enum starts at one, so zero is unambiguously unset.
+	if config.RequiredCapability == 0 {
+		pfxlog.Logger().Panicf("gossip state type %v registered with no required capability", config.Name)
+	}
+
+	var listener untypedListener
+	if config.Listener != nil {
+		listener = &typedListenerAdapter[T]{
+			decode:   config.Decode,
+			listener: config.Listener,
+		}
+	}
+
+	cfg := stateMapConfig{
+		tombstones:          config.Tombstones,
+		tombstoneTTL:        config.TombstoneTTL,
+		antiEntropy:         config.AntiEntropy,
+		antiEntropyInterval: config.AntiEntropyInterval,
+		requiredCapability:  config.RequiredCapability,
+	}
+
+	// Created at registration rather than on the first observation, so a canary arriving before any
+	// anti-entropy round is still measured.
+	if cfg.tombstones {
+		store.skewMonitorFor(cfg.tombstoneTTL)
+	}
+	sm := newStateMap(config.Name, cfg, store, listener)
+	sm.registerMetrics(store.metricsRegistry)
+	// Seeded from what the cluster is already known to support, so a type registered while its capability
+	// does not hold starts unusable rather than accepting entries it is about to give up.
+	sm.available.Store(store.supportsCapability(cfg.requiredCapability))
+	store.types.Store(config.Name, sm)
+
+	if config.AntiEntropy && config.AntiEntropyInterval > 0 {
+		go runAntiEntropy(sm, store)
+	}
+
+	if config.Tombstones && config.TombstoneTTL > 0 {
+		go runTombstoneReaper(sm, store)
+	}
+
+	return &StateType[T]{
+		sm:     sm,
+		encode: config.Encode,
+		decode: config.Decode,
+	}
+}
+
+// Set stores a value, assigns a new version, notifies the listener, and broadcasts to peers.
+func (st *StateType[T]) Set(key, owner string, value T) error {
+	encoded, err := st.encode(value)
+	if err != nil {
+		return err
+	}
+	st.sm.set(key, owner, encoded, OriginLocal)
+	return nil
+}
+
+// SetWithVersion stores a value at an explicit, caller-supplied version rather
+// than the local controller's clock, then applies and broadcasts it. Use this
+// for entries whose authoritative ordering comes from a single external source
+// (e.g. a router's monotonic canary sequence): every controller writing the
+// same (owner, key) uses the same version space, so a stale update is rejected
+// by version regardless of which controller received it. A version <= the
+// currently stored one is rejected (no apply, no broadcast).
+func (st *StateType[T]) SetWithVersion(key, owner string, version uint64, value T) error {
+	encoded, err := st.encode(value)
+	if err != nil {
+		return err
+	}
+	st.sm.applyAndBroadcast(&entry{
+		Key:     key,
+		Value:   encoded,
+		Version: version,
+		Owner:   owner,
+	})
+	return nil
+}
+
+// SetConfirmed stores a value and waits for acknowledgment from all peers.
+func (st *StateType[T]) SetConfirmed(ctx context.Context, key, owner string, value T) error {
+	encoded, err := st.encode(value)
+	if err != nil {
+		return err
+	}
+	return st.sm.store.setConfirmed(ctx, st.sm, key, owner, encoded)
+}
+
+// Delete removes or tombstones an entry and broadcasts the change.
+func (st *StateType[T]) Delete(key, owner string) {
+	st.sm.delete(key, owner, OriginLocal)
+}
+
+// DeleteByOwner removes or tombstones all entries belonging to the given owner.
+func (st *StateType[T]) DeleteByOwner(owner string) {
+	st.sm.deleteByOwner(owner, OriginLocal)
+}
+
+// DropOwner marks the owner as gone for good. All live entries are tombstoned
+// (and broadcast to peers), the owner's ownerData is marked drained so further
+// writes are rejected, and the ownerData is removed from the store by the
+// reaper once its tombstones age out.
+//
+// Use when the owner has been deleted from the system (e.g., a router removal)
+// to bound long-term memory growth from churned owners. If a fresh write for
+// the same owner identifier arrives after the ownerData has been compacted,
+// a new non-drained ownerData is created normally.
+func (st *StateType[T]) DropOwner(owner string) {
+	st.sm.dropOwner(owner, OriginLocal)
+}
+
+// DeleteByOwnerBefore removes or tombstones entries belonging to the given
+// owner whose epoch compares less than the provided epoch. Used to clean up
+// entries from a previous router lifetime when a new epoch is detected.
+func (st *StateType[T]) DeleteByOwnerBefore(owner string, epoch []byte) {
+	st.sm.deleteByOwnerBefore(owner, epoch, OriginLocal)
+}
+
+// Discard drops every entry this state type holds, without telling peers and without reporting the entries
+// as removed. Returns how many entries were dropped.
+//
+// For abandoning state that can no longer be replicated while what it describes is still live: a link built
+// from a discarded entry stays in the link manager and is reported again by whatever means is now in use.
+// The listener is told through EntriesDiscarded, which says only that the entries are gone. Writes are
+// accepted again afterwards.
+func (st *StateType[T]) Discard() int {
+	return st.sm.discard()
+}
+
+// Reconcile removes entries for the given owner that are not in the provided key set.
+func (st *StateType[T]) Reconcile(owner string, currentKeys map[string]struct{}) {
+	st.sm.reconcile(owner, currentKeys, OriginLocal)
+}
+
+// GetForOwner retrieves a decoded value by (owner, key). Returns ok=false if
+// the owner is unknown, the entry is missing, or the entry is a tombstone.
+//
+// Callers always know the owner because keys are scoped to an owner by design
+// (the gossip keyspace is partitioned per owner). The owner-keyed lookup is
+// O(1) under the owner-first store layout.
+func (st *StateType[T]) GetForOwner(owner, key string) (T, uint64, bool) {
+	var zero T
+	e, ok := st.sm.entryAt(owner, key)
+	if !ok || e.Tombstone {
+		return zero, 0, false
+	}
+	val, err := st.decode(e.Value)
+	if err != nil {
+		return zero, 0, false
+	}
+	return val, e.Version, true
+}
+
+// WithEntry runs fn with the entry for (owner, key) as the store currently holds it, ordered against the
+// store's own listener delivery for that key.
+//
+// For a caller that reads an entry and acts on it outside the store, where acting on a retired entry would
+// be wrong: a plain GetForOwner followed by the action straddles a removal, and the action can then undo
+// what the removal's listener callback has already done. found is false when the key is absent or
+// tombstoned, and value is the zero value then.
+//
+// fn runs holding the key's delivery lock, so it must not call back into the store, and it blocks delivery
+// for that key while it runs.
+func (st *StateType[T]) WithEntry(owner, key string, fn func(value T, found bool)) {
+	st.sm.withEntryDelivery(owner, key, func() {
+		value, _, found := st.GetForOwner(owner, key)
+		fn(value, found)
+	})
+}
+
+// Iter calls fn for each non-tombstoned entry across all owners.
+func (st *StateType[T]) Iter(fn func(key string, value T, owner string)) {
+	st.sm.owners.IterCb(func(owner string, od *ownerData) {
+		od.mu.RLock()
+		defer od.mu.RUnlock()
+		for key, e := range od.entries {
+			if e.Tombstone {
+				continue
+			}
+			val, err := st.decode(e.Value)
+			if err == nil {
+				fn(key, val, owner)
+			}
+		}
+	})
+}
+
+// IterWithVersion calls fn for each non-tombstoned entry, including the version.
+func (st *StateType[T]) IterWithVersion(fn func(key string, value T, owner string, version uint64)) {
+	st.sm.owners.IterCb(func(owner string, od *ownerData) {
+		od.mu.RLock()
+		defer od.mu.RUnlock()
+		for key, e := range od.entries {
+			if e.Tombstone {
+				continue
+			}
+			val, err := st.decode(e.Value)
+			if err == nil {
+				fn(key, val, owner, e.Version)
+			}
+		}
+	})
+}
+
+// IterFull calls fn for each non-tombstoned entry with all metadata.
+func (st *StateType[T]) IterFull(fn func(key string, value T, owner string, version uint64, epoch []byte)) {
+	st.sm.owners.IterCb(func(owner string, od *ownerData) {
+		od.mu.RLock()
+		defer od.mu.RUnlock()
+		for key, e := range od.entries {
+			if e.Tombstone {
+				continue
+			}
+			val, err := st.decode(e.Value)
+			if err == nil {
+				fn(key, val, owner, e.Version, e.Epoch)
+			}
+		}
+	})
+}
+
+// IterByOwner calls fn for each non-tombstoned entry belonging to the given owner.
+func (st *StateType[T]) IterByOwner(owner string, fn func(key string, value T)) {
+	od := st.sm.getOwner(owner)
+	if od == nil {
+		return
+	}
+	od.mu.RLock()
+	defer od.mu.RUnlock()
+	for key, e := range od.entries {
+		if e.Tombstone {
+			continue
+		}
+		val, err := st.decode(e.Value)
+		if err == nil {
+			fn(key, val)
+		}
+	}
+}
+
+// MaxVersionForOwner returns the highest version among all entries (including
+// tombstones) belonging to the given owner. Returns 0 if no entries exist.
+func (st *StateType[T]) MaxVersionForOwner(owner string) uint64 {
+	return st.sm.maxVersionForOwner(owner)
+}
+
+// NonTombstoneCount returns the number of non-tombstone entries for the given owner.
+func (st *StateType[T]) NonTombstoneCount(owner string) int64 {
+	return st.sm.nonTombstoneCount(owner)
+}
+
+// HashForOwner returns a FNV-64a hash of the sorted non-tombstone entry keys
+// belonging to the given owner. Used for staleness detection via canary hashes.
+func (st *StateType[T]) HashForOwner(owner string) uint64 {
+	return st.sm.hashForOwner(owner)
+}
+
+// typedListenerAdapter wraps a StateListener[T] as an untypedListener.
+type typedListenerAdapter[T any] struct {
+	decode   func([]byte) (T, error)
+	listener StateListener[T]
+}
+
+func (a *typedListenerAdapter[T]) entryChanged(key string, value []byte, version uint64, owner string, isCreate bool, origin ChangeOrigin) {
+	val, err := a.decode(value)
+	if err != nil {
+		return
+	}
+	a.listener.EntryChanged(key, val, version, owner, isCreate, origin)
+}
+
+func (a *typedListenerAdapter[T]) entryRemoved(key string, owner string, version uint64, origin ChangeOrigin) {
+	a.listener.EntryRemoved(key, owner, version, origin)
+}
+
+func (a *typedListenerAdapter[T]) entriesDiscarded() {
+	a.listener.EntriesDiscarded()
+}
+
+func runTombstoneReaper(sm *stateMap, store *Store) {
+	ticker := time.NewTicker(sm.config.tombstoneTTL)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			sm.reapTombstones()
+		case <-store.closeCh:
+			return
+		}
+	}
+}

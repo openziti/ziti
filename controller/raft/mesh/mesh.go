@@ -29,6 +29,7 @@ import (
 
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/config"
 	"github.com/openziti/ziti/v2/controller/event"
@@ -67,12 +68,16 @@ const (
 )
 
 type Peer struct {
-	mesh            *impl
-	Id              raft.ServerID
-	Address         string
-	Channel         channel.Channel
-	ClusterId       string
-	Version         *versions.VersionInfo
+	mesh      *impl
+	Id        raft.ServerID
+	Address   string
+	Channel   channel.Channel
+	ClusterId string
+	Version   *versions.VersionInfo
+	// Capabilities is what the peer's hello advertised. A peer predating capability exchange between
+	// controllers advertises none, which is the answer that matters: it cannot participate in a feature it
+	// does not know about.
+	Capabilities    *capabilities.Mask[capabilities.ControllerCapability]
 	SigningCerts    []*x509.Certificate
 	ApiAddresses    map[string][]event.ApiAddress
 	PreferredLeader bool
@@ -333,6 +338,11 @@ type Mesh interface {
 	DialPeer(address string, timeout time.Duration, stripSigningCert bool) (*Peer, error)
 
 	RegisterClusterStateHandler(f func(state ClusterState))
+
+	// RegisterPeerObserver registers a handler called with each known peer whenever the peer set changes, so
+	// a consumer can record what a peer advertised without polling for it. Called while the mesh lock is
+	// held: a handler must not block or call back into the mesh.
+	RegisterPeerObserver(f func(peer *Peer))
 	Init(bindHandler channel.BindHandler)
 
 	// RevalidatePeerClusterIds drops connected peers whose cluster id no longer matches the local
@@ -401,6 +411,7 @@ type impl struct {
 	versionEncoded       []byte
 	readonly             atomic.Bool
 	clusterStateHandlers concurrenz.CopyOnWriteSlice[func(state ClusterState)]
+	peerObservers        concurrenz.CopyOnWriteSlice[func(peer *Peer)]
 	eventDispatcher      event.Dispatcher
 	helloHeaderProviders []HeaderProvider
 	peerDialer           *PeerDialer
@@ -408,6 +419,10 @@ type impl struct {
 
 func (self *impl) RegisterClusterStateHandler(f func(state ClusterState)) {
 	self.clusterStateHandlers.Append(f)
+}
+
+func (self *impl) RegisterPeerObserver(f func(peer *Peer)) {
+	self.peerObservers.Append(f)
 }
 
 func (self *impl) Init(bindHandler channel.BindHandler) {
@@ -647,6 +662,7 @@ func (self *impl) DialPeer(address string, timeout time.Duration, stripSigningCe
 		}
 
 		peer.Version = versionInfo
+		peer.Capabilities = capabilities.GetCapabilities[capabilities.ControllerCapability](peer.Channel.Underlay().Headers())
 		peer.SigningCerts = signingCertsFromHeaders(peer.Channel.Underlay().Headers())
 		if len(peer.SigningCerts) == 0 {
 			peer.SigningCerts = underlay.Certificates()
@@ -1038,6 +1054,16 @@ func (self *impl) PeerDisconnected(peer *Peer) {
 }
 
 func (self *impl) updateClusterState() {
+	// Report the peer set from here rather than from each place a peer is registered. Every registration
+	// and every removal passes through this, so an observer cannot be missed by a new registration path,
+	// and re-reporting a peer is harmless since what it advertised does not change while it stays
+	// connected.
+	for _, observer := range self.peerObservers.Value() {
+		for _, peer := range self.Peers {
+			observer(peer)
+		}
+	}
+
 	readOnlyPrevious := self.readonly.Load()
 
 	log := pfxlog.Logger()
@@ -1129,6 +1155,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		peer.ClusterId = getPeerClusterId(peer.Channel)
 
 		peer.Version = versionInfo
+		peer.Capabilities = capabilities.GetCapabilities[capabilities.ControllerCapability](ch.Underlay().Headers())
 		peer.SigningCerts = signingCertsFromHeaders(ch.Underlay().Headers())
 		if len(peer.SigningCerts) == 0 {
 			peer.SigningCerts = underlay.Certificates()

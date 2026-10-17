@@ -58,6 +58,11 @@ const (
 	// and answers it asynchronously with a RemoveTerminatorsV2Response, letting routers remove
 	// terminators without holding a request slot open waiting for a synchronous reply
 	ControllerAsyncTerminatorRemove ControllerCapability = 7
+
+	// ControllerLinkGossip indicates the controller distributes link state via gossip.
+	// Routers seeing this on all connected controllers may report links to a single
+	// controller instead of all.
+	ControllerLinkGossip ControllerCapability = 8
 )
 
 // RouterCapability is the type for capabilities a router advertises. Router
@@ -136,9 +141,15 @@ const (
 	// waiting out the request timeout.
 	RouterStaleLinkCheck RouterCapability = -3
 
-	// Next free slot is -4.
+	// RouterLinkGossip indicates the router participates in link gossip: it publishes its link state and
+	// per-link latency through the gossip store rather than reporting them to every controller, and it
+	// drops links to destinations that leave the router data model. A router without it is told about a
+	// removed destination explicitly, since it has no way to notice on its own.
+	RouterLinkGossip RouterCapability = -4
+
+	// Next free slot is -5.
 	//
-	// RouterExampleControlOnly RouterCapability = -4
+	// RouterExampleControlOnly RouterCapability = -5
 )
 
 // GetRouterCapabilitiesMask returns the full router capability bitmask advertised
@@ -153,6 +164,7 @@ func GetRouterCapabilitiesMask() *RouterCapabilityMask {
 
 		RouterDataModel,
 		RouterStaleLinkCheck,
+		RouterLinkGossip,
 	)
 }
 
@@ -167,5 +179,6 @@ func GetControllerCapabilitiesMask() *ControllerCapabilityMask {
 		ControllerGroupedCtrlChan,
 		ControllerSupportsJWTLegacySessions,
 		ControllerAsyncTerminatorRemove,
+		ControllerLinkGossip,
 	)
 }
