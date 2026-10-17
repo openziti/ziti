@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestSyncStates_DiscardsUpdatesForClosedChannel covers the retry behaviour for peer state changes bound
@@ -201,4 +202,138 @@ func requireRemovalNotice(t *testing.T, network *Network, notifyRouterId, destRo
 		}
 		return false
 	}, 2*time.Second, 10*time.Millisecond, msg)
+}
+
+// countingStoreIndex returns a GetStoreIndex that advances on every read, so a test can tell which of the
+// two reads in computePeerState a change was stamped from.
+func countingStoreIndex() func() uint64 {
+	var n uint64
+	return func() uint64 {
+		n++
+		return n
+	}
+}
+
+// syncOnce drives one syncStates pass on a standalone RouterMessaging, so the assertions are not racing the
+// Network's own event loop, and returns the batches that reached each router.
+func syncOnce(t *testing.T, ctx *model.TestContext, network *Network, targets map[string]*fakeCtrlChannel, changed ...string) map[string]*ctrl_pb.PeerStateChanges {
+	t.Helper()
+	rm := NewRouterMessaging(ctx, network.RouterMessaging.routerCommPool)
+
+	for routerId := range targets {
+		updates := &routerUpdates{changedRouters: map[string]struct{}{}}
+		for _, c := range changed {
+			updates.changedRouters[c] = struct{}{}
+		}
+		rm.routerUpdates[routerId] = updates
+	}
+
+	rm.syncStates()
+
+	result := map[string]*ctrl_pb.PeerStateChanges{}
+	require.Eventually(t, func() bool {
+		for routerId, ch := range targets {
+			sent := ch.sentMessages()
+			if len(sent) == 0 {
+				return false
+			}
+			changes := &ctrl_pb.PeerStateChanges{}
+			if err := proto.Unmarshal(sent[0].Body, changes); err != nil {
+				return false
+			}
+			result[routerId] = changes
+		}
+		return true
+	}, 2*time.Second, 10*time.Millisecond, "every target must receive its batch")
+
+	return result
+}
+
+// connectTarget registers a router that exists and is connected, as one that has come through the connect
+// path is, and returns the channel peer state arrives on.
+func connectTarget(t *testing.T, network *Network, addr transport.Address, id string) *fakeCtrlChannel {
+	t.Helper()
+	require.NoError(t, network.Router.Create(model.NewRouterForTest(id, "", addr, nil, 0, false), change.New()))
+	ch := &fakeCtrlChannel{}
+	network.Router.MarkConnected(model.NewRouterForTest(id, "", addr, ch, 0, false))
+	return ch
+}
+
+// TestSyncStates_RemovalIsStampedFromTheLaterRead: a removal has to be as strong as it can truthfully be, or
+// another controller's stale healthy report outranks it and the router resurrects the destination. Reading
+// the index after the existence check is what makes it so, and stays true because router ids are not reused.
+func TestSyncStates_RemovalIsStampedFromTheLaterRead(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+	ctx.StoreIndexF = countingStoreIndex()
+
+	targets := map[string]*fakeCtrlChannel{"r1": connectTarget(t, network, addr, "r1")}
+	batches := syncOnce(t, ctx, network, targets, "gone")
+
+	changes := batches["r1"].Changes
+	req.Len(changes, 1)
+	req.Equal(ctrl_pb.PeerState_Removed, changes[0].State)
+	req.Equal(uint64(2), changes[0].StoreIndex,
+		"a removal must carry the index read after the existence check, not the one read before it")
+}
+
+// TestSyncStates_HealthyIsStampedFromTheEarlierRead is the other half of the bias. Existence is not
+// permanent, so a report that a router is up must not claim to describe a store newer than the one it
+// actually observed, or it outranks a removal that really is newer.
+func TestSyncStates_HealthyIsStampedFromTheEarlierRead(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+	ctx.StoreIndexF = countingStoreIndex()
+
+	live := connectTarget(t, network, addr, "live")
+	req.NotNil(live)
+
+	targets := map[string]*fakeCtrlChannel{"r1": connectTarget(t, network, addr, "r1")}
+	batches := syncOnce(t, ctx, network, targets, "live")
+
+	changes := batches["r1"].Changes
+	req.Len(changes, 1)
+	req.Equal(ctrl_pb.PeerState_Healthy, changes[0].State)
+	req.Equal(uint64(1), changes[0].StoreIndex,
+		"a healthy report must carry the index read before the observation")
+}
+
+// TestSyncStates_DeletedRouterStillConnectedIsReportedRemoved: removal from the connected map waits on the
+// control channel's close handler, so a deleted router lingers there. Settling existence from the store
+// first is what stops it being reported healthy, and reporting healthy would be unfixable by ordering: the
+// controller has applied the delete, so it would stamp that healthy state above the removal.
+func TestSyncStates_DeletedRouterStillConnectedIsReportedRemoved(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+
+	// In the connected map but absent from the store, which is a router deleted since it connected.
+	network.Router.MarkConnected(model.NewRouterForTest("deleted", "", addr, &fakeCtrlChannel{}, 0, false))
+
+	targets := map[string]*fakeCtrlChannel{"r1": connectTarget(t, network, addr, "r1")}
+	batches := syncOnce(t, ctx, network, targets, "deleted")
+
+	changes := batches["r1"].Changes
+	req.Len(changes, 1)
+	req.Equal(ctrl_pb.PeerState_Removed, changes[0].State,
+		"a router the store no longer holds must be reported removed, whatever the connected map says")
+}
+
+// TestSyncStates_OneStatementPerRouterPerPass: the state for a router is settled once per pass and reused,
+// so two routers being told about the same one cannot be told different things, and a delete landing partway
+// through the pass cannot split the fleet's view.
+func TestSyncStates_OneStatementPerRouterPerPass(t *testing.T) {
+	req := require.New(t)
+	ctx, network, addr := newConnectTestNetwork(t)
+	ctx.StoreIndexF = countingStoreIndex()
+
+	targets := map[string]*fakeCtrlChannel{
+		"r1": connectTarget(t, network, addr, "r1"),
+		"r2": connectTarget(t, network, addr, "r2"),
+	}
+	batches := syncOnce(t, ctx, network, targets, "gone")
+
+	req.Len(batches["r1"].Changes, 1)
+	req.Len(batches["r2"].Changes, 1)
+	req.Equal(batches["r1"].Changes[0].StoreIndex, batches["r2"].Changes[0].StoreIndex,
+		"both recipients must hear the same statement, computed once")
 }
