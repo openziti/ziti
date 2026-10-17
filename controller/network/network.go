@@ -1190,7 +1190,7 @@ func (network *Network) Run() {
 		case <-ticker.C:
 			network.clean()
 			network.smart()
-			network.Link.ScanForDeadLinks()
+			network.Link.ScanForDeadLinks(nil)
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)
