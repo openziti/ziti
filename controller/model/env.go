@@ -134,6 +134,14 @@ type Env interface {
 	// and debugging distributed consensus issues.
 	GetRaftInfo() (string, string, string)
 
+	// GetStoreIndex returns the index of the last change applied to this controller's store, which
+	// versions the answers the store gives. Statements this controller makes about what exists can be
+	// ordered against statements another makes, which nothing else sequences.
+	//
+	// Zero where there is no such index, as on a controller running without raft. It is not the router
+	// data model's index, which counts a different sequence of changes.
+	GetStoreIndex() uint64
+
 	// GetApiAddresses provides current API endpoints and their signatures for
 	// service discovery and client configuration updates.
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)

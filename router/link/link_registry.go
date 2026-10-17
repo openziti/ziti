@@ -56,6 +56,7 @@ func NewLinkRegistry(routerEnv Env) xlink.Registry {
 		events:                 make(chan event, 16),
 		env:                    routerEnv,
 		destinations:           map[string]*linkDest{},
+		removedDests:           map[string]removedDest{},
 		linkStateQueue:         &linkStateHeap{},
 		triggerNotifyC:         make(chan struct{}, 1),
 		fullRefreshSendTimeout: fullRefreshSendTimeout,
@@ -82,10 +83,14 @@ type linkRegistryImpl struct {
 	// from one that reached the wire.
 	fullRefreshSendTimeout time.Duration
 	fullRefreshRetryDelay  time.Duration
-	linkStateQueue         *linkStateHeap
-	events                 chan event
-	triggerNotifyC         chan struct{}
-	notifyInProgress       atomic.Bool
+	// removedDests remembers, per destination, the controller store index a removal was computed against, so
+	// a report of that destination computed against an older index cannot bring it back. Entries are dropped
+	// by a newer report and swept by evaluateDestinations; see removedDestTTL.
+	removedDests     map[string]removedDest
+	linkStateQueue   *linkStateHeap
+	events           chan event
+	triggerNotifyC   chan struct{}
+	notifyInProgress atomic.Bool
 }
 
 func (self *linkRegistryImpl) runGcLinkMetricsLoop() {
@@ -452,12 +457,14 @@ func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *linkRegistryImpl) UpdateLinkDest(id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
+func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, storeIndex uint64, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
 	updateEvent := &linkDestUpdate{
-		id:        id,
-		version:   version,
-		healthy:   healthy,
-		listeners: listeners,
+		id:         id,
+		ctrlId:     ctrlId,
+		storeIndex: storeIndex,
+		version:    version,
+		healthy:    healthy,
+		listeners:  listeners,
 	}
 
 	self.queueEvent(updateEvent)
@@ -487,9 +494,10 @@ func (self *linkRegistryImpl) GetDestinationListeners() (map[string][]*ctrl_pb.L
 	return nil, false
 }
 
-func (self *linkRegistryImpl) RemoveLinkDest(id string) {
+func (self *linkRegistryImpl) RemoveLinkDest(id string, storeIndex uint64) {
 	self.queueEvent(&removeLinkDest{
-		id: id,
+		id:         id,
+		storeIndex: storeIndex,
 	})
 }
 
@@ -598,6 +606,17 @@ func (self *linkRegistryImpl) sendLinkFaultDirect(link xlink.Xlink) {
 	})
 }
 
+// destAbandonedAfter is how long a destination has to go without any connected controller saying it is up
+// before the router stops tracking it. It is deliberately far longer than any controller outage or cluster
+// membership change takes, so lapsed affirmation only ever means the destination is genuinely gone.
+const destAbandonedAfter = 48 * time.Hour
+
+// removedDestTTL is how long a removed destination is remembered so a peer state computed before the removal
+// cannot recreate it. Peer state is recomputed at send time and a failed send is retried the same way, so a
+// report in flight is seconds old at worst; this is generous against that, and the marker only has to
+// outlive the reports that were already on their way.
+const removedDestTTL = 5 * time.Minute
+
 func (self *linkRegistryImpl) evaluateDestinations() {
 	for destId, dest := range self.destinations {
 		hasEstablishedLinks := false
@@ -625,6 +644,13 @@ func (self *linkRegistryImpl) evaluateDestinations() {
 		// has nothing to dial, it should also be removed
 		if len(dest.linkMap) == 0 || (!dest.healthy && !hasEstablishedLinks && time.Since(dest.unhealthyAt) > 48*time.Hour) {
 			delete(self.destinations, destId)
+		}
+	}
+
+	now := time.Now()
+	for destId, removed := range self.removedDests {
+		if now.Sub(removed.at) > removedDestTTL {
+			delete(self.removedDests, destId)
 		}
 	}
 }

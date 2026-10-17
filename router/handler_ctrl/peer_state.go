@@ -48,18 +48,18 @@ func (self *peerStateChangeHandler) HandleReceive(msg *channel.Message, ch chann
 		return
 	}
 
-	go self.DispatchChanges(peerStateChanges)
+	go self.DispatchChanges(ch.Id(), peerStateChanges)
 }
 
-func (self *peerStateChangeHandler) DispatchChanges(changes *ctrl_pb.PeerStateChanges) {
+func (self *peerStateChangeHandler) DispatchChanges(ctrlId string, changes *ctrl_pb.PeerStateChanges) {
 	log := pfxlog.Logger()
 	for _, peerStateChange := range changes.Changes {
 		if peerStateChange.Id == self.env.GetRouterId().Token {
 			log.WithField("routerId", peerStateChange.Id).Warn("got peer state change message for myself, ignoring")
 		} else if peerStateChange.State == ctrl_pb.PeerState_Removed {
-			self.env.GetXlinkRegistry().RemoveLinkDest(peerStateChange.Id)
+			self.env.GetXlinkRegistry().RemoveLinkDest(peerStateChange.Id, peerStateChange.StoreIndex)
 		} else {
-			self.env.GetXlinkRegistry().UpdateLinkDest(peerStateChange.Id, peerStateChange.Version, peerStateChange.State == ctrl_pb.PeerState_Healthy, peerStateChange.Listeners)
+			self.env.GetXlinkRegistry().UpdateLinkDest(ctrlId, peerStateChange.StoreIndex, peerStateChange.Id, peerStateChange.Version, peerStateChange.State == ctrl_pb.PeerState_Healthy, peerStateChange.Listeners)
 		}
 	}
 }

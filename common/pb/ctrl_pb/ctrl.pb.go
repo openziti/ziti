@@ -2483,11 +2483,21 @@ func (x *UpdateClusterLeader) GetIndex() uint64 {
 }
 
 type PeerStateChange struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	State         PeerState              `protobuf:"varint,3,opt,name=state,proto3,enum=ziti.ctrl.pb.PeerState" json:"state,omitempty"`
-	Listeners     []*Listener            `protobuf:"bytes,4,rep,name=listeners,proto3" json:"listeners,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Version   string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	State     PeerState              `protobuf:"varint,3,opt,name=state,proto3,enum=ziti.ctrl.pb.PeerState" json:"state,omitempty"`
+	Listeners []*Listener            `protobuf:"bytes,4,rep,name=listeners,proto3" json:"listeners,omitempty"`
+	// storeIndex is the index of the sending controller's store that this statement rests on. It orders one
+	// controller's statement about whether the router exists against another's, which nothing else does. It
+	// says nothing about reachability, which the store does not answer.
+	//
+	// A Removed carries an index at or after the point its non-existence was read, which stays true because
+	// router ids are not reused. The others carry one at or before the point they were observed, since a
+	// router that exists now may not later.
+	//
+	// Zero means the sender has no index to offer, as a controller running without raft does not.
+	StoreIndex    uint64 `protobuf:"varint,5,opt,name=storeIndex,proto3" json:"storeIndex,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2548,6 +2558,13 @@ func (x *PeerStateChange) GetListeners() []*Listener {
 		return x.Listeners
 	}
 	return nil
+}
+
+func (x *PeerStateChange) GetStoreIndex() uint64 {
+	if x != nil {
+		return x.StoreIndex
+	}
+	return 0
 }
 
 type PeerStateChanges struct {
@@ -3509,12 +3526,15 @@ const file_ctrl_proto_rawDesc = "" +
 	"\bisLeader\x18\x03 \x01(\bR\bisLeader\x12:\n" +
 	"\vcontrollers\x18\x04 \x03(\v2\x18.ziti.ctrl.pb.CtrlDetailR\vcontrollers\"+\n" +
 	"\x13UpdateClusterLeader\x12\x14\n" +
-	"\x05index\x18\x01 \x01(\x04R\x05index\"\xa0\x01\n" +
+	"\x05index\x18\x01 \x01(\x04R\x05index\"\xc0\x01\n" +
 	"\x0fPeerStateChange\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12-\n" +
 	"\x05state\x18\x03 \x01(\x0e2\x17.ziti.ctrl.pb.PeerStateR\x05state\x124\n" +
-	"\tlisteners\x18\x04 \x03(\v2\x16.ziti.ctrl.pb.ListenerR\tlisteners\"K\n" +
+	"\tlisteners\x18\x04 \x03(\v2\x16.ziti.ctrl.pb.ListenerR\tlisteners\x12\x1e\n" +
+	"\n" +
+	"storeIndex\x18\x05 \x01(\x04R\n" +
+	"storeIndex\"K\n" +
 	"\x10PeerStateChanges\x127\n" +
 	"\achanges\x18\x01 \x03(\v2\x1d.ziti.ctrl.pb.PeerStateChangeR\achanges\"T\n" +
 	"\x0eRouterMetadata\x12B\n" +
