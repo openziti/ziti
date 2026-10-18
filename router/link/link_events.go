@@ -17,10 +17,10 @@
 package link
 
 import (
+	"container/heap"
 	"sync/atomic"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
@@ -59,20 +59,25 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 			// By id: GetLink keys on the link key, and this is a link id, so it never matched and the links
 			// a removed destination owns were left open.
 			if link, _ := registry.GetLinkById(state.linkId); link != nil {
+				// Recorded before the close, because the state goes with the destination: the close runs
+				// later on this loop and finds no state to carry the fault. Without it the link is closed
+				// here and still published as live, and a gossip entry is this router's own to retire.
+				registry.noteDetachedFault(link.Id(), link.Iteration())
+
 				// Off the loop: closing takes the link channel's lock, and a goroutine holding that lock can
 				// be blocked queueing a link event to this loop.
 				linkKey := state.linkKey
 				go func() {
 					if err := link.Close(); err != nil {
-						pfxlog.Logger().
-							WithField("linkKey", linkKey).
-							WithField("linkId", link.Id()).
-							WithError(err).
-							Error("error closing link")
+						linkLog.Error("error closing link",
+							"linkKey", linkKey,
+							"linkId", link.Id(),
+							"error", err)
 					}
 				}()
 			}
 		}
+		registry.triggerNotify()
 	}
 }
 
@@ -103,12 +108,11 @@ func (self *linkDestUpdate) supersededByRemoval(registry *linkRegistryImpl) bool
 	}
 
 	if self.storeIndex > 0 && self.storeIndex <= removed.storeIndex {
-		pfxlog.Logger().
-			WithField("routerId", self.id).
-			WithField("ctrlId", self.ctrlId).
-			WithField("storeIndex", self.storeIndex).
-			WithField("removedAtStoreIndex", removed.storeIndex).
-			Info("ignoring link destination update older than the removal already applied")
+		linkLog.Info("ignoring link destination update older than the removal already applied",
+			"routerId", self.id,
+			"ctrlId", self.ctrlId,
+			"storeIndex", self.storeIndex,
+			"removedAtStoreIndex", removed.storeIndex)
 		return true
 	}
 
@@ -123,8 +127,6 @@ func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 
 	dest := registry.destinations[self.id]
 
-	becameHealthy := false
-
 	if dest == nil {
 		dest = newLinkDest(self.id)
 		registry.destinations[self.id] = dest
@@ -133,20 +135,25 @@ func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 	wasHealthy := dest.healthy
 	dest.updateHealthFromCtrl(self.ctrlId, self.healthy)
 	dest.healthy = dest.isHealthy()
-	becameHealthy = !wasHealthy && dest.healthy
 
-	if dest.healthy {
-		dest.lastAffirmedAt = time.Now()
-		dest.version.Store(self.version)
-	} else if wasHealthy {
+	if !wasHealthy && dest.healthy {
+		dest.unhealthyAt = time.Time{}
+	} else if wasHealthy && !dest.healthy {
 		dest.unhealthyAt = time.Now()
 	}
-	// Cache the latest listener set so the registry's local dialer
-	// rescan path (localDialersChangedEvent) can re-evaluate matches
-	// without an upstream listener event.
-	dest.listeners = self.listeners
 
+	// Only apply listener changes when this update reports healthy — an
+	// unhealthy update has no listeners and the orphan cleanup would
+	// incorrectly remove states created by a healthy controller's update.
 	if self.healthy {
+		dest.version.Store(self.version)
+		// Cache the latest listener set so the registry's local dialer rescan path
+		// (localDialersChangedEvent) can re-evaluate matches without an upstream listener
+		// event. Cached only on a healthy report: an unhealthy one carries no listeners, and
+		// healthy is a union across controllers, so caching unconditionally would empty the
+		// set for a destination other controllers still report as up.
+		dest.listeners = self.listeners
+		becameHealthy := !wasHealthy && dest.healthy
 		// Peer listener updates are authoritative about which listeners the peer
 		// offers, so a vanished or moved listener closes its established link
 		// here. This is long-standing peer-driven behavior, independent of the
@@ -213,9 +220,9 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 
 				delete(currentLinkKeys, linkKey)
 
-				log := pfxlog.Logger().WithField("routerId", self.id).
-					WithField("address", listener.Address).
-					WithField("linkKey", linkKey)
+				log := linkLog.With("routerId", self.id,
+					"address", listener.Address,
+					"linkKey", linkKey)
 
 				existingLinkState, ok := dest.linkMap[linkKey]
 				if !ok {
@@ -230,16 +237,16 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 					}
 					dest.linkMap[linkKey] = newLinkState
 					log.Info("new potential link")
-					registry.evaluateLinkState(newLinkState)
+					registry.scheduleNewLink(newLinkState)
 				} else {
 					log.Info("link already known")
 					if existingLinkState.listener.Address != listener.Address {
-						log.WithField("oldAddr", existingLinkState.listener.Address).
-							WithField("newAddr", listener.Address).
-							Info("link address changed, updating")
+						log.Info("link address changed, updating",
+							"oldAddr", existingLinkState.listener.Address,
+							"newAddr", listener.Address)
 						if closeOrphans && existingLinkState.link != nil {
 							if err := existingLinkState.link.Close(); err != nil {
-								log.WithError(err).Error("error closing existing link")
+								log.Error("error closing existing link", "error", err)
 							}
 						}
 					}
@@ -271,20 +278,18 @@ func (self *linkDestUpdate) ApplyListenerChanges(registry *linkRegistryImpl, des
 			if closeOrphans {
 				source = "peer listener update"
 			}
-			pfxlog.Logger().
-				WithField("routerId", self.id).
-				WithField("ctrlId", self.ctrlId).
-				WithField("linkKey", linkKey).
-				WithField("linkId", v.linkId).
-				WithField("status", v.status).
-				WithField("hasLink", v.link != nil).
-				WithField("source", source).
-				Info("detaching link pairing that no longer matches")
+			linkLog.Info("detaching link pairing that no longer matches",
+				"routerId", self.id,
+				"ctrlId", self.ctrlId,
+				"linkKey", linkKey,
+				"linkId", v.linkId,
+				"status", v.status,
+				"hasLink", v.link != nil,
+				"source", source)
 
 			if closeOrphans && v.link != nil {
-				log := pfxlog.Logger().WithField("routerId", self.id).
-					WithField("linkKey", linkKey)
-				log.Info("closing link as link groups no longer align")
+				linkLog.Info("closing link as link groups no longer align",
+					"routerId", self.id, "linkKey", linkKey)
 				_ = v.link.Close()
 			}
 		}
@@ -298,14 +303,14 @@ type updateLinkStatusForLink struct {
 
 func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	link := self.link
-	log := pfxlog.Logger().WithField("linkKey", link.Key()).WithField("linkId", link.Id())
+	log := linkLog.With("linkKey", link.Key(), "linkId", link.Id())
 	dest, found := registry.destinations[link.DestinationId()]
 	if !found {
 		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
 			// Reached when a dial completes after its destination has been removed. The link cannot be
 			// recorded, so closing it is the only way it ever ends.
-			log.WithField("linkDest", link.DestinationId()).WithField("status", self.status).
-				Warn("closing dialed link, its destination is not present in registry")
+			log.Warn("closing dialed link, its destination is not present in registry",
+				"linkDest", link.DestinationId(), "status", self.status)
 			registry.closeUnaccountedLink(link)
 		}
 		return
@@ -315,15 +320,16 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	if !found {
 		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
 			if self.status == StatusLinkFailed {
-				// The dial state was detached (e.g. a local dialer rescan) while its
-				// established link was preserved; now that the link has closed, report
-				// the fault directly so the controller drops it. No state remains to
-				// carry the fault through the normal notification loop.
-				log.WithField("linkDest", link.DestinationId()).Info("reporting fault for closed detached link")
-				registry.sendLinkFaultDirect(link)
+				// The dial state was detached (e.g. a local dialer rescan) while its established link was
+				// preserved; now that the link has closed, the fault has no state to ride on. Carried by the
+				// registry instead, so it is still sent through the notification cycle and stamped after the
+				// live entry it supersedes.
+				log.Info("reporting fault for closed detached link", "linkDest", link.DestinationId())
+				registry.noteDetachedFault(link.Id(), link.Iteration())
+				registry.triggerNotify()
 			} else {
-				log.WithField("linkDest", link.DestinationId()).WithField("status", self.status).
-					Warn("closing dialed link, its state is not present in registry")
+				log.Warn("closing dialed link, its state is not present in registry",
+					"linkDest", link.DestinationId(), "status", self.status)
 				registry.closeUnaccountedLink(link)
 			}
 		}
@@ -344,10 +350,23 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	}
 
 	if state.status == StatusLinkFailed {
-		state.retryDelay = time.Duration(0)
-		state.nextDial = time.Now()
-		registry.evaluateLinkState(state)
+		// Use the healthy min retry interval instead of zero to prevent a
+		// tight establish→fail→retry loop when links keep failing shortly
+		// after establishment (e.g., multi-underlay connection failures
+		// under load).
+		minRetry := state.dialer.GetHealthyBackoffConfig().GetMinRetryInterval()
+		state.retryDelay = minRetry
+		state.nextDial = time.Now().Add(minRetry)
+		heap.Push(registry.linkStateQueue, state)
+
+		// Recorded for the notification cycle to send rather than sent from here. This runs on the registry's
+		// single event loop, and sending waits on a controller channel, so a stalled channel would hold up
+		// every link accept, close and redial behind it, and a burst of faults would serialize those waits.
+		// The notification cycle sends faults the same way, over gossip or not, from the rate limiter pool
+		// where the registry's other sends already are.
 		state.addPendingLinkFault(link.Id(), link.Iteration())
+		registry.triggerNotify()
+
 		state.link = nil
 	}
 }
@@ -358,11 +377,11 @@ type addLinkFaultForReplacedLink struct {
 
 func (self *addLinkFaultForReplacedLink) Handle(registry *linkRegistryImpl) {
 	link := self.link
-	log := pfxlog.Logger().WithField("linkKey", link.Key()).WithField("linkId", link.Id())
+	log := linkLog.With("linkKey", link.Key(), "linkId", link.Id())
 	dest, found := registry.destinations[link.DestinationId()]
 	if !found {
 		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
-			log.WithField("linkDest", link.DestinationId()).Info("link destination not present in registry")
+			log.Info("link destination not present in registry", "linkDest", link.DestinationId())
 		}
 		return
 	}
@@ -370,7 +389,7 @@ func (self *addLinkFaultForReplacedLink) Handle(registry *linkRegistryImpl) {
 	state, found := dest.linkMap[link.Key()]
 	if !found {
 		if link.IsDialed() { // if link was created by listener, rather than dialer we may not have an entry for it
-			log.WithField("linkDest", link.DestinationId()).Info("link state not present in registry")
+			log.Info("link state not present in registry", "linkDest", link.DestinationId())
 		}
 		return
 	}
@@ -441,6 +460,8 @@ func (self *inspectLinkStatesEvent) Handle(registry *linkRegistryImpl) {
 		if !dest.healthy {
 			inspectDest.UnhealthySince = &unhealthySince
 		}
+		lastAffirmedAt := dest.lastAffirmedAt
+		inspectDest.LastAffirmedAt = &lastAffirmedAt
 
 		for _, state := range dest.linkMap {
 			establishedLinkId := ""
@@ -495,6 +516,16 @@ func (self *markNewLinksNotified) Handle(*linkRegistryImpl) {
 	for _, pair := range self.links {
 		if pair.state.status == StatusEstablished && pair.link == pair.state.link {
 			pair.state.ctrlsNotified = true
+			linkLog.Info("marked link notified to controllers",
+				"linkKey", pair.state.linkKey,
+				"linkId", pair.link.Id(),
+				"iteration", pair.link.Iteration())
+		} else {
+			linkLog.Info("skipped marking link notified, state changed since collection",
+				"linkKey", pair.state.linkKey,
+				"linkId", pair.link.Id(),
+				"status", pair.state.status,
+				"linkMatch", pair.link == pair.state.link)
 		}
 	}
 }
@@ -503,13 +534,44 @@ type markFaultedLinksNotified struct {
 	successfullySent []stateAndFaults
 }
 
-func (self *markFaultedLinksNotified) Handle(*linkRegistryImpl) {
+func (self *markFaultedLinksNotified) Handle(registry *linkRegistryImpl) {
 	for _, pair := range self.successfullySent {
-		state := pair.state
+		// A nil state is a detached fault: the state it belonged to is gone, so the registry holds it.
+		if pair.state == nil {
+			registry.clearDetachedFaults(pair.faults)
+			continue
+		}
 		for _, fault := range pair.faults {
-			state.clearFault(fault)
+			pair.state.clearFault(fault)
 		}
 	}
+}
+
+type linkConnStateChanged struct {
+	link xlink.Xlink
+}
+
+func (self *linkConnStateChanged) Handle(registry *linkRegistryImpl) {
+	link := self.link
+	log := linkLog.With("linkKey", link.Key(), "linkId", link.Id())
+	dest, found := registry.destinations[link.DestinationId()]
+	if !found {
+		log.Debug("ignoring conn state change, link destination not present in registry", "linkDest", link.DestinationId())
+		return
+	}
+
+	state, found := dest.linkMap[link.Key()]
+	if !found {
+		log.Debug("ignoring conn state change, link state not present in registry", "linkDest", link.DestinationId())
+		return
+	}
+
+	if state.status != StatusEstablished || state.link != link {
+		return
+	}
+
+	state.ctrlsNotified = false
+	registry.triggerNotify()
 }
 
 type scanForLinkIdEvent struct {

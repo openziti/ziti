@@ -59,7 +59,8 @@ type Router struct {
 	// rather than configured, since the routers it distinguishes are released and cannot gain a capability.
 	sendsFullRefresh atomic.Bool
 	// VersionInfo is reported in the router's hello and is not persisted, so it is only populated on the
-	// instance built for a control-channel connection. It is nil on an instance loaded from the database.
+	// instance built for a control-channel connection. It is nil on an instance loaded from the database,
+	// including the placeholder a gossiped link entry holds as an endpoint until that router connects here.
 	// Read it from GetConnected rather than from whatever instance is to hand.
 	VersionInfo       *versions.VersionInfo
 	routerLinks       RouterLinks

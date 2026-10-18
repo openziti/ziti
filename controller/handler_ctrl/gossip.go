@@ -167,7 +167,9 @@ func (h *ctrlGossipDigestRequestHandler) HandleReceive(msg *channel.Message, ch 
 	// differs from our view (those are out of sync). A request without hashes
 	// (defensive / older router) falls back to the links digest unconditionally.
 	var storeTypes []string
-	{
+	if len(req.EntryHashes) == 0 {
+		storeTypes = []string{network.LinkGossipStoreType}
+	} else {
 		for storeType, routerHash := range req.EntryHashes {
 			gt := h.network.GetGossipType(storeType)
 			if gt == nil {

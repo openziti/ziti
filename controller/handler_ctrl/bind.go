@@ -122,8 +122,9 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		binding.AddCloseHandler(newXctrlCloseHandler(xctrlDone))
 	}
 
-	binding.AddCloseHandler(newCloseHandler(self.router, self.network))
 	startCanaryStatusSender(binding.GetChannel(), self.router, self.network)
+
+	binding.AddCloseHandler(newCloseHandler(self.router, self.network))
 
 	// Send a gossip digest to the router for each registered store type so it
 	// can reconcile on reconnect. Run async — old routers won't respond, and

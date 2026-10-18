@@ -96,7 +96,7 @@ func (n *Network) ValidateStaleLinks(filter string, mode mgmt_pb.StaleLinkMatchM
 func scopeLinksToRouters(linkMap map[string]*model.Link, routerIds map[string]struct{}) map[string]*model.Link {
 	scoped := make(map[string]*model.Link, len(linkMap))
 	for id, link := range linkMap {
-		_, srcFiltered := routerIds[link.Src.Id]
+		_, srcFiltered := routerIds[link.GetSrc().Id]
 		_, dstFiltered := routerIds[link.DstId]
 		if srcFiltered || dstFiltered {
 			scoped[id] = link
@@ -125,7 +125,7 @@ func staleLinkQueryBlocker(router *model.Router) string {
 // Without this a link is reported partial with nothing to distinguish them, and
 // only the last is fixed by changing the command.
 func appendUnqueryableReasons(reasons []string, unqueryable map[string]string, link *model.Link) []string {
-	for _, routerId := range []string{link.Src.Id, link.DstId} {
+	for _, routerId := range []string{link.GetSrc().Id, link.DstId} {
 		if reason, found := unqueryable[routerId]; found {
 			reasons = append(reasons, reason)
 		}
@@ -180,7 +180,7 @@ func (n *Network) runStaleLinkValidation(
 
 	unqueryable := map[string]string{}
 	for _, link := range linkMap {
-		for _, routerId := range []string{link.Src.Id, link.DstId} {
+		for _, routerId := range []string{link.GetSrc().Id, link.DstId} {
 			if _, inFilter := filtered[routerId]; !inFilter {
 				unqueryable[routerId] = fmt.Sprintf(
 					"router %s is outside the filter and was not queried; --gc needs both endpoints", routerId)
@@ -224,7 +224,7 @@ func (n *Network) runStaleLinkValidation(
 		stale, partial := aggregateVerdicts(v)
 		result := &mgmt_pb.StaleLinkResult{
 			LinkId:          linkId,
-			SrcRouterId:     link.Src.Id,
+			SrcRouterId:     link.GetSrc().Id,
 			DstRouterId:     link.DstId,
 			Stale:           stale,
 			Partial:         partial,
@@ -272,7 +272,7 @@ func newStaleLinkReportCollector(links map[string]*model.Link) *staleLinkReportC
 // router that is neither endpoint are refused.
 func sideFor(link *model.Link, routerId string) (ctrl_pb.StaleLinkSide, bool) {
 	switch routerId {
-	case link.Src.Id:
+	case link.GetSrc().Id:
 		return ctrl_pb.StaleLinkSide_StaleLinkSideDialer, true
 	case link.DstId:
 		return ctrl_pb.StaleLinkSide_StaleLinkSideListener, true

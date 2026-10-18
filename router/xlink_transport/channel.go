@@ -7,10 +7,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/router/env"
 )
+
+// channelLog is the logger for link channel underlay lifecycle events. Its
+// channel name is "router.link.channel".
+var channelLog = logging.For("router.link.channel")
 
 const (
 	ChannelTypeAck     string = "link.ack"
@@ -125,11 +129,10 @@ func (self *BaseLinkChannel) GetConnStateIteration() uint32 {
 // UnderlayAdded implements channel.UnderlayEventListener. Each added underlay bumps the
 // connection-state iteration so link-state tracking can detect topology changes.
 func (self *BaseLinkChannel) UnderlayAdded(ch channel.Channel, underlay channel.Underlay) {
-	pfxlog.Logger().
-		WithField("id", ch.Label()).
-		WithField("underlays", ch.GetUnderlayCountsByType()).
-		WithField("underlayType", channel.GetUnderlayType(underlay)).
-		Info("underlay added")
+	channelLog.Info("underlay added",
+		"id", ch.Label(),
+		"underlays", ch.GetUnderlayCountsByType(),
+		"underlayType", channel.GetUnderlayType(underlay))
 	self.connIteration.Add(1)
 }
 
@@ -139,12 +142,11 @@ func (self *BaseLinkChannel) UnderlayAdded(ch channel.Channel, underlay channel.
 // connection set change while the iteration still claims the controller's copy is current, so the
 // controller cannot tell its copy is stale and keeps comparing against connections that are gone.
 func (self *BaseLinkChannel) UnderlayRemoved(ch channel.Channel, underlay channel.Underlay) {
-	pfxlog.Logger().
-		WithField("id", ch.Label()).
-		WithField("underlays", ch.GetUnderlayCountsByType()).
-		WithField("underlayType", channel.GetUnderlayType(underlay)).
-		WithField("channelClosed", ch.IsClosed()).
-		Info("underlay closed")
+	channelLog.Info("underlay closed",
+		"id", ch.Label(),
+		"underlays", ch.GetUnderlayCountsByType(),
+		"underlayType", channel.GetUnderlayType(underlay),
+		"channelClosed", ch.IsClosed())
 	self.connIteration.Add(1)
 }
 

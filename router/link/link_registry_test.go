@@ -130,12 +130,17 @@ func (self *testEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
+func (self *testEnv) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return nil
+}
+
 type testLink struct {
-	id       string
-	key      string
-	destId   string
-	hbLock   sync.Mutex
-	hbPushed []xlink.HeartbeatSettings
+	id        string
+	key       string
+	destId    string
+	iteration uint32
+	hbLock    sync.Mutex
+	hbPushed  []xlink.HeartbeatSettings
 }
 
 func (self *testLink) GetDestinationType() string {
@@ -241,7 +246,7 @@ func (self *testLink) IsDialed() bool {
 }
 
 func (self *testLink) Iteration() uint32 {
-	return 0
+	return self.iteration
 }
 
 func (self *testLink) AreFaultsSent() bool {
@@ -372,6 +377,10 @@ func Test_gcLinkMetrics(t *testing.T) {
 		checkLinkMetrics(linkId, m, false)
 	}
 
+	// nonLinkMetrics is how many metrics the registry publishes that are not per-link, and so survive link
+	// metric collection. Named rather than repeated inline so adding a registry metric is one edit, not four.
+	const nonLinkMetrics = 3
+
 	getRegistryMetrics := func() map[string]metrics.Metric {
 		result := map[string]metrics.Metric{}
 		registry.EachMetric(func(name string, metric metrics.Metric) {
@@ -396,7 +405,7 @@ func Test_gcLinkMetrics(t *testing.T) {
 	req.Equal(0, len(orphaned))
 	checkLinkMetricsDoesntHave(linkId, getRegistryMetrics())
 
-	req.Equal(2, len(getRegistryMetrics()))
+	req.Equal(nonLinkMetrics, len(getRegistryMetrics()))
 
 	linkId2 := idgen.MustNewUUIDString()
 	link3 := newTestLink(reg)
@@ -420,7 +429,7 @@ func Test_gcLinkMetrics(t *testing.T) {
 	addLinkMetrics(link4.id)
 	addLinkMetrics(linkId5)
 
-	req.Equal(9*4+2, len(getRegistryMetrics()))
+	req.Equal(9*4+nonLinkMetrics, len(getRegistryMetrics()))
 
 	orphaned = reg.gcLinkMetrics(nil)
 	req.Equal(18, len(orphaned))
@@ -429,11 +438,11 @@ func Test_gcLinkMetrics(t *testing.T) {
 	checkLinkMetricsDoesntHave(link3.id, orphaned)
 	checkLinkMetricsDoesntHave(link4.id, orphaned)
 
-	req.Equal(9*4+2, len(getRegistryMetrics()))
+	req.Equal(9*4+nonLinkMetrics, len(getRegistryMetrics()))
 
 	orphaned = reg.gcLinkMetrics(orphaned)
 	req.Equal(0, len(orphaned))
-	req.Equal(9*2+2, len(getRegistryMetrics()))
+	req.Equal(9*2+nonLinkMetrics, len(getRegistryMetrics()))
 
 	checkLinkMetricsContains(link3.id, getRegistryMetrics())
 	checkLinkMetricsContains(link4.id, getRegistryMetrics())
@@ -617,6 +626,10 @@ type testCtrls struct {
 }
 
 func (self *testCtrls) GetAll() map[string]env.NetworkController { return self.all }
+
+// UsesGossip reports false: these tests exercise the control-channel announcement path, which is the
+// path a non-gossip cluster takes.
+func (self *testCtrls) UsesGossip(capabilities.ControllerCapability) bool { return false }
 
 // testCtrl is an env.NetworkController double over a test channel.
 type testCtrl struct {
@@ -1153,6 +1166,7 @@ func (self *reportTestLink) DialAddress() string                      { return "
 func (self *reportTestLink) Iteration() uint32                        { return 1 }
 func (self *reportTestLink) IsDialed() bool                           { return true }
 func (self *reportTestLink) GetLinkConnState() *ctrl_pb.LinkConnState { return nil }
+func (self *reportTestLink) IsClosed() bool                           { return false }
 
 // reconnectOnSendChannel records a reconnect of ctrl1 as each write completes, modeling a reconnect that lands
 // between a write and its completion being recorded.
@@ -1393,6 +1407,70 @@ func (p destHealthyProbe) Handle(reg *linkRegistryImpl) {
 	p.out <- false
 }
 
+// detachedFaultProbe reads the registry's detached fault list on the event loop, which is the only place it
+// is touched.
+type detachedFaultProbe struct {
+	out chan []linkFault
+}
+
+func (p detachedFaultProbe) Handle(reg *linkRegistryImpl) {
+	faults := make([]linkFault, len(reg.detachedFaults))
+	copy(faults, reg.detachedFaults)
+	p.out <- faults
+}
+
+func detachedFaults(t *testing.T, reg *linkRegistryImpl) []linkFault {
+	t.Helper()
+	probe := detachedFaultProbe{out: make(chan []linkFault, 1)}
+	reg.queueEvent(probe)
+	select {
+	case faults := <-probe.out:
+		return faults
+	case <-time.After(2 * time.Second):
+		t.Fatal("registry event loop did not answer the detached fault probe")
+		return nil
+	}
+}
+
+// recordingSendChannel keeps every message sent, not just the most recent. The notification cycle sends
+// link listeners after faults, so the last message is not the one a fault test is looking for.
+type recordingSendChannel struct {
+	*flakySendChannel
+	lock sync.Mutex
+	msgs []*channel.Message
+}
+
+func newRecordingSendChannel() *recordingSendChannel {
+	return &recordingSendChannel{flakySendChannel: newFlakySendChannel(0)}
+}
+
+func (self *recordingSendChannel) Send(s channel.Sendable) error {
+	self.lock.Lock()
+	self.msgs = append(self.msgs, s.Msg())
+	self.lock.Unlock()
+	return self.flakySendChannel.Send(s)
+}
+
+// sentFaultFor reports whether a link fault naming linkId was sent.
+func (self *recordingSendChannel) sentFaultFor(linkId string) bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	for _, msg := range self.msgs {
+		if msg.ContentType != int32(ctrl_pb.ContentType_FaultType) {
+			continue
+		}
+		fault := &ctrl_pb.Fault{}
+		if err := proto.Unmarshal(msg.Body, fault); err != nil {
+			continue
+		}
+		if fault.Id == linkId && fault.Subject == ctrl_pb.FaultSubject_LinkFault {
+			return true
+		}
+	}
+	return false
+}
+
 // Test_RemoveLinkDest_ClosesItsLinks: a destination removal is meant to close the links that pointed at it.
 // The call was there, behind a lookup that could never match: GetLink keys on the link key while the state
 // holds a link id, so the branch never ran and the links were left open with nothing to ever close them.
@@ -1529,6 +1607,87 @@ func Test_RemoveLinkDest_ClosesOffTheEventLoop(t *testing.T) {
 	releaseClose()
 	req.Eventually(func() bool { return link.IsClosed() }, 2*time.Second, 25*time.Millisecond,
 		"and the link is still closed once it can be")
+}
+
+// Test_RemoveLinkDest_RetiresTheLinksItCloses: removing a destination closes its links, and the close alone
+// tells nobody. The link state goes with the destination, so the close that follows finds nothing to carry a
+// fault, and the controller is left publishing a link this router has already torn down. For a gossiped link
+// that matters most: the entry is this router's own, and nothing else can retire it.
+func Test_RemoveLinkDest_RetiresTheLinksItCloses(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"default"}}})
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	ch := newRecordingSendChannel()
+	withCtrl(reg, "ctrl1", ch)
+	destId := "going-away"
+
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
+	})
+	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
+
+	// Pair an established link with the state, which is what a successful dial leaves behind.
+	link := &stubXlink{id: "l1", dialed: true, destId: destId}
+	paired := make(chan struct{})
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		defer close(paired)
+		for _, state := range r.destinations[destId].linkMap {
+			state.linkId = link.Id()
+			state.link = link
+			state.updateStatus(StatusEstablished)
+			r.linkMapLocks.Lock()
+			r.linkByIdMap[link.Id()] = link
+			r.linkMap[state.linkKey] = link
+			r.linkMapLocks.Unlock()
+			return
+		}
+	}))
+	<-paired
+
+	reg.RemoveLinkDest(destId, 0)
+
+	// Observed where it ends up rather than in the registry's pending list: with a controller to send to,
+	// the notification cycle drains that list as soon as the removal triggers it.
+	req.Eventually(func() bool { return ch.sentFaultFor("l1") }, 2*time.Second, 25*time.Millisecond,
+		"and must retire them, so the controller stops publishing a link this router has torn down")
+}
+
+// Test_ClearDetachedFaults_KeepsWhatWasNotSent: a detached fault has no link state to be cleared from, so
+// the registry holds it until it is sent. One that failed to send has to survive to the next cycle, or the
+// controller is never told.
+func Test_ClearDetachedFaults_KeepsWhatWasNotSent(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	reg.detachedFaults = []linkFault{
+		{linkId: "sent", iteration: 2},
+		{linkId: "unsent", iteration: 1},
+	}
+
+	reg.clearDetachedFaults([]linkFault{{linkId: "sent", iteration: 2}})
+
+	req.Len(reg.detachedFaults, 1)
+	req.Equal("unsent", reg.detachedFaults[0].linkId)
+}
+
+// Test_ClearDetachedFaults_KeepsANewerIteration: a link id is reused across re-dials. Clearing on the id
+// alone would drop a fault for an attempt that has not been reported.
+func Test_ClearDetachedFaults_KeepsANewerIteration(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	reg.detachedFaults = []linkFault{{linkId: "l1", iteration: 5}}
+
+	reg.clearDetachedFaults([]linkFault{{linkId: "l1", iteration: 3}})
+
+	req.Len(reg.detachedFaults, 1, "an older send must not clear a newer fault")
 }
 
 // drainEvents handles every event queued so far, standing in for the registry's event loop.

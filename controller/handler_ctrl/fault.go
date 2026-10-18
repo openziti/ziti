@@ -114,34 +114,74 @@ func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault
 	linkId := fault.Id
 	log = log.WithField("linkId", linkId).WithField("fault.iteration", fault.Iteration)
 
-	if link, found := h.network.GetLink(linkId); found {
+	link, found := h.network.GetLink(linkId)
+	if found {
 		log = log.WithField("link.iteration", link.Iteration)
+
+		// A link's fate is its endpoints' to report. A fault removes the link on every controller, whether
+		// it propagates as a tombstone or the reporting router broadcasts it, so without this check one
+		// router could evict arbitrary links network-wide.
+		if !link.HasEndpoint(h.r.Id) {
+			srcId := ""
+			if src := link.GetSrc(); src != nil {
+				srcId = src.Id
+			}
+			log.WithField("link.srcRouterId", srcId).
+				WithField("link.destRouterId", link.DstId).
+				Warn("router reported a fault for a link it is not an endpoint of, ignoring")
+			return
+		}
 
 		if fault.Iteration != 0 && link.Iteration != 0 && fault.Iteration < link.Iteration {
 			log.Info("fault reported, but iteration is older than current link, ignoring")
 			return
 		}
+	}
 
-		wasConnected := link.IsUsable()
-		h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate)
-		otherRouter := link.Src
-		if link.Src.Id == h.r.Id {
-			otherRouter = link.GetDest()
-		}
-
-		if wasConnected && otherRouter != nil {
-			fault.Subject = ctrl_pb.FaultSubject_LinkFault
-			if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
-				if err := protobufs.MarshalTyped(fault).Send(ctrl.GetDefaultSender()); err != nil {
-					log.WithField("routerId", otherRouter.Id).
-						WithError(err).Error("failed to forward link fault to other router")
-				}
-			}
-		}
-
-		log.Info("link fault")
-	} else {
+	if !found {
 		log.Info("link fault for unknown link")
 		h.network.NotifyLinkIdEvent(linkId, event.LinkFault)
+		return
 	}
+
+	if h.network.IsLinkInGossip(link) {
+		// Tombstone the link in the gossip store. The tombstone propagates to
+		// every controller, and each controller forwards a LinkFault to whichever
+		// endpoint router is connected to it (see linkGossipListener.EntryRemoved).
+		// This handles the HA case where the link's peer is connected to a
+		// different controller than the one that received this fault.
+		h.network.LinkFaultedViaGossip(link)
+		log.Info("link fault")
+		return
+	}
+
+	// A link a router reported without gossip is removed the way it was before gossip existed. That
+	// router broadcasts its faults to every controller it is connected to, so each removes the link on
+	// hearing it directly, and the forward below reaches a peer only if it is connected here. Kept close
+	// to how it stood in 2.0: this is the path a 2.0 router still takes, so gratuitous change here would
+	// be indistinguishable from a genuine incompatibility when the two versions are tested together.
+	wasConnected := link.IsUsable()
+	h.network.LinkFaulted(link, fault.Subject == ctrl_pb.FaultSubject_LinkDuplicate)
+
+	otherRouter := link.GetSrc()
+	if otherRouter != nil && otherRouter.Id == h.r.Id {
+		otherRouter = link.GetDest()
+	}
+
+	if wasConnected && otherRouter != nil {
+		fault.Subject = ctrl_pb.FaultSubject_LinkFault
+		if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
+			// Bounded, unlike 2.0. This runs on a goroutine spawned per fault message, so an unbounded
+			// send parks one goroutine per fault forwarded to a stalled router, for as long as it
+			// stalls. The wait is bounded rather than the send being queued and droppable, so a healthy
+			// peer is still delivered to exactly as before.
+			envelope := protobufs.MarshalTyped(fault).WithTimeout(network.ForwardLinkFaultTimeout)
+			if err := envelope.Send(ctrl.GetDefaultSender()); err != nil {
+				log.WithField("routerId", otherRouter.Id).
+					WithError(err).Error("failed to forward link fault to other router")
+			}
+		}
+	}
+
+	log.Info("link fault")
 }

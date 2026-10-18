@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/gossip"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 )
@@ -235,6 +236,81 @@ func TestConnectRouter_RefusesAlreadyClosedChannel(t *testing.T) {
 	require.Equal(t, rOk, network.Router.GetConnected("r1"))
 }
 
+// connectSetupSignal records which routers' deferred connect setup has finished. The presence callback runs
+// at the end of that setup, so it is the signal a test can wait on instead of racing it. Counting callbacks
+// is not enough here: several routers connect, and a count cannot say which one finished.
+type connectSetupSignal struct{ done sync.Map }
+
+func (self *connectSetupSignal) RouterConnected(r *model.Router)  { self.done.Store(r.Id, true) }
+func (self *connectSetupSignal) RouterDisconnected(*model.Router) {}
+func (self *connectSetupSignal) has(id string) bool               { _, ok := self.done.Load(id); return ok }
+
+// countingPresenceHandler counts RouterConnected callbacks. It does not opt into synchronous invocation,
+// so ConnectRouter is what calls it, which makes the count a witness for the deferred setup having run.
+type countingPresenceHandler struct {
+	connected atomic.Int32
+}
+
+func (self *countingPresenceHandler) RouterConnected(*model.Router)    { self.connected.Add(1) }
+func (self *countingPresenceHandler) RouterDisconnected(*model.Router) {}
+
+// TestQueueRouterConnect_RunsSetupAsynchronously: the connect decision and registration are synchronous,
+// but the remaining setup is handed to a semaphore-bounded goroutine, so binding does not wait on it. The
+// listener holds the channel group's create reservation until the bind returns, and the group's other
+// underlays wait on that, which is why this work must not run inline.
+func TestQueueRouterConnect_RunsSetupAsynchronously(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	handler := &countingPresenceHandler{}
+	network.AddRouterPresenceHandler(handler)
+
+	r := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.QueueRouterConnect(r))
+
+	// Registration is synchronous, so it has already happened.
+	require.Equal(t, r, network.Router.GetConnected("r1"))
+	require.True(t, r.Connected.Load())
+
+	// The deferred setup runs on its own goroutine.
+	require.Eventually(t, func() bool { return handler.connected.Load() == 1 }, 5*time.Second, 5*time.Millisecond,
+		"the deferred connect setup should run")
+}
+
+// TestQueueRouterConnect_ReleasesConnectSlots is the leak guard for the semaphore bounding connect setup.
+// Every connect must hand its slot back: a slot that is not released is gone for the controller's lifetime,
+// and once enough have leaked no router can complete connect setup at all. Reclaiming the full capacity
+// afterwards is what proves none were kept.
+func TestQueueRouterConnect_ReleasesConnectSlots(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	handler := &countingPresenceHandler{}
+	network.AddRouterPresenceHandler(handler)
+
+	const connects = 25
+	for i := 0; i < connects; i++ {
+		r := model.NewRouterForTest(fmt.Sprintf("r%d", i), "", addr, &fakeCtrlChannel{}, 0, false)
+		require.NoError(t, network.QueueRouterConnect(r))
+	}
+
+	require.Eventually(t, func() bool { return handler.connected.Load() == connects }, 10*time.Second, 5*time.Millisecond,
+		"every connect's deferred setup should run")
+
+	// The slot is released after the setup finishes, so this settles just after the count above.
+	capacity := int(network.config.GetOptions().RouterConnectConcurrency)
+	require.Eventually(t, func() bool {
+		held := 0
+		for i := 0; i < capacity; i++ {
+			if network.routerConnectSem.TryAcquire() {
+				held++
+			}
+		}
+		for i := 0; i < held; i++ {
+			network.routerConnectSem.Release()
+		}
+		return held == capacity
+	}, 10*time.Second, 10*time.Millisecond, "every connect slot should be released")
+}
+
 // TestConnectDisconnectRace exercises concurrent connect/disconnect for one router id under the race
 // detector, asserting the map never ends holding a disconnected router.
 func TestConnectDisconnectRace(t *testing.T) {
@@ -279,15 +355,6 @@ func newFakeConnectChannel(routerId string) *fakeConnectChannel {
 
 // newPersistedRouter stores a router so the connect path can load it. Create publishes the instance it was
 // given into the router cache, which is the instance a connection must not be handed.
-// connectSetupSignal records which routers' deferred connect setup has finished. The presence callback runs
-// at the end of that setup, so it is the signal a test can wait on instead of racing it. Counting callbacks
-// is not enough here: several routers connect, and a count cannot say which one finished.
-type connectSetupSignal struct{ done sync.Map }
-
-func (self *connectSetupSignal) RouterConnected(r *model.Router)  { self.done.Store(r.Id, true) }
-func (self *connectSetupSignal) RouterDisconnected(*model.Router) {}
-func (self *connectSetupSignal) has(id string) bool               { _, ok := self.done.Load(id); return ok }
-
 func newPersistedRouter(t *testing.T, network *Network, addr transport.Address, id string) *model.Router {
 	t.Helper()
 	router := model.NewRouterForTest(id, "", addr, nil, 0, false)
@@ -425,10 +492,101 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 
 		require.Nil(t, network.Router.GetConnected("r1"), "the router must be disconnected")
 		for _, l := range network.Link.All() {
-			require.NotEqual(t, "r1", l.Src.Id,
+			require.NotEqual(t, "r1", l.GetSrc().Id,
 				"iteration %d: a link published by a router that has been disconnected must not survive", i)
 		}
 	}
+}
+
+// TestLinkGossipListener_EntryRemovedRequiresEndpoint guards the eviction path. Entry ownership is validated
+// at ingress, so a tombstone's owner really is the router that published it, but nothing stops a router
+// publishing one keyed to a link between two others. The tombstone reaches every controller, so an
+// unauthorized one would be propagated as an authoritative eviction of a link the publisher has no part in.
+func TestLinkGossipListener_EntryRemovedRequiresEndpoint(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+	listener := &linkGossipListener{network: network}
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+
+	newLink := func(t *testing.T) *model.Link {
+		t.Helper()
+		link, created := network.Link.RouterReportedLink(&ctrl_pb.RouterLinks_RouterLink{
+			Id:           "l0",
+			DestRouterId: dst.Id,
+			LinkProtocol: "tls",
+			DialAddress:  "tcp:localhost:1234",
+			Iteration:    1,
+		}, src, dst)
+		require.True(t, created)
+		require.NotNil(t, link)
+		return link
+	}
+
+	t.Run("a tombstone from a bystander is ignored", func(t *testing.T) {
+		link := newLink(t)
+		listener.EntryRemoved(LinkGossipKey("l0", 1), "r2", 1, gossip.OriginGossip)
+
+		held, ok := network.Link.Get("l0")
+		require.True(t, ok, "the link must survive a tombstone from a router that is not an endpoint")
+		require.Same(t, link, held)
+		network.Link.Remove(held)
+	})
+
+	t.Run("a tombstone from the source removes the link", func(t *testing.T) {
+		newLink(t)
+		listener.EntryRemoved(LinkGossipKey("l0", 1), src.Id, 1, gossip.OriginGossip)
+
+		_, ok := network.Link.Get("l0")
+		require.False(t, ok, "the source router may retire its own link")
+	})
+
+	// Either endpoint may report a link gone. The far end sees the same failure and is not always able to
+	// wait for the dialer to notice first.
+	t.Run("a tombstone from the destination removes the link", func(t *testing.T) {
+		newLink(t)
+		listener.EntryRemoved(LinkGossipKey("l0", 1), dst.Id, 1, gossip.OriginGossip)
+
+		_, ok := network.Link.Get("l0")
+		require.False(t, ok, "the destination router may retire a link it terminates")
+	})
+}
+
+// TestNotifyExistingLink_RefusedReportRaisesNoEvent covers the legacy link-report path against a refused
+// report. RouterReportedLink returns no link when the reporting router is not the link's source, and the
+// link event carries fields read straight off that link, so raising one anyway dereferences nil and takes the
+// controller down. Only a crafted report reaches this, since a router only ever reports links it dialed, but
+// a check that refuses bad input must not turn it into a crash.
+func TestNotifyExistingLink_RefusedReportRaisesNoEvent(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	impostor := model.NewRouterForTest("r2", "", addr, &fakeCtrlChannel{}, 0, false)
+
+	report := func(iteration uint32) *ctrl_pb.RouterLinks_RouterLink {
+		return &ctrl_pb.RouterLinks_RouterLink{
+			Id:           "l0",
+			DestRouterId: dst.Id,
+			LinkProtocol: "tls",
+			DialAddress:  "tcp:localhost:1234",
+			Iteration:    iteration,
+		}
+	}
+
+	link, created := network.Link.RouterReportedLink(report(1), src, dst)
+	require.True(t, created)
+	require.NotNil(t, link)
+
+	// The reporting router has to be the current connection to get as far as the report.
+	require.NoError(t, network.QueueRouterConnect(impostor))
+
+	network.NotifyExistingLink(impostor, report(2))
+
+	held, ok := network.Link.Get("l0")
+	require.True(t, ok, "the real link must survive the refused report")
+	require.Same(t, link, held)
+	require.Equal(t, "r0", held.GetSrc().Id)
 }
 
 // TestRouterReportedLink_RepairsDestConnectedMidReport drives the interleave where both paths that pair a
@@ -443,6 +601,7 @@ func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
 	// The destination has to exist, since a report naming one that does not is refused.
 	require.NoError(t, network.Router.Create(dst, change.New()))
 	require.NoError(t, network.QueueRouterConnect(src))
+	network.Router.MarkConnected(src)
 
 	report := &ctrl_pb.RouterLinks_RouterLink{
 		Id:           "l0",
@@ -456,9 +615,19 @@ func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
 	resolved := network.Router.GetConnected(dst.Id)
 	require.Nil(t, resolved)
 
-	// The destination connects in the gap. Its link build finds nothing, the link is not in the table yet.
+	// The destination connects in the gap. Its link build finds nothing, because the link being reported is
+	// not in the table yet. Connect setup is deferred to its own goroutine, so wait for it rather than
+	// racing it: the presence callback runs at the end of that setup.
+	setupDone := &connectSetupSignal{}
+	network.AddRouterPresenceHandler(setupDone)
 	require.NoError(t, network.QueueRouterConnect(dst))
+	require.Eventually(t, func() bool { return setupDone.has(dst.Id) }, 5*time.Second, 5*time.Millisecond,
+		"the destination's connect setup should run")
 	require.Empty(t, dst.GetLinks(), "the destination's link build must have found nothing")
+	// The destination connects in the gap. It registers, then builds its links and finds none, because the
+	// link being reported is not in the table yet.
+	network.Router.MarkConnected(dst)
+	network.Link.BuildRouterLinks(dst)
 
 	// Only now does the report land, still carrying the resolution that was accurate when it was taken.
 	link, created := network.Link.RouterReportedLink(report, src, resolved)
@@ -573,10 +742,19 @@ func TestRouterDisable_DisconnectsConnectedRouter(t *testing.T) {
 func TestRouterReportedLink_RepairsDestDisplacedMidReport(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
 
+	setupDone := &connectSetupSignal{}
+	network.AddRouterPresenceHandler(setupDone)
+	connect := func(r *model.Router) {
+		t.Helper()
+		require.NoError(t, network.QueueRouterConnect(r))
+		require.Eventually(t, func() bool { return setupDone.has(r.Id) }, 5*time.Second, 5*time.Millisecond,
+			"connect setup should run for %v", r.Id)
+	}
+
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	firstDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.QueueRouterConnect(src))
-	require.NoError(t, network.QueueRouterConnect(firstDst))
+	connect(src)
+	connect(firstDst)
 
 	// The reporting path resolves the destination, and gets the connection that is current right then.
 	resolved := network.Router.GetConnected(firstDst.Id)
@@ -585,7 +763,8 @@ func TestRouterReportedLink_RepairsDestDisplacedMidReport(t *testing.T) {
 	// That connection is replaced before the report lands.
 	network.DisconnectRouter(firstDst)
 	secondDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.QueueRouterConnect(secondDst))
+	setupDone.done.Delete(secondDst.Id)
+	connect(secondDst)
 	require.Empty(t, secondDst.GetLinks(), "the replacement's link build must have found nothing")
 
 	report := &ctrl_pb.RouterLinks_RouterLink{
@@ -688,6 +867,188 @@ func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
 	require.Equal(t, dst.Id, neighbors[0].Id)
 }
 
+// TestIsCurrentConnection covers the predicate the deferred gossip paths use to decide whether a message is
+// still worth applying. Each of them queues work capturing the connection its message arrived on, and that
+// connection can be given up while the work waits, at which point the entries describe a router lifetime that
+// may be over and a restart's epoch cleanup may already have discarded.
+func TestIsCurrentConnection(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	r := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+
+	require.False(t, network.IsCurrentConnection(r), "a connection that was never registered is not current")
+
+	require.NoError(t, network.QueueRouterConnect(r))
+	require.True(t, network.IsCurrentConnection(r))
+
+	// A second connection for the same router is refused rather than taking over, and the occupant is
+	// displaced, so neither is current once that has run.
+	other := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.False(t, network.IsCurrentConnection(other),
+		"a different connection for the same router id is not current")
+
+	network.DisconnectRouter(r)
+	require.False(t, network.IsCurrentConnection(r), "a connection that has been given up is not current")
+}
+
+// TestConnectSetup_TimesOutAndClosesRatherThanSkipping covers what happens when the connect setup cannot
+// get a slot. Skipping the setup would leave a router that is connected, believes it is, and has no links
+// built, which nothing reports; closing the channel makes it redial with its normal backoff instead.
+func TestConnectSetup_TimesOutAndClosesRatherThanSkipping(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+	network.options.RouterConnectSetupTimeout = 50 * time.Millisecond
+
+	// Hold every slot, so the setup below can only time out.
+	held := 0
+	for network.routerConnectSem.TryAcquire() {
+		held++
+	}
+	require.Greater(t, held, 0)
+	defer func() {
+		for i := 0; i < held; i++ {
+			network.routerConnectSem.Release()
+		}
+	}()
+
+	ch := &fakeCtrlChannel{}
+	r := model.NewRouterForTest("r0", "", addr, ch, 0, false)
+
+	done := make(chan struct{})
+	go func() {
+		network.runConnectSetup(r)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		require.Fail(t, "connect setup should give up rather than wait forever")
+	}
+
+	require.True(t, ch.IsClosed(),
+		"a setup that gave up must close the connection, or the router stays connected with no links")
+}
+
+// TestConnectSetup_ReleasesTheSlotItTook: a setup that completes has to hand its slot back, or the limit
+// erodes with every connect until nothing can run.
+func TestConnectSetup_ReleasesTheSlotItTook(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	before := 0
+	for network.routerConnectSem.TryAcquire() {
+		before++
+	}
+	for i := 0; i < before; i++ {
+		network.routerConnectSem.Release()
+	}
+
+	r := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	network.runConnectSetup(r)
+
+	after := 0
+	for network.routerConnectSem.TryAcquire() {
+		after++
+	}
+	for i := 0; i < after; i++ {
+		network.routerConnectSem.Release()
+	}
+
+	require.Equal(t, before, after, "the slot taken by a completed setup must be released")
+}
+
+// TestConnectSetup_QueueGaugeShowsWaiters is the signal that survives a wedge. The timers only record on
+// completion, so a setup that never finishes makes them go quiet exactly when something is wrong; the
+// gauge is what still shows the pile-up.
+func TestConnectSetup_QueueGaugeShowsWaiters(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+	network.options.RouterConnectSetupTimeout = 5 * time.Second
+
+	require.Equal(t, int64(0), network.routerConnectWaiting.Load())
+
+	held := 0
+	for network.routerConnectSem.TryAcquire() {
+		held++
+	}
+	defer func() {
+		for i := 0; i < held; i++ {
+			network.routerConnectSem.Release()
+		}
+	}()
+
+	r := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	go network.runConnectSetup(r)
+
+	require.Eventually(t, func() bool { return network.routerConnectWaiting.Load() == 1 },
+		2*time.Second, 5*time.Millisecond, "a parked connect setup must be visible in the queue depth")
+}
+
+// TestDisconnectRouter_RetiresLinksTheRouterWillReannounce: a link its dialer does not publish in gossip
+// exists here only because that router reported it, and on reconnect the router reports its whole set
+// again under freshly minted ids. So the entry has to go when the dialer does, or it is never removed at
+// all: nothing names that link id again, and a router too old to mark its report a full refresh leaves
+// nothing to prune against. A gossiped link is the opposite case and is only marked down, since its router
+// may still be connected elsewhere and leaves re-announcing to anti-entropy.
+func TestDisconnectRouter_RetiresLinksTheRouterWillReannounce(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+	testConfigOf(t, network).raftEnabled = true
+
+	peer := newPersistedRouter(t, network, addr, "peer")
+	network.Router.MarkConnected(peer)
+
+	// Never announced a full refresh, so its stale links are the controller's to retire.
+	dialer := model.NewRouterForTest("dialer", "", addr, &fakeCtrlChannel{}, 0, false)
+	req.NoError(network.Router.Create(dialer, change.New()))
+	req.NoError(network.QueueRouterConnect(dialer))
+
+	legacyLink := model.NewTestLink("legacy-link", dialer, peer)
+	legacyLink.SetState(model.Connected)
+	network.Link.Add(legacyLink)
+
+	gossipedLink := model.NewTestLink("gossiped-link", dialer, peer)
+	gossipedLink.SetState(model.Connected)
+	network.Link.Add(gossipedLink)
+
+	req.NoError(network.LinkGossipType.Set(
+		LinkGossipKey(gossipedLink.Id, gossipedLink.Iteration), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: gossipedLink.Id, DestRouterId: peer.Id}))
+
+	network.DisconnectRouter(dialer)
+
+	_, found := network.Link.Get(legacyLink.Id)
+	req.False(found, "a link the dialer will re-announce must be retired when the dialer disconnects")
+
+	held, found := network.Link.Get(gossipedLink.Id)
+	req.True(found, "a gossiped link must survive its dialer's disconnect")
+	req.True(held.IsUsable(), "and be left alone: losing a router is this controller's problem, not the link's")
+}
+
+// TestDisconnectRouter_RetiresUnpublishedLinksWithoutHA: the split is about whether the dialer
+// republishes the link, not about how many controllers there are. Single-controller removal runs through
+// a gossip tombstone, which is the wrong instrument for a link that was never in the store.
+func TestDisconnectRouter_RetiresUnpublishedLinksWithoutHA(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+	req.False(network.config.IsRaftEnabled(), "the test network is single-controller")
+
+	peer := newPersistedRouter(t, network, addr, "peer")
+	network.Router.MarkConnected(peer)
+
+	// Never announced a full refresh, so its stale links are the controller's to retire.
+	dialer := model.NewRouterForTest("dialer", "", addr, &fakeCtrlChannel{}, 0, false)
+	req.NoError(network.Router.Create(dialer, change.New()))
+	req.NoError(network.QueueRouterConnect(dialer))
+
+	link := model.NewTestLink("legacy-link", dialer, peer)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
+
+	network.DisconnectRouter(dialer)
+
+	_, found := network.Link.Get(link.Id)
+	req.False(found, "a link the dialer will re-announce must be retired when the dialer disconnects")
+}
+
 // TestDisconnectRouter_KeepsLinksOfARouterThatPrunesItsOwn: a router that flags its reconnect announcement
 // a full refresh states authoritatively which links it still has, and the controller prunes against that.
 // Retiring here as well would trade a problem the router already solves for one it cannot: the announcement
@@ -709,6 +1070,7 @@ func TestDisconnectRouter_KeepsLinksOfARouterThatPrunesItsOwn(t *testing.T) {
 	link := model.NewTestLink("self-pruned", dialer, peer)
 	link.SetState(model.Connected)
 	network.Link.Add(link)
+	req.False(network.IsLinkInGossip(link), "the link is reported, not gossiped")
 
 	network.DisconnectRouter(dialer)
 

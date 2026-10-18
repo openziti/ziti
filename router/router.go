@@ -599,9 +599,8 @@ func (self *Router) Start() error {
 		return err
 	}
 
-	go newGossipRefresher(self.gossipClient, self.shutdownC).run()
-
 	go newCanaryEmitter(self.ctrls, self.gossipClient.epoch, self.versionProvider.AsVersionInfo().Version, self.routerCapabilities, self.gossipClient.GetMaxSentVersions, self.gossipClient.GetEntryHashes, self.gossipClient.GetEntryCounts, self.shutdownC).run()
+	go newGossipRefresher(self.gossipClient, self.shutdownC).run()
 
 	return nil
 }
