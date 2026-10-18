@@ -116,7 +116,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	channel.AddReceiveHandlers(binding, self.env.GetInspectHandler())
 	channel.AddReceiveHandlers(binding, newCheckStaleLinksHandler(self.env))
 	channel.AddReceiveHandlers(binding, newSettingsHandler(self.env))
-	channel.AddReceiveHandlers(binding, newFaultHandler(self.env.GetXlinkRegistry()))
+	channel.AddReceiveHandlers(binding, newFaultHandler(self.env))
 	channel.AddReceiveHandlers(binding, self.ctrlAddrChangeHandler)
 	channel.AddReceiveHandlers(binding, self.clusterLeaderChangeHandler)
 
