@@ -7,6 +7,7 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.21 -> v1.6.22](https://github.com/openziti/ziti/compare/v1.6.21...v1.6.22)
+    * [Issue #4618](https://github.com/openziti/ziti/issues/4618) - [Backport-1.6] Router can drop controllers on a follower's stale controller list and never re-add them
     * [Issue #4463](https://github.com/openziti/ziti/issues/4463) - [Backport-1.6] Router gives up announcing its links to a controller after a reconnect, leaving the controller missing links
     * [Issue #4464](https://github.com/openziti/ziti/issues/4464) - [Backport-1.6] Checking whether a half-built split link is closed panics
     * [Issue #4465](https://github.com/openziti/ziti/issues/4465) - [Backport-1.6] A dialed link the router has no state for is left up and never reported
