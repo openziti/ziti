@@ -1004,6 +1004,10 @@ func (self *Router) UpdateLeader(leaderId string) {
 	self.ctrls.UpdateLeader(leaderId)
 }
 
+func (self *Router) GetCtrlEndpoints() []string {
+	return self.ctrls.GetEndpoints()
+}
+
 type connectionToggle interface {
 	Disconnect() error
 	Reconnect() error

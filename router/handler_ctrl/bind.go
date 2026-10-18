@@ -44,7 +44,7 @@ type bindHandler struct {
 	forwarder                *forwarder.Forwarder
 	xgDialerPool             goroutines.Pool
 	terminatorValidationPool goroutines.Pool
-	ctrlAddressUpdater       CtrlAddressUpdater
+	ctrlAddrs                *updateCtrlAddressesHandler
 }
 
 func XgressDialerWorker(_ uint32, f func()) {
@@ -90,12 +90,15 @@ func NewBindHandler(routerEnv InspectRouterEnv, forwarder *forwarder.Forwarder, 
 		return nil, errors.Wrap(err, "error creating terminator validation pool")
 	}
 
+	ctrlAddrs := newUpdateCtrlAddressesHandler(ctrlAddressUpdater, routerEnv.GetCloseNotify())
+	routerEnv.GetIndexWatchers().AddIndexResetWatcher(ctrlAddrs.NotifyIndexReset)
+
 	return &bindHandler{
 		env:                      routerEnv,
 		forwarder:                forwarder,
 		xgDialerPool:             xgDialerPool,
 		terminatorValidationPool: terminatorValidationPool,
-		ctrlAddressUpdater:       ctrlAddressUpdater,
+		ctrlAddrs:                ctrlAddrs,
 	}, nil
 }
 
@@ -112,10 +115,10 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
-	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressUpdater))
+	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddrs))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
-	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.env, self.ctrlAddressUpdater))
-	binding.AddTypedReceiveHandler(newUpdateClusterLeaderHandler(self.env, self.ctrlAddressUpdater))
+	binding.AddTypedReceiveHandler(self.ctrlAddrs)
+	binding.AddTypedReceiveHandler(self.ctrlAddrs.clusterLeaderReceiver())
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 
