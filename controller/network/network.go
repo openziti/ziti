@@ -134,6 +134,7 @@ type Network struct {
 
 	GossipStore      *gossip.Store
 	LinkGossipType   *gossip.StateType[*ctrl_pb.RouterLinks_RouterLink]
+	LinkMetricsType  *gossip.StateType[*ctrl_pb.LinkMetrics]
 	CanaryGossipType *gossip.StateType[*CanaryValue]
 	// gossipTypes drives the epoch sweep only. Router-deleted cleanup is a separate lifecycle with a
 	// different membership, since canaries carry the epoch that detects a change and so must survive one.
@@ -320,6 +321,7 @@ func (network *Network) initGossip(peering GossipPeering) {
 	}
 
 	network.initLinkGossip()
+	network.initLinkMetricsGossip()
 	network.initCanaryGossip()
 }
 
@@ -1971,6 +1973,14 @@ func (network *Network) AcceptMetricsMsg(metrics *metrics_pb.MetricsMessage) {
 	router, err := network.Router.Read(metrics.SourceId)
 	if err != nil {
 		log.Debugf("could not find router [r/%s] while processing metrics", metrics.SourceId)
+		return
+	}
+
+	// When the reporting router publishes per-link latency over gossip, routing
+	// latency comes from the link-metrics store instead, so we skip deriving it
+	// from this message. The latency histograms still travel in the message and
+	// still feed observability events; they just stop feeding routing.
+	if metrics.LinkLatencyInGossip {
 		return
 	}
 
