@@ -55,3 +55,23 @@ func Test_LoadNetworkConfig_hostMetrics(t *testing.T) {
 		require.ErrorContains(t, err, "hostMetrics.enabled")
 	})
 }
+
+// Test_LoadNetworkConfig_poolStanzas covers the shape of the pool stanzas rather than their values: one that is
+// not a map is refused, and an empty one is absent.
+func Test_LoadNetworkConfig_poolStanzas(t *testing.T) {
+	defaults := DefaultNetworkConfig()
+	for key, pool := range map[string]func(*NetworkConfig) any{
+		"gossipApplyPool": func(c *NetworkConfig) any { return c.GossipApplyPool },
+		"peerEventsPool":  func(c *NetworkConfig) any { return c.PeerEventsPool },
+		"ioPool":          func(c *NetworkConfig) any { return c.IoPool },
+	} {
+		t.Run(key, func(t *testing.T) {
+			_, err := LoadNetworkConfig(map[interface{}]interface{}{key: true})
+			require.ErrorContains(t, err, key)
+
+			options, err := LoadNetworkConfig(map[interface{}]interface{}{key: nil})
+			require.NoError(t, err)
+			require.Equal(t, pool(defaults), pool(options))
+		})
+	}
+}

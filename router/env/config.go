@@ -156,6 +156,13 @@ type Config struct {
 		StartupTimeout        time.Duration
 		RateLimit             command.AdaptiveRateLimitTrackerConfig
 		Listeners             []*CtrlListenerConfig
+		// ConnectionCheckInterval is how often the router reports on controllers it can neither reach nor is
+		// trying to reach. The check reports and takes no corrective action. Zero, the default, disables it.
+		ConnectionCheckInterval time.Duration
+		// ConnectionCheckGracePeriod is how long a controller may be unreachable before the check reports it.
+		// It covers the gap between losing a connection and a reconnect being recorded as in flight, and
+		// lets a control channel that has just lost its underlays dial new ones.
+		ConnectionCheckGracePeriod time.Duration
 	}
 	Link struct {
 		// Configured reports that the config file has a link section at all. The
@@ -226,6 +233,16 @@ const (
 
 	DefaultLinkPayloadSenderQueueSize = 128
 	DefaultLinkAckSenderQueueSize     = 64
+
+	// DefaultCtrlConnectionCheckInterval disables the check. It reports rather than corrects, so it is
+	// opt-in; set a positive interval to turn it on, which bounds how long a controller the router can
+	// neither reach nor is trying to reach goes unreported. 30s is a reasonable value when enabling it.
+	DefaultCtrlConnectionCheckInterval = time.Duration(0)
+
+	// DefaultCtrlConnectionCheckGracePeriod is long enough for a reconnect to get under way, and for a
+	// control channel that lost its underlays to dial new ones, including under the latency and loss where
+	// that matters most.
+	DefaultCtrlConnectionCheckGracePeriod = 30 * time.Second
 )
 
 // CreateBackup will attempt to use the current path value to create a backup of
@@ -385,6 +402,35 @@ func (c *UpdatableAddress) UnmarshalYAML(value *yaml3.Node) error {
 	return nil
 }
 
+// loadLinkHeartbeatOptions parses the link heartbeats stanza.
+//
+// Keys the operator omits keep the link defaults rather than the channel defaults
+// channel.LoadHeartbeatOptions supplies, so naming one key does not move the others; links want a longer
+// unresponsive timeout than a generic channel does. A non-positive interval is refused rather than
+// defaulted, because the ticker the heartbeater runs on panics on one.
+func loadLinkHeartbeatOptions(submap map[interface{}]interface{}) (*channel.HeartbeatOptions, error) {
+	options, err := channel.LoadHeartbeatOptions(submap)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, found := submap["sendInterval"]; !found {
+		options.SendInterval = DefaultLinkHeartbeatSendInterval
+	}
+	if _, found := submap["closeUnresponsiveTimeout"]; !found {
+		options.CloseUnresponsiveTimeout = DefaultLinkUnresponsiveTimeout
+	}
+
+	if options.SendInterval <= 0 {
+		return nil, errors.New("[link/heartbeats/sendInterval] must be greater than zero")
+	}
+	if options.CheckInterval <= 0 {
+		return nil, errors.New("[link/heartbeats/checkInterval] must be greater than zero")
+	}
+
+	return options, nil
+}
+
 func LoadConfig(path string) (*Config, error) {
 	return LoadConfigWithOptions(path, true)
 }
@@ -495,6 +541,9 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 		return nil, err
 	}
 
+	cfg.Ctrl.ConnectionCheckInterval = DefaultCtrlConnectionCheckInterval
+	cfg.Ctrl.ConnectionCheckGracePeriod = DefaultCtrlConnectionCheckGracePeriod
+
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap[CtrlEndpointBindMapKey]; found {
@@ -565,6 +614,18 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 				var err error
 				if cfg.Ctrl.StartupTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.startupTimeout")
+				}
+			}
+			if value, found := submap["connectionCheckInterval"]; found {
+				var err error
+				if cfg.Ctrl.ConnectionCheckInterval, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for ctrl.connectionCheckInterval")
+				}
+			}
+			if value, found := submap["connectionCheckGracePeriod"]; found {
+				var err error
+				if cfg.Ctrl.ConnectionCheckGracePeriod, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for ctrl.connectionCheckGracePeriod")
 				}
 			}
 			if value, found := submap["endpointsFile"]; found {
@@ -649,7 +710,7 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 
 			if value, found := submap["heartbeats"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					options, err := channel.LoadHeartbeatOptions(submap)
+					options, err := loadLinkHeartbeatOptions(submap)
 					if err != nil {
 						return nil, err
 					}

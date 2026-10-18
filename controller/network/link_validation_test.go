@@ -95,5 +95,5 @@ func TestCheckLinkConns_ComparesWhenVersionKnown(t *testing.T) {
 	// A conn count mismatch reports a message without marking the link invalid, so the message is what
 	// shows the comparison ran rather than being skipped.
 	require.NotEmpty(t, result.Messages, "a known version must let the conn info comparison run")
-	require.Contains(t, result.Messages[0], "len(ctrlConns)")
+	require.Contains(t, result.Messages[0], "ctrl holds no connections while the router reports")
 }

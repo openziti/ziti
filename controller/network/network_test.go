@@ -82,6 +82,12 @@ func (self *testConfig) GetVersionProvider() versions.VersionProvider {
 	return self.versionProvider
 }
 
+// GetGossipPeering reports no peers: the tests run a single controller, so gossip has nowhere to send and
+// nothing to reconcile against.
+func (self *testConfig) GetGossipPeering() GossipPeering {
+	return GossipPeering{}
+}
+
 func (self *testConfig) GetCloseNotify() <-chan struct{} {
 	return self.closeNotify
 }
