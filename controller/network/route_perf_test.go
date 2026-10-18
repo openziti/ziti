@@ -18,17 +18,13 @@ package network
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/controller/model"
 	"math/rand"
 	"testing"
 
-	"github.com/michaelquigley/pfxlog"
-	"github.com/sirupsen/logrus"
+	"github.com/openziti/ziti/controller/model"
 )
 
 func TestShortestPathAgainstEstablished(t *testing.T) {
-	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
-
 	ctx := model.NewTestContext(t)
 	defer ctx.Cleanup()
 
@@ -151,7 +147,6 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 
 func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 	b.StopTimer()
-	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
 
 	ctx := model.NewTestContext(b)
 	defer ctx.Cleanup()
@@ -243,7 +238,6 @@ type expectedRoute struct {
 
 func BenchmarkShortestPathPerf(b *testing.B) {
 	b.StopTimer()
-	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
 
 	ctx := model.NewTestContext(b)
 	defer ctx.Cleanup()
@@ -315,7 +309,6 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 
 func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 	//b.StopTimer()
-	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
 
 	ctx := model.NewTestContext(b)
 	defer ctx.Cleanup()
