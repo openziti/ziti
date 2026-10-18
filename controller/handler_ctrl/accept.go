@@ -193,7 +193,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		binding.AddPeekHandler(self.traceHandler)
 	}
 
-	if err = self.network.ConnectRouter(r); err != nil {
+	if err = self.network.QueueRouterConnect(r); err != nil {
 		if network.IsConnectRejected(err) {
 			log.Info("router connect rejected; another connection is already current, router will redial")
 		}
