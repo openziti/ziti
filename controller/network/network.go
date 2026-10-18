@@ -142,9 +142,17 @@ type Network struct {
 	// only once a router connects and so are ordered after construction. Registering a type later would
 	// race those readers, and the type would in any case be missed by the per-store-type work already done
 	// for every connected router.
-	gossipTypes                  map[string]gossip.StateTypeInfo // non-generic lookup by store type
-	routerDeletedCleanups        []routerDeletedCleanup
-	canaryListener               *canaryGossipListener
+	gossipTypes           map[string]gossip.StateTypeInfo // non-generic lookup by store type
+	routerDeletedCleanups []routerDeletedCleanup
+	canaryListener        *canaryGossipListener
+	// gossipLinkSweepPending names the link gossip entries whose destination this controller could not
+	// judge while behind on raft. The sweep re-asks exactly these. See sweepGossipLinks.
+	//
+	// Self-pruning rather than bounded: an entry gone from the store is dropped when the sweep re-reads it,
+	// and one that still cannot be judged is put back by the sweep, so the set cannot outgrow the store.
+	gossipLinkSweepPending map[gossipLinkRef]struct{}
+	gossipLinkSweepLock    sync.Mutex
+
 	serviceEventMetrics          servermetrics.UsageRegistry
 	serviceDialSuccessCounter    servermetrics.IntervalCounter
 	serviceDialFailCounter       servermetrics.IntervalCounter
@@ -1121,7 +1129,9 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 	}
 
 	dst := network.Router.GetConnected(reportedLink.DestRouterId)
-	link, created := network.Link.RouterReportedLink(reportedLink, src, dst)
+	// Deferrable: a report arriving this way is from a router that does not gossip, so there is no stored
+	// entry to re-read and the report has to be held here or lost.
+	link, outcome := network.Link.RouterReportedLinkDeferrable(reportedLink, src, dst)
 
 	unlock()
 
@@ -1130,13 +1140,14 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 	}
 
 	if link == nil {
-		// Refused; RouterReportedLink has already said why. A report naming a destination that no longer
-		// exists is also the evidence that the router never got the removal, so answer it with one.
+		// Refused or held; RouterReportedLinkDeferrable has already said which. A report naming a
+		// destination that no longer exists is also the evidence that the router never got the removal, so
+		// answer it with one. A held report is not one, and the catch-up check inside sorts that out.
 		network.notifyDestinationRemovedIfGone(src, reportedLink.DestRouterId, dst)
 		return
 	}
 
-	if created {
+	if outcome == model.LinkReportCreated {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")
 	} else {
@@ -1174,6 +1185,13 @@ func (network *Network) shouldNotifyDestinationRemoved(srcRouter *model.Router, 
 	}
 
 	if !network.IsLeader() {
+		return false
+	}
+
+	// Saying a router is gone is only meaningful once this controller has caught up. A leader that has just
+	// been elected is still applying entries committed before it won, so an entity it cannot find may simply
+	// be one it has not reached yet, and announcing that as a removal tears down links to a live router.
+	if !network.env.IsRaftCaughtUp() {
 		return false
 	}
 
@@ -1632,6 +1650,8 @@ func (network *Network) Run() {
 			network.clean()
 			network.smart()
 			network.scanForDeadLinks()
+			network.Link.RetryDeferredReports()
+			network.sweepGossipLinks()
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)

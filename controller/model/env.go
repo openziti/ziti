@@ -21,7 +21,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -29,6 +28,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 // Env defines the core environment interface for Ziti Edge controller operations.
@@ -134,13 +134,40 @@ type Env interface {
 	// and debugging distributed consensus issues.
 	GetRaftInfo() (string, string, string)
 
-	// GetStoreIndex returns the index of the last change applied to this controller's store, which
-	// versions the answers the store gives. Statements this controller makes about what exists can be
-	// ordered against statements another makes, which nothing else sequences.
+	// GetRaftIndex returns the raft index this controller has applied, which versions the answers its stores
+	// give. Statements this controller makes about what exists can be ordered against another controller's,
+	// which nothing else sequences. See GetRaftCommitIndex for the index to wait for rather than report.
 	//
-	// Zero where there is no such index, as on a controller running without raft. It is not the router
-	// data model's index, which counts a different sequence of changes.
-	GetStoreIndex() uint64
+	// Zero where there is no such index, as on a controller running without raft. It is not the router data
+	// model's index, which counts a different sequence of changes.
+	GetRaftIndex() uint64
+
+	// IsRaftCaughtUp reports whether this controller has applied everything the cluster has committed, as far
+	// as it can tell: there is a leader, and every committed entry it knows of has been applied. False while
+	// catching up, including just after winning an election, and while leaderless.
+	//
+	// Callers use it before concluding that an entity they cannot find does not exist. One this controller
+	// has not caught up to is indistinguishable from one that was never created, and the two want opposite
+	// responses. Always true without raft, where there is nothing to be behind.
+	IsRaftCaughtUp() bool
+
+	// GetRaftCommitIndex returns the highest raft index this controller knows to be committed. Applying up to
+	// it means having seen every change the cluster had committed at the moment it was read, which makes it a
+	// barrier a caller can wait for. On a follower it is the value carried by the last append received, so it
+	// trails the leader rather than tracking it live.
+	//
+	// Zero without raft. Prefer this over IsRaftCaughtUp wherever the caller can wait: the commit index keeps
+	// moving on a busy cluster, so "have I caught up with everything" can be false indefinitely, while "have I
+	// reached the index I saw earlier" always completes.
+	GetRaftCommitIndex() uint64
+
+	// HasRaftLeader reports whether this controller currently knows of a leader, which is true when it is the
+	// leader itself. False when isolated or mid-election.
+	//
+	// Callers that draw conclusions from an entity's absence need this: a controller with no leader is not
+	// receiving commits, so its view is frozen rather than merely behind, and waiting for an index it will
+	// never be told about would let it mistake isolation for deletion. Always true without raft.
+	HasRaftLeader() bool
 
 	// GetApiAddresses provides current API endpoints and their signatures for
 	// service discovery and client configuration updates.

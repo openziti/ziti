@@ -52,10 +52,16 @@ type TestContext struct {
 	closeNotify     chan struct{}
 	dispatcher      command.Dispatcher
 	eventDispatcher event.Dispatcher
-	// StoreIndex is what GetStoreIndex reports. StoreIndexF takes precedence when set, for tests that need
+	// RaftIndex is what GetRaftIndex reports. RaftIndexF takes precedence when set, for tests that need
 	// the index to move between reads.
-	StoreIndex  uint64
-	StoreIndexF func() uint64
+	RaftIndex  uint64
+	RaftIndexF func() uint64
+	// RaftNotCaughtUp makes IsRaftCaughtUp report false, standing in for a controller still catching up.
+	RaftNotCaughtUp bool
+	// RaftCommitIndex is what GetRaftCommitIndex reports, for tests that exercise the catch-up barrier.
+	RaftCommitIndex uint64
+	// RaftLeaderless makes HasRaftLeader report false, standing in for an isolated controller.
+	RaftLeaderless bool
 }
 
 func (ctx *TestContext) GetTokenIssuerCache() *TokenIssuerCache {
@@ -187,11 +193,23 @@ func (self *TestContext) GetRaftInfo() (string, string, string) {
 	return "testaddr", "testid", "testversion"
 }
 
-func (self *TestContext) GetStoreIndex() uint64 {
-	if self.StoreIndexF != nil {
-		return self.StoreIndexF()
+func (self *TestContext) HasRaftLeader() bool {
+	return !self.RaftLeaderless
+}
+
+func (self *TestContext) GetRaftCommitIndex() uint64 {
+	return self.RaftCommitIndex
+}
+
+func (self *TestContext) IsRaftCaughtUp() bool {
+	return !self.RaftNotCaughtUp
+}
+
+func (self *TestContext) GetRaftIndex() uint64 {
+	if self.RaftIndexF != nil {
+		return self.RaftIndexF()
 	}
-	return self.StoreIndex
+	return self.RaftIndex
 }
 
 func (self *TestContext) GetPeerSigners() []*x509.Certificate {

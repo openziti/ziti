@@ -506,13 +506,39 @@ func (ae *AppEnv) GetRaftInfo() (string, string, string) {
 	return ae.HostController.GetRaftInfo()
 }
 
-// GetStoreIndex returns the index of the last change applied to this controller's store, or zero when
-// running without raft, where there is no index and nothing to order against.
-func (ae *AppEnv) GetStoreIndex() uint64 {
+// GetRaftIndex returns the raft index this controller has applied, or zero when running without raft, where
+// there is no index and nothing to order against. Unlike the host controller's method of the same name, this
+// one is safe to call whether or not raft is running.
+func (ae *AppEnv) GetRaftIndex() uint64 {
 	if !ae.HostController.IsRaftEnabled() {
 		return 0
 	}
 	return ae.HostController.GetRaftIndex()
+}
+
+// GetRaftCommitIndex returns the highest raft index known to be committed, or zero without raft.
+func (ae *AppEnv) GetRaftCommitIndex() uint64 {
+	if !ae.HostController.IsRaftEnabled() {
+		return 0
+	}
+	return ae.HostController.GetRaftCommitIndex()
+}
+
+// HasRaftLeader reports whether this controller knows of a leader, itself included. True without raft.
+func (ae *AppEnv) HasRaftLeader() bool {
+	if !ae.HostController.IsRaftEnabled() {
+		return true
+	}
+	return ae.HostController.HasRaftLeader()
+}
+
+// IsRaftCaughtUp reports whether this controller has applied everything the cluster has committed, as far as
+// it can tell. Always true without raft.
+func (ae *AppEnv) IsRaftCaughtUp() bool {
+	if !ae.HostController.IsRaftEnabled() {
+		return true
+	}
+	return ae.HostController.IsRaftCaughtUp()
 }
 
 // GetApiAddresses returns the controller's API addresses and their fingerprint hash.
@@ -568,6 +594,9 @@ type HostController interface {
 	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
 	GetRaftIndex() uint64
+	IsRaftCaughtUp() bool
+	GetRaftCommitIndex() uint64
+	HasRaftLeader() bool
 	GetPeerAddresses() []string
 	GetRaftInfo() (string, string, string)
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)

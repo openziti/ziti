@@ -116,8 +116,8 @@ func Test_RouterReportedLink_serializesAndStableOnStaleReport(t *testing.T) {
 		}
 	}
 
-	link, created := lm.RouterReportedLink(report(1), src, dst)
-	req.True(created)
+	link, outcome := lm.RouterReportedLink(report(1), src, dst)
+	req.Equal(LinkReportCreated, outcome)
 	req.NotNil(link)
 	req.Same(src, link.GetSrc())
 	req.Same(dst, link.GetDest())
@@ -127,8 +127,8 @@ func Test_RouterReportedLink_serializesAndStableOnStaleReport(t *testing.T) {
 	// even though a different (also connected) router object with the same id reports.
 	otherSrc := NewRouter("r0", "", "", 0, true)
 	otherSrc.Connected.Store(true)
-	again, created2 := lm.RouterReportedLink(report(1), otherSrc, dst)
-	req.False(created2)
+	again, outcome2 := lm.RouterReportedLink(report(1), otherSrc, dst)
+	req.Equal(LinkReportCurrent, outcome2)
 	req.Same(link, again, "same-iteration report returns the existing link")
 	req.Same(src, again.GetSrc(), "same-iteration report must not replace the source router")
 
@@ -384,14 +384,14 @@ func Test_RouterReportedLink_rejectsReportFromNonSource(t *testing.T) {
 		}
 	}
 
-	link, created := lm.RouterReportedLink(report(1), src, dst)
-	req.True(created)
+	link, outcome := lm.RouterReportedLink(report(1), src, dst)
+	req.Equal(LinkReportCreated, outcome)
 	req.NotNil(link)
 
 	// A higher iteration is what would otherwise replace the link, so that is what the impostor reports.
-	taken, created := lm.RouterReportedLink(report(2), impostor, dst)
+	taken, outcome := lm.RouterReportedLink(report(2), impostor, dst)
 	req.Nil(taken, "a report from a router that is not the link's source is refused")
-	req.False(created)
+	req.Equal(LinkReportRefused, outcome)
 
 	held, ok := lm.Get("l0")
 	req.True(ok, "the real link must still be in the table")
@@ -400,8 +400,8 @@ func Test_RouterReportedLink_rejectsReportFromNonSource(t *testing.T) {
 	req.Equal(uint32(1), held.Iteration, "the impostor's iteration must not be adopted")
 
 	// The real source can still re-dial afterwards.
-	redialed, created := lm.RouterReportedLink(report(3), src, dst)
-	req.True(created)
+	redialed, outcome := lm.RouterReportedLink(report(3), src, dst)
+	req.Equal(LinkReportCreated, outcome)
 	req.NotNil(redialed)
 	req.Equal("r0", redialed.GetSrc().Id)
 	req.Equal(uint32(3), redialed.Iteration)
@@ -661,8 +661,8 @@ func Test_RouterReportedLink_destinationExistence(t *testing.T) {
 		dst := NewRouter("live", "", "", 0, true)
 		req.NoError(routers.Create(dst, change.New()))
 
-		link, created := lm.RouterReportedLink(report("l-live", dst.Id), src, nil)
-		req.True(created)
+		link, outcome := lm.RouterReportedLink(report("l-live", dst.Id), src, nil)
+		req.Equal(LinkReportCreated, outcome)
 		req.NotNil(link)
 		req.Equal(dst.Id, link.DstId)
 	})
@@ -673,9 +673,9 @@ func Test_RouterReportedLink_destinationExistence(t *testing.T) {
 		req.NoError(routers.Create(dst, change.New()))
 		req.NoError(routers.Delete(dst.Id, change.New()))
 
-		link, created := lm.RouterReportedLink(report("l-deleted", dst.Id), src, nil)
+		link, outcome := lm.RouterReportedLink(report("l-deleted", dst.Id), src, nil)
 		req.Nil(link, "a report naming a router that no longer exists is refused")
-		req.False(created)
+		req.Equal(LinkReportRefused, outcome)
 
 		_, ok := lm.Get("l-deleted")
 		req.False(ok, "the refused link must not be in the table")
@@ -683,9 +683,9 @@ func Test_RouterReportedLink_destinationExistence(t *testing.T) {
 
 	t.Run("refuses a destination that never existed", func(t *testing.T) {
 		req := require.New(t)
-		link, created := lm.RouterReportedLink(report("l-unknown", "never-created"), src, nil)
+		link, outcome := lm.RouterReportedLink(report("l-unknown", "never-created"), src, nil)
 		req.Nil(link)
-		req.False(created)
+		req.Equal(LinkReportRefused, outcome)
 	})
 
 	// A connected destination is proof enough that the router exists, so the check must not be reached.
@@ -695,8 +695,8 @@ func Test_RouterReportedLink_destinationExistence(t *testing.T) {
 		dst := NewRouter("connected-only", "", "", 0, true)
 		dst.Connected.Store(true)
 
-		link, created := lm.RouterReportedLink(report("l-connected", dst.Id), src, dst)
-		req.True(created)
+		link, outcome := lm.RouterReportedLink(report("l-connected", dst.Id), src, dst)
+		req.Equal(LinkReportCreated, outcome)
 		req.NotNil(link)
 	})
 }
