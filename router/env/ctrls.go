@@ -19,6 +19,7 @@ package env
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -62,6 +63,8 @@ type CtrlEvent struct {
 
 type NetworkControllers interface {
 	UpdateControllerEndpoints(endpoints []string) bool
+	// GetEndpoints returns the controller endpoints the router connects to, sorted.
+	GetEndpoints() []string
 	UpdateLeader(leaderId string)
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
@@ -160,6 +163,10 @@ func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bo
 	}
 
 	return changed
+}
+
+func (self *networkControllers) GetEndpoints() []string {
+	return slices.Sorted(slices.Values(self.ctrlEndpoints.Keys()))
 }
 
 func (self *networkControllers) UpdateLeader(leaderId string) {

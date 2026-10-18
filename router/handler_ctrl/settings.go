@@ -25,7 +25,7 @@ import (
 
 // settingsHandler is a catch-all handler for all settings message (currently only sent on router connect).
 type settingsHandler struct {
-	updater CtrlAddressUpdater
+	ctrlAddrs *updateCtrlAddressesHandler
 }
 
 func (handler *settingsHandler) ContentType() int32 {
@@ -43,8 +43,11 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 
 			switch settingType {
 			case int32(ctrl_pb.SettingTypes_NewCtrlAddress):
-				newAddress := string(settingValue)
-				handler.updater.UpdateCtrlEndpoints([]string{newAddress})
+				if newAddress := string(settingValue); newAddress == "" {
+					log.Error("new controller address is empty, ignored")
+				} else {
+					handler.ctrlAddrs.queueNewCtrlAddress(ch.Id(), ch.Label(), newAddress)
+				}
 			default:
 				log.Error("unknown setting type, ignored")
 			}
@@ -54,8 +57,8 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 }
 
-func newSettingsHandler(updater CtrlAddressUpdater) channel.TypedReceiveHandler {
+func newSettingsHandler(ctrlAddrs *updateCtrlAddressesHandler) channel.TypedReceiveHandler {
 	return &settingsHandler{
-		updater: updater,
+		ctrlAddrs: ctrlAddrs,
 	}
 }
