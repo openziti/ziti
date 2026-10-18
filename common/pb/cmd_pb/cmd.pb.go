@@ -33,6 +33,8 @@ const (
 	ContentType_RemovePeerRequestType         ContentType = 2054
 	ContentType_TransferLeadershipRequestType ContentType = 2055
 	ContentType_UpdatePeerAddressRequestType  ContentType = 2056
+	ContentType_ReadBarrierRequestType        ContentType = 2057
+	ContentType_ReadBarrierResponseType       ContentType = 2058
 )
 
 // Enum value maps for ContentType.
@@ -46,6 +48,8 @@ var (
 		2054: "RemovePeerRequestType",
 		2055: "TransferLeadershipRequestType",
 		2056: "UpdatePeerAddressRequestType",
+		2057: "ReadBarrierRequestType",
+		2058: "ReadBarrierResponseType",
 	}
 	ContentType_value = map[string]int32{
 		"ContentTypeZero":               0,
@@ -56,6 +60,8 @@ var (
 		"RemovePeerRequestType":         2054,
 		"TransferLeadershipRequestType": 2055,
 		"UpdatePeerAddressRequestType":  2056,
+		"ReadBarrierRequestType":        2057,
+		"ReadBarrierResponseType":       2058,
 	}
 )
 
@@ -147,6 +153,107 @@ func (CommandType) EnumDescriptor() ([]byte, []int) {
 	return file_cmd_proto_rawDescGZIP(), []int{1}
 }
 
+// ReadBarrierRequest asks the leader for a read barrier: the store index a requester has to apply to have
+// seen everything the cluster had committed when the request arrived. requestId is echoed in the response.
+type ReadBarrierRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     uint64                 `protobuf:"varint,1,opt,name=requestId,proto3" json:"requestId,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadBarrierRequest) Reset() {
+	*x = ReadBarrierRequest{}
+	mi := &file_cmd_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadBarrierRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadBarrierRequest) ProtoMessage() {}
+
+func (x *ReadBarrierRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cmd_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadBarrierRequest.ProtoReflect.Descriptor instead.
+func (*ReadBarrierRequest) Descriptor() ([]byte, []int) {
+	return file_cmd_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ReadBarrierRequest) GetRequestId() uint64 {
+	if x != nil {
+		return x.RequestId
+	}
+	return 0
+}
+
+// ReadBarrierResponse answers a ReadBarrierRequest. index is the leader's store index, read after a raft
+// barrier, so it is the same measure the requester tracks its own progress in. A leader that cannot take the
+// barrier sends nothing.
+type ReadBarrierResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     uint64                 `protobuf:"varint,1,opt,name=requestId,proto3" json:"requestId,omitempty"`
+	Index         uint64                 `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadBarrierResponse) Reset() {
+	*x = ReadBarrierResponse{}
+	mi := &file_cmd_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadBarrierResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadBarrierResponse) ProtoMessage() {}
+
+func (x *ReadBarrierResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cmd_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadBarrierResponse.ProtoReflect.Descriptor instead.
+func (*ReadBarrierResponse) Descriptor() ([]byte, []int) {
+	return file_cmd_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ReadBarrierResponse) GetRequestId() uint64 {
+	if x != nil {
+		return x.RequestId
+	}
+	return 0
+}
+
+func (x *ReadBarrierResponse) GetIndex() uint64 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
 type ChangeContext struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Attributes    map[string]string      `protobuf:"bytes,1,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -157,7 +264,7 @@ type ChangeContext struct {
 
 func (x *ChangeContext) Reset() {
 	*x = ChangeContext{}
-	mi := &file_cmd_proto_msgTypes[0]
+	mi := &file_cmd_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -169,7 +276,7 @@ func (x *ChangeContext) String() string {
 func (*ChangeContext) ProtoMessage() {}
 
 func (x *ChangeContext) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[0]
+	mi := &file_cmd_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -182,7 +289,7 @@ func (x *ChangeContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeContext.ProtoReflect.Descriptor instead.
 func (*ChangeContext) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{0}
+	return file_cmd_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ChangeContext) GetAttributes() map[string]string {
@@ -211,7 +318,7 @@ type AddPeerRequest struct {
 
 func (x *AddPeerRequest) Reset() {
 	*x = AddPeerRequest{}
-	mi := &file_cmd_proto_msgTypes[1]
+	mi := &file_cmd_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -223,7 +330,7 @@ func (x *AddPeerRequest) String() string {
 func (*AddPeerRequest) ProtoMessage() {}
 
 func (x *AddPeerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[1]
+	mi := &file_cmd_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +343,7 @@ func (x *AddPeerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddPeerRequest.ProtoReflect.Descriptor instead.
 func (*AddPeerRequest) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{1}
+	return file_cmd_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AddPeerRequest) GetId() string {
@@ -280,7 +387,7 @@ type UpdatePeerAddressRequest struct {
 
 func (x *UpdatePeerAddressRequest) Reset() {
 	*x = UpdatePeerAddressRequest{}
-	mi := &file_cmd_proto_msgTypes[2]
+	mi := &file_cmd_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -292,7 +399,7 @@ func (x *UpdatePeerAddressRequest) String() string {
 func (*UpdatePeerAddressRequest) ProtoMessage() {}
 
 func (x *UpdatePeerAddressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[2]
+	mi := &file_cmd_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -305,7 +412,7 @@ func (x *UpdatePeerAddressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePeerAddressRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePeerAddressRequest) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{2}
+	return file_cmd_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UpdatePeerAddressRequest) GetId() string {
@@ -339,7 +446,7 @@ type RemovePeerRequest struct {
 
 func (x *RemovePeerRequest) Reset() {
 	*x = RemovePeerRequest{}
-	mi := &file_cmd_proto_msgTypes[3]
+	mi := &file_cmd_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -351,7 +458,7 @@ func (x *RemovePeerRequest) String() string {
 func (*RemovePeerRequest) ProtoMessage() {}
 
 func (x *RemovePeerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[3]
+	mi := &file_cmd_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -364,7 +471,7 @@ func (x *RemovePeerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemovePeerRequest.ProtoReflect.Descriptor instead.
 func (*RemovePeerRequest) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{3}
+	return file_cmd_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RemovePeerRequest) GetId() string {
@@ -391,7 +498,7 @@ type TransferLeadershipRequest struct {
 
 func (x *TransferLeadershipRequest) Reset() {
 	*x = TransferLeadershipRequest{}
-	mi := &file_cmd_proto_msgTypes[4]
+	mi := &file_cmd_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -403,7 +510,7 @@ func (x *TransferLeadershipRequest) String() string {
 func (*TransferLeadershipRequest) ProtoMessage() {}
 
 func (x *TransferLeadershipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[4]
+	mi := &file_cmd_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,7 +523,7 @@ func (x *TransferLeadershipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferLeadershipRequest.ProtoReflect.Descriptor instead.
 func (*TransferLeadershipRequest) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{4}
+	return file_cmd_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TransferLeadershipRequest) GetId() string {
@@ -445,7 +552,7 @@ type CreateEntityCommand struct {
 
 func (x *CreateEntityCommand) Reset() {
 	*x = CreateEntityCommand{}
-	mi := &file_cmd_proto_msgTypes[5]
+	mi := &file_cmd_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -457,7 +564,7 @@ func (x *CreateEntityCommand) String() string {
 func (*CreateEntityCommand) ProtoMessage() {}
 
 func (x *CreateEntityCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[5]
+	mi := &file_cmd_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -470,7 +577,7 @@ func (x *CreateEntityCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateEntityCommand.ProtoReflect.Descriptor instead.
 func (*CreateEntityCommand) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{5}
+	return file_cmd_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateEntityCommand) GetEntityType() string {
@@ -514,7 +621,7 @@ type UpdateEntityCommand struct {
 
 func (x *UpdateEntityCommand) Reset() {
 	*x = UpdateEntityCommand{}
-	mi := &file_cmd_proto_msgTypes[6]
+	mi := &file_cmd_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -526,7 +633,7 @@ func (x *UpdateEntityCommand) String() string {
 func (*UpdateEntityCommand) ProtoMessage() {}
 
 func (x *UpdateEntityCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[6]
+	mi := &file_cmd_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -539,7 +646,7 @@ func (x *UpdateEntityCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateEntityCommand.ProtoReflect.Descriptor instead.
 func (*UpdateEntityCommand) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{6}
+	return file_cmd_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateEntityCommand) GetEntityType() string {
@@ -588,7 +695,7 @@ type DeleteEntityCommand struct {
 
 func (x *DeleteEntityCommand) Reset() {
 	*x = DeleteEntityCommand{}
-	mi := &file_cmd_proto_msgTypes[7]
+	mi := &file_cmd_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -600,7 +707,7 @@ func (x *DeleteEntityCommand) String() string {
 func (*DeleteEntityCommand) ProtoMessage() {}
 
 func (x *DeleteEntityCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[7]
+	mi := &file_cmd_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -613,7 +720,7 @@ func (x *DeleteEntityCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEntityCommand.ProtoReflect.Descriptor instead.
 func (*DeleteEntityCommand) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{7}
+	return file_cmd_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DeleteEntityCommand) GetEntityId() string {
@@ -648,7 +755,7 @@ type SyncSnapshotCommand struct {
 
 func (x *SyncSnapshotCommand) Reset() {
 	*x = SyncSnapshotCommand{}
-	mi := &file_cmd_proto_msgTypes[8]
+	mi := &file_cmd_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -660,7 +767,7 @@ func (x *SyncSnapshotCommand) String() string {
 func (*SyncSnapshotCommand) ProtoMessage() {}
 
 func (x *SyncSnapshotCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[8]
+	mi := &file_cmd_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +780,7 @@ func (x *SyncSnapshotCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncSnapshotCommand.ProtoReflect.Descriptor instead.
 func (*SyncSnapshotCommand) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{8}
+	return file_cmd_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SyncSnapshotCommand) GetSnapshotId() string {
@@ -707,7 +814,7 @@ type InitClusterIdCommand struct {
 
 func (x *InitClusterIdCommand) Reset() {
 	*x = InitClusterIdCommand{}
-	mi := &file_cmd_proto_msgTypes[9]
+	mi := &file_cmd_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -719,7 +826,7 @@ func (x *InitClusterIdCommand) String() string {
 func (*InitClusterIdCommand) ProtoMessage() {}
 
 func (x *InitClusterIdCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[9]
+	mi := &file_cmd_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -732,7 +839,7 @@ func (x *InitClusterIdCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitClusterIdCommand.ProtoReflect.Descriptor instead.
 func (*InitClusterIdCommand) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{9}
+	return file_cmd_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *InitClusterIdCommand) GetClusterId() string {
@@ -759,7 +866,7 @@ type DeleteTerminatorsBatchCommand struct {
 
 func (x *DeleteTerminatorsBatchCommand) Reset() {
 	*x = DeleteTerminatorsBatchCommand{}
-	mi := &file_cmd_proto_msgTypes[10]
+	mi := &file_cmd_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -771,7 +878,7 @@ func (x *DeleteTerminatorsBatchCommand) String() string {
 func (*DeleteTerminatorsBatchCommand) ProtoMessage() {}
 
 func (x *DeleteTerminatorsBatchCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[10]
+	mi := &file_cmd_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -784,7 +891,7 @@ func (x *DeleteTerminatorsBatchCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTerminatorsBatchCommand.ProtoReflect.Descriptor instead.
 func (*DeleteTerminatorsBatchCommand) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{10}
+	return file_cmd_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DeleteTerminatorsBatchCommand) GetEntityIds() []string {
@@ -816,7 +923,7 @@ type TagValue struct {
 
 func (x *TagValue) Reset() {
 	*x = TagValue{}
-	mi := &file_cmd_proto_msgTypes[11]
+	mi := &file_cmd_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -828,7 +935,7 @@ func (x *TagValue) String() string {
 func (*TagValue) ProtoMessage() {}
 
 func (x *TagValue) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[11]
+	mi := &file_cmd_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -841,7 +948,7 @@ func (x *TagValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TagValue.ProtoReflect.Descriptor instead.
 func (*TagValue) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{11}
+	return file_cmd_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TagValue) GetValue() isTagValue_Value {
@@ -928,7 +1035,7 @@ type Service struct {
 
 func (x *Service) Reset() {
 	*x = Service{}
-	mi := &file_cmd_proto_msgTypes[12]
+	mi := &file_cmd_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -940,7 +1047,7 @@ func (x *Service) String() string {
 func (*Service) ProtoMessage() {}
 
 func (x *Service) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[12]
+	mi := &file_cmd_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -953,7 +1060,7 @@ func (x *Service) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Service.ProtoReflect.Descriptor instead.
 func (*Service) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{12}
+	return file_cmd_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Service) GetId() string {
@@ -1000,7 +1107,7 @@ type CtrlChanListenerDetail struct {
 
 func (x *CtrlChanListenerDetail) Reset() {
 	*x = CtrlChanListenerDetail{}
-	mi := &file_cmd_proto_msgTypes[13]
+	mi := &file_cmd_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1012,7 +1119,7 @@ func (x *CtrlChanListenerDetail) String() string {
 func (*CtrlChanListenerDetail) ProtoMessage() {}
 
 func (x *CtrlChanListenerDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[13]
+	mi := &file_cmd_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1025,7 +1132,7 @@ func (x *CtrlChanListenerDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CtrlChanListenerDetail.ProtoReflect.Descriptor instead.
 func (*CtrlChanListenerDetail) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{13}
+	return file_cmd_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CtrlChanListenerDetail) GetGroups() []string {
@@ -1053,7 +1160,7 @@ type Router struct {
 
 func (x *Router) Reset() {
 	*x = Router{}
-	mi := &file_cmd_proto_msgTypes[14]
+	mi := &file_cmd_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1172,7 @@ func (x *Router) String() string {
 func (*Router) ProtoMessage() {}
 
 func (x *Router) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[14]
+	mi := &file_cmd_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1185,7 @@ func (x *Router) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Router.ProtoReflect.Descriptor instead.
 func (*Router) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{14}
+	return file_cmd_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Router) GetId() string {
@@ -1174,7 +1281,7 @@ type Terminator struct {
 
 func (x *Terminator) Reset() {
 	*x = Terminator{}
-	mi := &file_cmd_proto_msgTypes[15]
+	mi := &file_cmd_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1186,7 +1293,7 @@ func (x *Terminator) String() string {
 func (*Terminator) ProtoMessage() {}
 
 func (x *Terminator) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[15]
+	mi := &file_cmd_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1199,7 +1306,7 @@ func (x *Terminator) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Terminator.ProtoReflect.Descriptor instead.
 func (*Terminator) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{15}
+	return file_cmd_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Terminator) GetId() string {
@@ -1321,7 +1428,7 @@ type Interface struct {
 
 func (x *Interface) Reset() {
 	*x = Interface{}
-	mi := &file_cmd_proto_msgTypes[16]
+	mi := &file_cmd_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1333,7 +1440,7 @@ func (x *Interface) String() string {
 func (*Interface) ProtoMessage() {}
 
 func (x *Interface) ProtoReflect() protoreflect.Message {
-	mi := &file_cmd_proto_msgTypes[16]
+	mi := &file_cmd_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1346,7 +1453,7 @@ func (x *Interface) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Interface.ProtoReflect.Descriptor instead.
 func (*Interface) Descriptor() ([]byte, []int) {
-	return file_cmd_proto_rawDescGZIP(), []int{16}
+	return file_cmd_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Interface) GetName() string {
@@ -1395,7 +1502,12 @@ var File_cmd_proto protoreflect.FileDescriptor
 
 const file_cmd_proto_rawDesc = "" +
 	"\n" +
-	"\tcmd.proto\x12\vziti.cmd.pb\"\xb8\x01\n" +
+	"\tcmd.proto\x12\vziti.cmd.pb\"2\n" +
+	"\x12ReadBarrierRequest\x12\x1c\n" +
+	"\trequestId\x18\x01 \x01(\x04R\trequestId\"I\n" +
+	"\x13ReadBarrierResponse\x12\x1c\n" +
+	"\trequestId\x18\x01 \x01(\x04R\trequestId\x12\x14\n" +
+	"\x05index\x18\x02 \x01(\x04R\x05index\"\xb8\x01\n" +
 	"\rChangeContext\x12J\n" +
 	"\n" +
 	"attributes\x18\x01 \x03(\v2*.ziti.cmd.pb.ChangeContext.AttributesEntryR\n" +
@@ -1531,7 +1643,7 @@ const file_cmd_proto_rawDesc = "" +
 	"\x03mtu\x18\x03 \x01(\x03R\x03mtu\x12\x14\n" +
 	"\x05index\x18\x04 \x01(\x03R\x05index\x12\x14\n" +
 	"\x05flags\x18\x05 \x01(\x04R\x05flags\x12\x1c\n" +
-	"\taddresses\x18\x06 \x03(\tR\taddresses*\xe6\x01\n" +
+	"\taddresses\x18\x06 \x03(\tR\taddresses*\xa1\x02\n" +
 	"\vContentType\x12\x13\n" +
 	"\x0fContentTypeZero\x10\x00\x12\x14\n" +
 	"\x0fNewLogEntryType\x10\x82\x10\x12\x16\n" +
@@ -1540,7 +1652,9 @@ const file_cmd_proto_rawDesc = "" +
 	"\x12AddPeerRequestType\x10\x85\x10\x12\x1a\n" +
 	"\x15RemovePeerRequestType\x10\x86\x10\x12\"\n" +
 	"\x1dTransferLeadershipRequestType\x10\x87\x10\x12!\n" +
-	"\x1cUpdatePeerAddressRequestType\x10\x88\x10*\x9e\x01\n" +
+	"\x1cUpdatePeerAddressRequestType\x10\x88\x10\x12\x1b\n" +
+	"\x16ReadBarrierRequestType\x10\x89\x10\x12\x1c\n" +
+	"\x17ReadBarrierResponseType\x10\x8a\x10*\x9e\x01\n" +
 	"\vCommandType\x12\b\n" +
 	"\x04Zero\x10\x00\x12\x14\n" +
 	"\x10CreateEntityType\x10\x01\x12\x14\n" +
@@ -1564,53 +1678,55 @@ func file_cmd_proto_rawDescGZIP() []byte {
 }
 
 var file_cmd_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_cmd_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_cmd_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_cmd_proto_goTypes = []any{
 	(ContentType)(0),                      // 0: ziti.cmd.pb.ContentType
 	(CommandType)(0),                      // 1: ziti.cmd.pb.CommandType
-	(*ChangeContext)(nil),                 // 2: ziti.cmd.pb.ChangeContext
-	(*AddPeerRequest)(nil),                // 3: ziti.cmd.pb.AddPeerRequest
-	(*UpdatePeerAddressRequest)(nil),      // 4: ziti.cmd.pb.UpdatePeerAddressRequest
-	(*RemovePeerRequest)(nil),             // 5: ziti.cmd.pb.RemovePeerRequest
-	(*TransferLeadershipRequest)(nil),     // 6: ziti.cmd.pb.TransferLeadershipRequest
-	(*CreateEntityCommand)(nil),           // 7: ziti.cmd.pb.CreateEntityCommand
-	(*UpdateEntityCommand)(nil),           // 8: ziti.cmd.pb.UpdateEntityCommand
-	(*DeleteEntityCommand)(nil),           // 9: ziti.cmd.pb.DeleteEntityCommand
-	(*SyncSnapshotCommand)(nil),           // 10: ziti.cmd.pb.SyncSnapshotCommand
-	(*InitClusterIdCommand)(nil),          // 11: ziti.cmd.pb.InitClusterIdCommand
-	(*DeleteTerminatorsBatchCommand)(nil), // 12: ziti.cmd.pb.DeleteTerminatorsBatchCommand
-	(*TagValue)(nil),                      // 13: ziti.cmd.pb.TagValue
-	(*Service)(nil),                       // 14: ziti.cmd.pb.Service
-	(*CtrlChanListenerDetail)(nil),        // 15: ziti.cmd.pb.CtrlChanListenerDetail
-	(*Router)(nil),                        // 16: ziti.cmd.pb.Router
-	(*Terminator)(nil),                    // 17: ziti.cmd.pb.Terminator
-	(*Interface)(nil),                     // 18: ziti.cmd.pb.Interface
-	nil,                                   // 19: ziti.cmd.pb.ChangeContext.AttributesEntry
-	nil,                                   // 20: ziti.cmd.pb.Service.TagsEntry
-	nil,                                   // 21: ziti.cmd.pb.Router.TagsEntry
-	nil,                                   // 22: ziti.cmd.pb.Router.CtrlChanListenersEntry
-	nil,                                   // 23: ziti.cmd.pb.Terminator.PeerDataEntry
-	nil,                                   // 24: ziti.cmd.pb.Terminator.TagsEntry
+	(*ReadBarrierRequest)(nil),            // 2: ziti.cmd.pb.ReadBarrierRequest
+	(*ReadBarrierResponse)(nil),           // 3: ziti.cmd.pb.ReadBarrierResponse
+	(*ChangeContext)(nil),                 // 4: ziti.cmd.pb.ChangeContext
+	(*AddPeerRequest)(nil),                // 5: ziti.cmd.pb.AddPeerRequest
+	(*UpdatePeerAddressRequest)(nil),      // 6: ziti.cmd.pb.UpdatePeerAddressRequest
+	(*RemovePeerRequest)(nil),             // 7: ziti.cmd.pb.RemovePeerRequest
+	(*TransferLeadershipRequest)(nil),     // 8: ziti.cmd.pb.TransferLeadershipRequest
+	(*CreateEntityCommand)(nil),           // 9: ziti.cmd.pb.CreateEntityCommand
+	(*UpdateEntityCommand)(nil),           // 10: ziti.cmd.pb.UpdateEntityCommand
+	(*DeleteEntityCommand)(nil),           // 11: ziti.cmd.pb.DeleteEntityCommand
+	(*SyncSnapshotCommand)(nil),           // 12: ziti.cmd.pb.SyncSnapshotCommand
+	(*InitClusterIdCommand)(nil),          // 13: ziti.cmd.pb.InitClusterIdCommand
+	(*DeleteTerminatorsBatchCommand)(nil), // 14: ziti.cmd.pb.DeleteTerminatorsBatchCommand
+	(*TagValue)(nil),                      // 15: ziti.cmd.pb.TagValue
+	(*Service)(nil),                       // 16: ziti.cmd.pb.Service
+	(*CtrlChanListenerDetail)(nil),        // 17: ziti.cmd.pb.CtrlChanListenerDetail
+	(*Router)(nil),                        // 18: ziti.cmd.pb.Router
+	(*Terminator)(nil),                    // 19: ziti.cmd.pb.Terminator
+	(*Interface)(nil),                     // 20: ziti.cmd.pb.Interface
+	nil,                                   // 21: ziti.cmd.pb.ChangeContext.AttributesEntry
+	nil,                                   // 22: ziti.cmd.pb.Service.TagsEntry
+	nil,                                   // 23: ziti.cmd.pb.Router.TagsEntry
+	nil,                                   // 24: ziti.cmd.pb.Router.CtrlChanListenersEntry
+	nil,                                   // 25: ziti.cmd.pb.Terminator.PeerDataEntry
+	nil,                                   // 26: ziti.cmd.pb.Terminator.TagsEntry
 }
 var file_cmd_proto_depIdxs = []int32{
-	19, // 0: ziti.cmd.pb.ChangeContext.attributes:type_name -> ziti.cmd.pb.ChangeContext.AttributesEntry
-	2,  // 1: ziti.cmd.pb.AddPeerRequest.ctx:type_name -> ziti.cmd.pb.ChangeContext
-	2,  // 2: ziti.cmd.pb.RemovePeerRequest.ctx:type_name -> ziti.cmd.pb.ChangeContext
-	2,  // 3: ziti.cmd.pb.TransferLeadershipRequest.ctx:type_name -> ziti.cmd.pb.ChangeContext
-	2,  // 4: ziti.cmd.pb.CreateEntityCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
-	2,  // 5: ziti.cmd.pb.UpdateEntityCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
-	2,  // 6: ziti.cmd.pb.DeleteEntityCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
-	2,  // 7: ziti.cmd.pb.DeleteTerminatorsBatchCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
-	20, // 8: ziti.cmd.pb.Service.tags:type_name -> ziti.cmd.pb.Service.TagsEntry
-	21, // 9: ziti.cmd.pb.Router.tags:type_name -> ziti.cmd.pb.Router.TagsEntry
-	18, // 10: ziti.cmd.pb.Router.interfaces:type_name -> ziti.cmd.pb.Interface
-	22, // 11: ziti.cmd.pb.Router.ctrlChanListeners:type_name -> ziti.cmd.pb.Router.CtrlChanListenersEntry
-	23, // 12: ziti.cmd.pb.Terminator.peerData:type_name -> ziti.cmd.pb.Terminator.PeerDataEntry
-	24, // 13: ziti.cmd.pb.Terminator.tags:type_name -> ziti.cmd.pb.Terminator.TagsEntry
-	13, // 14: ziti.cmd.pb.Service.TagsEntry.value:type_name -> ziti.cmd.pb.TagValue
-	13, // 15: ziti.cmd.pb.Router.TagsEntry.value:type_name -> ziti.cmd.pb.TagValue
-	15, // 16: ziti.cmd.pb.Router.CtrlChanListenersEntry.value:type_name -> ziti.cmd.pb.CtrlChanListenerDetail
-	13, // 17: ziti.cmd.pb.Terminator.TagsEntry.value:type_name -> ziti.cmd.pb.TagValue
+	21, // 0: ziti.cmd.pb.ChangeContext.attributes:type_name -> ziti.cmd.pb.ChangeContext.AttributesEntry
+	4,  // 1: ziti.cmd.pb.AddPeerRequest.ctx:type_name -> ziti.cmd.pb.ChangeContext
+	4,  // 2: ziti.cmd.pb.RemovePeerRequest.ctx:type_name -> ziti.cmd.pb.ChangeContext
+	4,  // 3: ziti.cmd.pb.TransferLeadershipRequest.ctx:type_name -> ziti.cmd.pb.ChangeContext
+	4,  // 4: ziti.cmd.pb.CreateEntityCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
+	4,  // 5: ziti.cmd.pb.UpdateEntityCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
+	4,  // 6: ziti.cmd.pb.DeleteEntityCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
+	4,  // 7: ziti.cmd.pb.DeleteTerminatorsBatchCommand.ctx:type_name -> ziti.cmd.pb.ChangeContext
+	22, // 8: ziti.cmd.pb.Service.tags:type_name -> ziti.cmd.pb.Service.TagsEntry
+	23, // 9: ziti.cmd.pb.Router.tags:type_name -> ziti.cmd.pb.Router.TagsEntry
+	20, // 10: ziti.cmd.pb.Router.interfaces:type_name -> ziti.cmd.pb.Interface
+	24, // 11: ziti.cmd.pb.Router.ctrlChanListeners:type_name -> ziti.cmd.pb.Router.CtrlChanListenersEntry
+	25, // 12: ziti.cmd.pb.Terminator.peerData:type_name -> ziti.cmd.pb.Terminator.PeerDataEntry
+	26, // 13: ziti.cmd.pb.Terminator.tags:type_name -> ziti.cmd.pb.Terminator.TagsEntry
+	15, // 14: ziti.cmd.pb.Service.TagsEntry.value:type_name -> ziti.cmd.pb.TagValue
+	15, // 15: ziti.cmd.pb.Router.TagsEntry.value:type_name -> ziti.cmd.pb.TagValue
+	17, // 16: ziti.cmd.pb.Router.CtrlChanListenersEntry.value:type_name -> ziti.cmd.pb.CtrlChanListenerDetail
+	15, // 17: ziti.cmd.pb.Terminator.TagsEntry.value:type_name -> ziti.cmd.pb.TagValue
 	18, // [18:18] is the sub-list for method output_type
 	18, // [18:18] is the sub-list for method input_type
 	18, // [18:18] is the sub-list for extension type_name
@@ -1623,7 +1739,7 @@ func file_cmd_proto_init() {
 	if File_cmd_proto != nil {
 		return
 	}
-	file_cmd_proto_msgTypes[11].OneofWrappers = []any{
+	file_cmd_proto_msgTypes[13].OneofWrappers = []any{
 		(*TagValue_BoolValue)(nil),
 		(*TagValue_StringValue)(nil),
 		(*TagValue_FpValue)(nil),
@@ -1635,7 +1751,7 @@ func file_cmd_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cmd_proto_rawDesc), len(file_cmd_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

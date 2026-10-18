@@ -28,6 +28,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/michaelquigley/pfxlog"
@@ -184,6 +185,36 @@ func (c *Controller) IsRaftLeader() bool {
 
 func (c *Controller) GetRaftIndex() uint64 {
 	return c.raftController.GetAppliedIndex()
+}
+
+// HasRaftLeader reports whether this controller knows of a leader, itself included. False when isolated or
+// mid-election. True without raft.
+func (c *Controller) HasRaftLeader() bool {
+	if c.raftController == nil {
+		return true
+	}
+	r := c.raftController.GetRaft()
+	if r == nil {
+		return false
+	}
+	_, leaderId := r.LeaderWithID()
+	return leaderId != ""
+}
+
+// RequestReadBarrier implements model.Env.
+func (c *Controller) RequestReadBarrier() {
+	if c.raftController != nil {
+		c.raftController.RequestReadBarrier()
+	}
+}
+
+// GetReadBarrier implements model.Env.
+func (c *Controller) GetReadBarrier() (uint64, time.Time) {
+	if c.raftController == nil {
+		return 0, time.Now()
+	}
+	barrier := c.raftController.GetReadBarrier()
+	return barrier.Index, barrier.RequestedAt
 }
 
 func (c *Controller) GetStartRaftIndex() uint64 {

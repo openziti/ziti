@@ -138,6 +138,9 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		decoders:               command.NewDecoders(),
 		advertiseReconcileWake: make(chan struct{}, 1),
 	}
+	result.readBarriers = newReadBarriers(result.IsLeader, func() (uint64, error) {
+		return takeReadBarrier(result)
+	}, result.sendReadBarrierRequest)
 	return result
 }
 
@@ -182,6 +185,7 @@ type Controller struct {
 	decoders                  command.Decoders
 	advertiseReconcileRunning atomic.Bool
 	advertiseReconcileWake    chan struct{}
+	readBarriers              *readBarriers
 }
 
 // GetDecoders returns the command decoder registry this controller's raft FSM uses to decode

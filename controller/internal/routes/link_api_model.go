@@ -44,10 +44,15 @@ func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 }
 
 // routerRef renders a reference to one end of a link. router is nil for an end this controller cannot
-// resolve; the reference then carries the id alone, since that is all that is known about it.
+// resolve, which is ordinary for a destination it has not caught up to; the reference then carries the id
+// alone, since that is all that is known about it. Nil where even the id is unknown, which a link's source
+// is when it holds no router: unlike the destination, a link does not record its source's id separately.
 func routerRef(routerId string, router *model.Router) *rest_model.EntityRef {
 	if router != nil {
 		return ToFabricEntityRef(router.Name, router, FabricRouterLinkFactory)
+	}
+	if routerId == "" {
+		return nil
 	}
 	return &rest_model.EntityRef{
 		Entity: FabricRouterLinkFactory.EntityName(),
@@ -63,7 +68,8 @@ func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.
 }
 
 // linkToRestModel renders link. readRouter loads the destination router when the link does not hold it. A
-// destination readRouter does not find renders by id; any other error from it is returned.
+// destination readRouter does not find renders by id; any other error from it is returned. A link holding no
+// source router renders without one.
 func linkToRestModel(link *model.Link, readRouter func(id string) (*model.Router, error)) (*rest_model.LinkDetail, error) {
 	iteration := int64(link.Iteration)
 	staticCost := int64(link.StaticCost)
@@ -73,14 +79,22 @@ func linkToRestModel(link *model.Link, readRouter func(id string) (*model.Router
 
 	destRouter := link.GetDest()
 	if destRouter == nil {
-		// A miss is not an error here: a link can name a destination deleted since the link was recorded,
-		// until the controller retires it. The link has to render either way, and failing would fail the
-		// whole listing rather than this row.
+		// A miss is not an error here: a link can name a destination this controller has not caught up to,
+		// or one deleted since the link was recorded. The link exists and has to render either way, and
+		// failing would fail the whole listing rather than this row.
 		loaded, err := readRouter(link.DstId)
 		if err != nil && !boltz.IsErrNotFoundErr(err) {
 			return nil, err
 		}
 		destRouter = loaded
+	}
+
+	// A link records its destination's id but not its source's, so an unresolved source can only render as
+	// absent.
+	srcRouter := link.GetSrc()
+	srcId := ""
+	if srcRouter != nil {
+		srcId = srcRouter.Id
 	}
 
 	ret := &rest_model.LinkDetail{
@@ -90,7 +104,7 @@ func linkToRestModel(link *model.Link, readRouter func(id string) (*model.Router
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
-		SourceRouter:  ToFabricEntityRef(link.GetSrc().Name, link.GetSrc(), FabricRouterLinkFactory),
+		SourceRouter:  routerRef(srcId, srcRouter),
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
 		Protocol:      &link.Protocol,

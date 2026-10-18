@@ -506,13 +506,37 @@ func (ae *AppEnv) GetRaftInfo() (string, string, string) {
 	return ae.HostController.GetRaftInfo()
 }
 
-// GetStoreIndex returns the index of the last change applied to this controller's store, or zero when
-// running without raft, where there is no index and nothing to order against.
-func (ae *AppEnv) GetStoreIndex() uint64 {
+// GetRaftIndex returns the raft index this controller has applied, or zero when running without raft, where
+// there is no index and nothing to order against. Unlike the host controller's method of the same name, this
+// one is safe to call whether or not raft is running.
+func (ae *AppEnv) GetRaftIndex() uint64 {
 	if !ae.HostController.IsRaftEnabled() {
 		return 0
 	}
 	return ae.HostController.GetRaftIndex()
+}
+
+// HasRaftLeader reports whether this controller knows of a leader, itself included. True without raft.
+func (ae *AppEnv) HasRaftLeader() bool {
+	if !ae.HostController.IsRaftEnabled() {
+		return true
+	}
+	return ae.HostController.HasRaftLeader()
+}
+
+// RequestReadBarrier implements model.Env.
+func (ae *AppEnv) RequestReadBarrier() {
+	if ae.HostController.IsRaftEnabled() {
+		ae.HostController.RequestReadBarrier()
+	}
+}
+
+// GetReadBarrier implements model.Env.
+func (ae *AppEnv) GetReadBarrier() (uint64, time.Time) {
+	if !ae.HostController.IsRaftEnabled() {
+		return 0, time.Now()
+	}
+	return ae.HostController.GetReadBarrier()
 }
 
 // GetApiAddresses returns the controller's API addresses and their fingerprint hash.
@@ -568,6 +592,9 @@ type HostController interface {
 	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
 	GetRaftIndex() uint64
+	RequestReadBarrier()
+	GetReadBarrier() (uint64, time.Time)
+	HasRaftLeader() bool
 	GetPeerAddresses() []string
 	GetRaftInfo() (string, string, string)
 	GetApiAddresses() (map[string][]event.ApiAddress, []byte)
