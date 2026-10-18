@@ -875,7 +875,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
 	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
 	if err != nil {
-		return fmt.Errorf("error connecting ctrl (%v)", err)
+		return fmt.Errorf("error connecting ctrl (%w)", err)
 	}
 	channelRef.Store(ch)
 

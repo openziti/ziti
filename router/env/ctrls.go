@@ -94,11 +94,32 @@ func NewNetworkControllers(defaultRequestTimeout time.Duration, dialer CtrlDiale
 		heartbeatOptions:      heartbeatOptions,
 		defaultRequestTimeout: defaultRequestTimeout,
 		ctrlEndpoints:         cmap.New[struct{}](),
+		dialing:               map[string]struct{}{},
+		duplicates:            map[string]string{},
 	}
 }
 
+// errCtrlEndpointRemoved ends the dial of an endpoint that is no longer wanted.
+var errCtrlEndpointRemoved = errors.New("controller removed before connection established")
+
+// duplicateCtrlError reports that an endpoint reached a controller the router is already connected to.
+type duplicateCtrlError struct {
+	ctrlId string
+}
+
+func (self *duplicateCtrlError) Error() string {
+	return fmt.Sprintf("duplicate channel with id %v", self.ctrlId)
+}
+
 type networkControllers struct {
-	lock                  sync.Mutex
+	// lock serializes changes to the wanted endpoints with registering a dialed controller, and guards
+	// dialing and duplicates.
+	lock sync.Mutex
+	// dialing holds the endpoints a dial is under way for.
+	dialing map[string]struct{}
+	// duplicates maps an endpoint whose dial reached an already connected controller to that
+	// controller's id. The endpoint is dialed again once that controller is no longer connected.
+	duplicates            map[string]string
 	ctrlDialer            CtrlDialer
 	heartbeatOptions      *HeartbeatOptions
 	defaultRequestTimeout time.Duration
@@ -150,16 +171,26 @@ func (self *networkControllers) UpdateControllerEndpoints(addresses []string) bo
 			delete(endpoints, endpoint)
 		} else {
 			// existing endpoint is no longer valid, close and remove it
-			log.WithField("endpoint", endpoints).Info("removing old ctrl endpoint")
+			log.WithField("endpoint", endpoint).Info("removing old ctrl endpoint")
 			changed = true
+			delete(self.duplicates, endpoint)
 			self.CloseAndRemoveByAddress(endpoint)
 		}
 	}
 
 	for endpoint := range endpoints {
-		log.WithField("endpoint", endpoints).Info("adding new ctrl endpoint")
+		log.WithField("endpoint", endpoint).Info("adding new ctrl endpoint")
 		changed = true
 		self.connectToControllerWithBackoff(endpoint)
+	}
+
+	for endpoint, ctrlId := range self.duplicates {
+		if ctrl := self.ctrls.Get(ctrlId); ctrl == nil || ctrl.Channel().IsClosed() {
+			log.WithField("endpoint", endpoint).WithField("ctrlId", ctrlId).
+				Info("controller the endpoint duplicated is no longer connected, dialing endpoint")
+			delete(self.duplicates, endpoint)
+			self.connectToControllerWithBackoff(endpoint)
+		}
 	}
 
 	return changed
@@ -177,6 +208,10 @@ func (self *networkControllers) UpdateLeader(leaderId string) {
 	}
 }
 
+// connectToControllerWithBackoff adds endpoint to the wanted endpoints and dials it until a controller
+// is registered on it, unless a dial for it is already under way. The dial stops once the endpoint is
+// no longer wanted, or when it reaches a controller the router is already connected to, recording the
+// endpoint in duplicates. The caller holds lock.
 func (self *networkControllers) connectToControllerWithBackoff(endpoint string) {
 	log := pfxlog.Logger().WithField("endpoint", endpoint)
 
@@ -188,11 +223,15 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 
 	self.ctrlEndpoints.Set(endpoint, struct{}{})
 
-	expBackoff := backoff.NewExponentialBackOff()
-	expBackoff.InitialInterval = 50 * time.Millisecond
-	expBackoff.MaxInterval = 5 * time.Minute
-	expBackoff.MaxElapsedTime = 100 * 365 * 24 * time.Hour
+	if _, ok := self.dialing[endpoint]; ok {
+		log.Info("connection attempts already under way")
+		return
+	}
+	self.dialing[endpoint] = struct{}{}
 
+	// bindErr is the error from registering the controller on the last attempt. The bind runs on the
+	// dialing goroutine, within ctrlDialer.
+	var bindErr error
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
 		id := binding.GetChannel().Id()
 		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), func(m *channel.Message, ch channel.Channel) {
@@ -203,15 +242,24 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 			}
 		})
 
-		return self.Add(endpoint, binding.GetChannel())
+		bindErr = self.Add(endpoint, binding.GetChannel())
+		return bindErr
 	})
 
 	operation := func() error {
 		if !self.ctrlEndpoints.Has(endpoint) {
-			return backoff.Permanent(errors.New("controller removed before connection established"))
+			return backoff.Permanent(errCtrlEndpointRemoved)
 		}
+		bindErr = nil
 		err = self.ctrlDialer(addr, bindHandler)
 		if err != nil {
+			// The dialer may not keep the bind error in its chain, so a refusal that ends the dial is
+			// taken from the bind itself.
+			var permanent *backoff.PermanentError
+			if errors.As(bindErr, &permanent) {
+				log.WithError(bindErr).Info("controller connection refused, not retrying")
+				return bindErr
+			}
 			log.WithError(err).Error("unable to connect controller")
 		}
 		return err
@@ -220,14 +268,52 @@ func (self *networkControllers) connectToControllerWithBackoff(endpoint string) 
 	log.Info("starting connection attempts")
 
 	go func() {
-		if err := backoff.Retry(operation, expBackoff); err != nil {
-			log.WithError(err).Error("unable to connect controller, stopping retries.")
-		} else {
-			log.Info("successfully connected to controller")
+		for {
+			expBackoff := backoff.NewExponentialBackOff()
+			expBackoff.InitialInterval = 50 * time.Millisecond
+			expBackoff.MaxInterval = 5 * time.Minute
+			expBackoff.MaxElapsedTime = 100 * 365 * 24 * time.Hour
+
+			err := backoff.Retry(operation, expBackoff)
+			if self.endDial(endpoint, err) {
+				if err != nil {
+					log.WithError(err).Error("unable to connect controller, stopping retries.")
+				} else {
+					log.Info("successfully connected to controller")
+				}
+				return
+			}
+			log.Info("endpoint still needs a connection, restarting connection attempts")
 		}
 	}()
 }
 
+// endDial records that the dial of endpoint ended with err, and reports whether it should stop. It
+// shouldn't if the endpoint was removed and then wanted again before the dial noticed, or if the
+// controller it duplicated is already gone.
+func (self *networkControllers) endDial(endpoint string, err error) bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	wanted := self.ctrlEndpoints.Has(endpoint)
+	if errors.Is(err, errCtrlEndpointRemoved) && wanted {
+		return false
+	}
+
+	var duplicate *duplicateCtrlError
+	if errors.As(err, &duplicate) && wanted {
+		if ctrl := self.ctrls.Get(duplicate.ctrlId); ctrl == nil || ctrl.Channel().IsClosed() {
+			return false
+		}
+		self.duplicates[endpoint] = duplicate.ctrlId
+	}
+
+	delete(self.dialing, endpoint)
+	return true
+}
+
+// Add registers ch as the controller dialed on address. It fails permanently if address is no longer
+// wanted, or if a controller with ch's id is already registered on an open channel.
 func (self *networkControllers) Add(address string, ch channel.Channel) error {
 	ctrl := newNetworkCtrl(ch, address, self.heartbeatOptions)
 
@@ -241,16 +327,30 @@ func (self *networkControllers) Add(address string, ch channel.Channel) error {
 		return errors.New("no version header provided")
 	}
 
-	if existing := self.ctrls.Get(ch.Id()); existing != nil {
-		if !existing.Channel().IsClosed() {
-			// if an existing channel exists, don't keep trying to dial one
-			return backoff.Permanent(fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id()))
-		}
+	if err := self.register(address, ctrl); err != nil {
+		return err
 	}
-	self.ctrls.Put(ch.Id(), ctrl)
 
 	self.notifyOfChange(ctrl, ControllerAdded)
 
+	return nil
+}
+
+// register adds ctrl under lock, so it is either registered before its endpoint is removed, and closed
+// by the removal, or refused after it.
+func (self *networkControllers) register(address string, ctrl *networkCtrl) error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if !self.ctrlEndpoints.Has(address) {
+		return backoff.Permanent(errCtrlEndpointRemoved)
+	}
+
+	id := ctrl.Channel().Id()
+	if existing := self.ctrls.Get(id); existing != nil && !existing.Channel().IsClosed() {
+		return backoff.Permanent(&duplicateCtrlError{ctrlId: id})
+	}
+	self.ctrls.Put(id, ctrl)
 	return nil
 }
 
