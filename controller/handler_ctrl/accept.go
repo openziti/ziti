@@ -201,7 +201,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			log.Info("router connect rejected; another connection is already current, router will redial")
 		}
 		// Returning the error fails the bind, so NewChannel closes this channel's underlay without
-		// starting rx or registering it. That preserves the rx-gate for a rejected connection.
+		// starting rx or registering it (rejected connect) — and a full connect pool likewise makes the
+		// router redial. Either way the rx-gate is preserved for a connection that was not accepted.
 		return err
 	}
 

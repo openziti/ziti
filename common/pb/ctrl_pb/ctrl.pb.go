@@ -64,6 +64,8 @@ const (
 	ContentType_CheckStaleLinksResponseType       ContentType = 1058
 	ContentType_RemoveTerminatorsV2RequestType    ContentType = 1059
 	ContentType_RemoveTerminatorsV2ResponseType   ContentType = 1060
+	ContentType_CanaryType                        ContentType = 1061 // router -> controller: canary sequence number
+	ContentType_CanaryStatusType                  ContentType = 1062 // controller -> router: controller's view of router's canary
 )
 
 // Enum value maps for ContentType.
@@ -105,6 +107,8 @@ var (
 		1058: "CheckStaleLinksResponseType",
 		1059: "RemoveTerminatorsV2RequestType",
 		1060: "RemoveTerminatorsV2ResponseType",
+		1061: "CanaryType",
+		1062: "CanaryStatusType",
 	}
 	ContentType_value = map[string]int32{
 		"Zero":                              0,
@@ -143,6 +147,8 @@ var (
 		"CheckStaleLinksResponseType":       1058,
 		"RemoveTerminatorsV2RequestType":    1059,
 		"RemoveTerminatorsV2ResponseType":   1060,
+		"CanaryType":                        1061,
+		"CanaryStatusType":                  1062,
 	}
 )
 
@@ -181,6 +187,13 @@ const (
 	ControlHeaders_RouterMetadataHeader    ControlHeaders = 1001
 	ControlHeaders_CapabilitiesHeader      ControlHeaders = 1002
 	ControlHeaders_CtrlChanListenersHeader ControlHeaders = 1003
+	ControlHeaders_CanarySeqHeader         ControlHeaders = 1004
+	ControlHeaders_EpochHeader             ControlHeaders = 1005
+	// ClusterCapabilitiesHeader carries the capabilities every member of the controller cluster supports, as
+	// distinct from CapabilitiesHeader, which is what one controller supports. A router needs both: the
+	// cluster answer says whether a feature can be carried at all, its own view of its connections says
+	// whether everything it talks to can hear it.
+	ControlHeaders_ClusterCapabilitiesHeader ControlHeaders = 1006
 )
 
 // Enum value maps for ControlHeaders.
@@ -191,13 +204,19 @@ var (
 		1001: "RouterMetadataHeader",
 		1002: "CapabilitiesHeader",
 		1003: "CtrlChanListenersHeader",
+		1004: "CanarySeqHeader",
+		1005: "EpochHeader",
+		1006: "ClusterCapabilitiesHeader",
 	}
 	ControlHeaders_value = map[string]int32{
-		"NoneHeader":              0,
-		"ListenersHeader":         1000,
-		"RouterMetadataHeader":    1001,
-		"CapabilitiesHeader":      1002,
-		"CtrlChanListenersHeader": 1003,
+		"NoneHeader":                0,
+		"ListenersHeader":           1000,
+		"RouterMetadataHeader":      1001,
+		"CapabilitiesHeader":        1002,
+		"CtrlChanListenersHeader":   1003,
+		"CanarySeqHeader":           1004,
+		"EpochHeader":               1005,
+		"ClusterCapabilitiesHeader": 1006,
 	}
 )
 
@@ -3235,6 +3254,71 @@ func (x *CtrlChanListeners) GetListeners() []*CtrlChanListener {
 	return nil
 }
 
+// LinkMetrics is the value of a link-metrics gossip entry. It carries a router's
+// measured latency cost for a link (latency mean plus queue_time mean, in
+// nanoseconds) along with the link's dial iteration at the time of measurement.
+// The entry is keyed by link id and owned by the reporting router; both ends of
+// a link publish their own measurement.
+type LinkMetrics struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LinkId        string                 `protobuf:"bytes,1,opt,name=linkId,proto3" json:"linkId,omitempty"`
+	Iteration     uint32                 `protobuf:"varint,2,opt,name=iteration,proto3" json:"iteration,omitempty"`
+	LatencyNanos  int64                  `protobuf:"varint,3,opt,name=latencyNanos,proto3" json:"latencyNanos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LinkMetrics) Reset() {
+	*x = LinkMetrics{}
+	mi := &file_ctrl_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LinkMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LinkMetrics) ProtoMessage() {}
+
+func (x *LinkMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_ctrl_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LinkMetrics.ProtoReflect.Descriptor instead.
+func (*LinkMetrics) Descriptor() ([]byte, []int) {
+	return file_ctrl_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *LinkMetrics) GetLinkId() string {
+	if x != nil {
+		return x.LinkId
+	}
+	return ""
+}
+
+func (x *LinkMetrics) GetIteration() uint32 {
+	if x != nil {
+		return x.Iteration
+	}
+	return 0
+}
+
+func (x *LinkMetrics) GetLatencyNanos() int64 {
+	if x != nil {
+		return x.LatencyNanos
+	}
+	return 0
+}
+
 type RouterLinks_RouterLink struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -3249,7 +3333,7 @@ type RouterLinks_RouterLink struct {
 
 func (x *RouterLinks_RouterLink) Reset() {
 	*x = RouterLinks_RouterLink{}
-	mi := &file_ctrl_proto_msgTypes[48]
+	mi := &file_ctrl_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3261,7 +3345,7 @@ func (x *RouterLinks_RouterLink) String() string {
 func (*RouterLinks_RouterLink) ProtoMessage() {}
 
 func (x *RouterLinks_RouterLink) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[48]
+	mi := &file_ctrl_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3331,7 +3415,7 @@ type Route_Egress struct {
 
 func (x *Route_Egress) Reset() {
 	*x = Route_Egress{}
-	mi := &file_ctrl_proto_msgTypes[50]
+	mi := &file_ctrl_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3343,7 +3427,7 @@ func (x *Route_Egress) String() string {
 func (*Route_Egress) ProtoMessage() {}
 
 func (x *Route_Egress) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[50]
+	mi := &file_ctrl_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3398,7 +3482,7 @@ type Route_Forward struct {
 
 func (x *Route_Forward) Reset() {
 	*x = Route_Forward{}
-	mi := &file_ctrl_proto_msgTypes[51]
+	mi := &file_ctrl_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3410,7 +3494,7 @@ func (x *Route_Forward) String() string {
 func (*Route_Forward) ProtoMessage() {}
 
 func (x *Route_Forward) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[51]
+	mi := &file_ctrl_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3457,7 +3541,7 @@ type InspectResponse_InspectValue struct {
 
 func (x *InspectResponse_InspectValue) Reset() {
 	*x = InspectResponse_InspectValue{}
-	mi := &file_ctrl_proto_msgTypes[54]
+	mi := &file_ctrl_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3469,7 +3553,7 @@ func (x *InspectResponse_InspectValue) String() string {
 func (*InspectResponse_InspectValue) ProtoMessage() {}
 
 func (x *InspectResponse_InspectValue) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[54]
+	mi := &file_ctrl_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3745,7 +3829,11 @@ const file_ctrl_proto_rawDesc = "" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x16\n" +
 	"\x06groups\x18\x02 \x03(\tR\x06groups\"Q\n" +
 	"\x11CtrlChanListeners\x12<\n" +
-	"\tlisteners\x18\x01 \x03(\v2\x1e.ziti.ctrl.pb.CtrlChanListenerR\tlisteners*\x87\b\n" +
+	"\tlisteners\x18\x01 \x03(\v2\x1e.ziti.ctrl.pb.CtrlChanListenerR\tlisteners\"g\n" +
+	"\vLinkMetrics\x12\x16\n" +
+	"\x06linkId\x18\x01 \x01(\tR\x06linkId\x12\x1c\n" +
+	"\titeration\x18\x02 \x01(\rR\titeration\x12\"\n" +
+	"\flatencyNanos\x18\x03 \x01(\x03R\flatencyNanos*\xaf\b\n" +
 	"\vContentType\x12\b\n" +
 	"\x04Zero\x10\x00\x12\x17\n" +
 	"\x12CircuitRequestType\x10\xe8\a\x12\x0e\n" +
@@ -3783,14 +3871,20 @@ const file_ctrl_proto_rawDesc = "" +
 	"\x1aCheckStaleLinksRequestType\x10\xa1\b\x12 \n" +
 	"\x1bCheckStaleLinksResponseType\x10\xa2\b\x12#\n" +
 	"\x1eRemoveTerminatorsV2RequestType\x10\xa3\b\x12$\n" +
-	"\x1fRemoveTerminatorsV2ResponseType\x10\xa4\b*\x88\x01\n" +
+	"\x1fRemoveTerminatorsV2ResponseType\x10\xa4\b\x12\x0f\n" +
+	"\n" +
+	"CanaryType\x10\xa5\b\x12\x15\n" +
+	"\x10CanaryStatusType\x10\xa6\b*\xd0\x01\n" +
 	"\x0eControlHeaders\x12\x0e\n" +
 	"\n" +
 	"NoneHeader\x10\x00\x12\x14\n" +
 	"\x0fListenersHeader\x10\xe8\a\x12\x19\n" +
 	"\x14RouterMetadataHeader\x10\xe9\a\x12\x17\n" +
 	"\x12CapabilitiesHeader\x10\xea\a\x12\x1c\n" +
-	"\x17CtrlChanListenersHeader\x10\xeb\a*:\n" +
+	"\x17CtrlChanListenersHeader\x10\xeb\a\x12\x14\n" +
+	"\x0fCanarySeqHeader\x10\xec\a\x12\x10\n" +
+	"\vEpochHeader\x10\xed\a\x12\x1e\n" +
+	"\x19ClusterCapabilitiesHeader\x10\xee\a*:\n" +
 	"\x10RouterCapability\x12\x12\n" +
 	"\x0eCapabilityZero\x10\x00\x12\x12\n" +
 	"\x0eLinkManagement\x10\x01*5\n" +
@@ -3841,7 +3935,7 @@ func file_ctrl_proto_rawDescGZIP() []byte {
 }
 
 var file_ctrl_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 56)
+var file_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 57)
 var file_ctrl_proto_goTypes = []any{
 	(ContentType)(0),                      // 0: ziti.ctrl.pb.ContentType
 	(ControlHeaders)(0),                   // 1: ziti.ctrl.pb.ControlHeaders
@@ -3897,40 +3991,41 @@ var file_ctrl_proto_goTypes = []any{
 	(*Alerts)(nil),                        // 51: ziti.ctrl.pb.Alerts
 	(*CtrlChanListener)(nil),              // 52: ziti.ctrl.pb.CtrlChanListener
 	(*CtrlChanListeners)(nil),             // 53: ziti.ctrl.pb.CtrlChanListeners
-	nil,                                   // 54: ziti.ctrl.pb.Settings.DataEntry
-	nil,                                   // 55: ziti.ctrl.pb.CircuitRequest.PeerDataEntry
-	nil,                                   // 56: ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
-	nil,                                   // 57: ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
-	nil,                                   // 58: ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
-	(*RouterLinks_RouterLink)(nil),        // 59: ziti.ctrl.pb.RouterLinks.RouterLink
-	nil,                                   // 60: ziti.ctrl.pb.Context.FieldsEntry
-	(*Route_Egress)(nil),                  // 61: ziti.ctrl.pb.Route.Egress
-	(*Route_Forward)(nil),                 // 62: ziti.ctrl.pb.Route.Forward
-	nil,                                   // 63: ziti.ctrl.pb.Route.TagsEntry
-	nil,                                   // 64: ziti.ctrl.pb.Route.Egress.PeerDataEntry
-	(*InspectResponse_InspectValue)(nil),  // 65: ziti.ctrl.pb.InspectResponse.InspectValue
-	nil,                                   // 66: ziti.ctrl.pb.Alert.RelatedEntitiesEntry
+	(*LinkMetrics)(nil),                   // 54: ziti.ctrl.pb.LinkMetrics
+	nil,                                   // 55: ziti.ctrl.pb.Settings.DataEntry
+	nil,                                   // 56: ziti.ctrl.pb.CircuitRequest.PeerDataEntry
+	nil,                                   // 57: ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
+	nil,                                   // 58: ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
+	nil,                                   // 59: ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
+	(*RouterLinks_RouterLink)(nil),        // 60: ziti.ctrl.pb.RouterLinks.RouterLink
+	nil,                                   // 61: ziti.ctrl.pb.Context.FieldsEntry
+	(*Route_Egress)(nil),                  // 62: ziti.ctrl.pb.Route.Egress
+	(*Route_Forward)(nil),                 // 63: ziti.ctrl.pb.Route.Forward
+	nil,                                   // 64: ziti.ctrl.pb.Route.TagsEntry
+	nil,                                   // 65: ziti.ctrl.pb.Route.Egress.PeerDataEntry
+	(*InspectResponse_InspectValue)(nil),  // 66: ziti.ctrl.pb.InspectResponse.InspectValue
+	nil,                                   // 67: ziti.ctrl.pb.Alert.RelatedEntitiesEntry
 }
 var file_ctrl_proto_depIdxs = []int32{
-	54, // 0: ziti.ctrl.pb.Settings.data:type_name -> ziti.ctrl.pb.Settings.DataEntry
-	55, // 1: ziti.ctrl.pb.CircuitRequest.peerData:type_name -> ziti.ctrl.pb.CircuitRequest.PeerDataEntry
-	56, // 2: ziti.ctrl.pb.CircuitConfirmation.idleTimes:type_name -> ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
-	57, // 3: ziti.ctrl.pb.CreateTerminatorRequest.peerData:type_name -> ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
+	55, // 0: ziti.ctrl.pb.Settings.data:type_name -> ziti.ctrl.pb.Settings.DataEntry
+	56, // 1: ziti.ctrl.pb.CircuitRequest.peerData:type_name -> ziti.ctrl.pb.CircuitRequest.PeerDataEntry
+	57, // 2: ziti.ctrl.pb.CircuitConfirmation.idleTimes:type_name -> ziti.ctrl.pb.CircuitConfirmation.IdleTimesEntry
+	58, // 3: ziti.ctrl.pb.CreateTerminatorRequest.peerData:type_name -> ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
 	4,  // 4: ziti.ctrl.pb.CreateTerminatorRequest.precedence:type_name -> ziti.ctrl.pb.TerminatorPrecedence
 	19, // 5: ziti.ctrl.pb.ValidateTerminatorsRequest.terminators:type_name -> ziti.ctrl.pb.Terminator
 	19, // 6: ziti.ctrl.pb.ValidateTerminatorsV2Request.terminators:type_name -> ziti.ctrl.pb.Terminator
 	5,  // 7: ziti.ctrl.pb.RouterTerminatorState.reason:type_name -> ziti.ctrl.pb.TerminatorInvalidReason
-	58, // 8: ziti.ctrl.pb.ValidateTerminatorsV2Response.states:type_name -> ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
+	59, // 8: ziti.ctrl.pb.ValidateTerminatorsV2Response.states:type_name -> ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry
 	4,  // 9: ziti.ctrl.pb.UpdateTerminatorRequest.precedence:type_name -> ziti.ctrl.pb.TerminatorPrecedence
 	25, // 10: ziti.ctrl.pb.LinkConnState.conns:type_name -> ziti.ctrl.pb.LinkConn
-	59, // 11: ziti.ctrl.pb.RouterLinks.links:type_name -> ziti.ctrl.pb.RouterLinks.RouterLink
+	60, // 11: ziti.ctrl.pb.RouterLinks.links:type_name -> ziti.ctrl.pb.RouterLinks.RouterLink
 	6,  // 12: ziti.ctrl.pb.Fault.subject:type_name -> ziti.ctrl.pb.FaultSubject
-	60, // 13: ziti.ctrl.pb.Context.fields:type_name -> ziti.ctrl.pb.Context.FieldsEntry
-	61, // 14: ziti.ctrl.pb.Route.egress:type_name -> ziti.ctrl.pb.Route.Egress
-	62, // 15: ziti.ctrl.pb.Route.forwards:type_name -> ziti.ctrl.pb.Route.Forward
+	61, // 13: ziti.ctrl.pb.Context.fields:type_name -> ziti.ctrl.pb.Context.FieldsEntry
+	62, // 14: ziti.ctrl.pb.Route.egress:type_name -> ziti.ctrl.pb.Route.Egress
+	63, // 15: ziti.ctrl.pb.Route.forwards:type_name -> ziti.ctrl.pb.Route.Forward
 	29, // 16: ziti.ctrl.pb.Route.context:type_name -> ziti.ctrl.pb.Context
-	63, // 17: ziti.ctrl.pb.Route.tags:type_name -> ziti.ctrl.pb.Route.TagsEntry
-	65, // 18: ziti.ctrl.pb.InspectResponse.values:type_name -> ziti.ctrl.pb.InspectResponse.InspectValue
+	64, // 17: ziti.ctrl.pb.Route.tags:type_name -> ziti.ctrl.pb.Route.TagsEntry
+	66, // 18: ziti.ctrl.pb.InspectResponse.values:type_name -> ziti.ctrl.pb.InspectResponse.InspectValue
 	35, // 19: ziti.ctrl.pb.Listeners.listeners:type_name -> ziti.ctrl.pb.Listener
 	8,  // 20: ziti.ctrl.pb.CheckStaleLinksRequest.mode:type_name -> ziti.ctrl.pb.StaleLinkMatchMode
 	9,  // 21: ziti.ctrl.pb.LinkStaleReport.side:type_name -> ziti.ctrl.pb.StaleLinkSide
@@ -3943,12 +4038,12 @@ var file_ctrl_proto_depIdxs = []int32{
 	2,  // 28: ziti.ctrl.pb.RouterMetadata.capabilities:type_name -> ziti.ctrl.pb.RouterCapability
 	47, // 29: ziti.ctrl.pb.RouterInterfacesUpdate.interfaces:type_name -> ziti.ctrl.pb.Interface
 	26, // 30: ziti.ctrl.pb.LinkStateUpdate.connState:type_name -> ziti.ctrl.pb.LinkConnState
-	66, // 31: ziti.ctrl.pb.Alert.relatedEntities:type_name -> ziti.ctrl.pb.Alert.RelatedEntitiesEntry
+	67, // 31: ziti.ctrl.pb.Alert.relatedEntities:type_name -> ziti.ctrl.pb.Alert.RelatedEntitiesEntry
 	50, // 32: ziti.ctrl.pb.Alerts.alerts:type_name -> ziti.ctrl.pb.Alert
 	52, // 33: ziti.ctrl.pb.CtrlChanListeners.listeners:type_name -> ziti.ctrl.pb.CtrlChanListener
 	22, // 34: ziti.ctrl.pb.ValidateTerminatorsV2Response.StatesEntry.value:type_name -> ziti.ctrl.pb.RouterTerminatorState
 	26, // 35: ziti.ctrl.pb.RouterLinks.RouterLink.connState:type_name -> ziti.ctrl.pb.LinkConnState
-	64, // 36: ziti.ctrl.pb.Route.Egress.peerData:type_name -> ziti.ctrl.pb.Route.Egress.PeerDataEntry
+	65, // 36: ziti.ctrl.pb.Route.Egress.peerData:type_name -> ziti.ctrl.pb.Route.Egress.PeerDataEntry
 	7,  // 37: ziti.ctrl.pb.Route.Forward.dstType:type_name -> ziti.ctrl.pb.DestType
 	38, // [38:38] is the sub-list for method output_type
 	38, // [38:38] is the sub-list for method input_type
@@ -3968,7 +4063,7 @@ func file_ctrl_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ctrl_proto_rawDesc), len(file_ctrl_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   56,
+			NumMessages:   57,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
