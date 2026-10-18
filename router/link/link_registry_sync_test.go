@@ -43,6 +43,7 @@ type syncTestLink struct {
 
 func (self *syncTestLink) Id() string                               { return self.id }
 func (self *syncTestLink) IsClosed() bool                           { return false }
+func (self *syncTestLink) IsDialed() bool                           { return true }
 func (self *syncTestLink) Iteration() uint32                        { return 1 }
 func (self *syncTestLink) GetLinkConnState() *ctrl_pb.LinkConnState { return nil }
 func (self *syncTestLink) GetCtrlRequiringSync() (string, []string) {

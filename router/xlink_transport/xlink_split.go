@@ -21,7 +21,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
@@ -99,7 +98,7 @@ func (self *splitImpl) SendPayload(msg *xgress.Payload, timeout time.Duration, p
 	if timeout == 0 {
 		sent, err := self.payloadCh.Load().TrySend(msg.Marshall())
 		if err == nil && !sent {
-			pfxlog.Logger().WithField("circuitId", msg.CircuitId).Info("dropped payload")
+			channelLog.Info("dropped payload", "circuitId", msg.CircuitId)
 			self.droppedMsgMeter.Mark(1)
 			if payloadType == xgress.PayloadTypeXg {
 				self.droppedXgMsgMeter.Mark(1)
@@ -145,7 +144,12 @@ func (self *splitImpl) Close() error {
 	defer self.lock.Unlock()
 
 	if self.droppedMsgMeter != nil {
+		// Dispose every meter registered in Init; missing any leaks it per close.
+		// Keep this list in sync with Init.
 		self.droppedMsgMeter.Dispose()
+		self.droppedXgMsgMeter.Dispose()
+		self.droppedRtxMsgMeter.Dispose()
+		self.droppedFwdMsgMeter.Dispose()
 	}
 	var err, err2 error
 	if ch := self.payloadCh.Load(); ch != nil {

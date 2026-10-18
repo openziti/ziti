@@ -29,6 +29,7 @@ message MetricsMessage {
   map<string, Timer> timers = 10;
   repeated UsageCounter usageCounters = 11;
   bool doNotPropagate = 12; // if set to true, some other controller has already propagated this event
+  bool linkLatencyInGossip = 13; // if set, the reporting router publishes per-link latency over gossip, so the controller must not derive routing latency from this message
 
   message Meter {
     int64 count = 1;

@@ -83,7 +83,7 @@ func (self *Dispatcher) addBuiltInMetricsMappers(getLink func(string) (*model.Li
 				for k, v := range sourceTags {
 					event.Tags[k] = v
 				}
-				event.Tags["sourceRouterId"] = link.Src.Id
+				event.Tags["sourceRouterId"] = link.GetSrc().Id
 				event.Tags["targetRouterId"] = link.DstId
 			}
 		}

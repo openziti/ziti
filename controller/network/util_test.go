@@ -154,7 +154,7 @@ func (self *testEntityHelper) addTestService(serviceName string) *model.Service 
 //		})
 //		for lIdx, link := range links {
 //			debugf("    %v link %v for (%v -> %v) c: %v sc: %v sl:%v dl: %v\n",
-//				lIdx, link.Id, link.Src.Id, link.Dst.Id, link.GetCost(), link.StaticCost, link.SrcLatency, link.DstLatency)
+//				lIdx, link.Id, link.GetSrc().Id, link.Dst.Id, link.GetCost(), link.StaticCost, link.SrcLatency, link.DstLatency)
 //		}
 //	}
 //}

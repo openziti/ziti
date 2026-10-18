@@ -101,6 +101,10 @@ func (self *testRegistryEnv) GetHeartbeatSettings() xlink.HeartbeatSettings {
 	}
 }
 
+func (self *testRegistryEnv) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return nil
+}
+
 type testDial struct {
 	Key           string
 	LinkId        string

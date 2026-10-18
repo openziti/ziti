@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/router/env"
@@ -31,7 +32,9 @@ import (
 // testCtrls serves a fixed controller set. Other env.NetworkControllers methods are unimplemented.
 type testCtrls struct {
 	env.NetworkControllers
-	ctrls map[string]env.NetworkController
+	ctrls        map[string]env.NetworkController
+	gossip       bool
+	subscription env.NetworkController
 }
 
 func (self *testCtrls) GetAll() map[string]env.NetworkController {
@@ -40,6 +43,15 @@ func (self *testCtrls) GetAll() map[string]env.NetworkController {
 
 func (self *testCtrls) DefaultRequestTimeout() time.Duration {
 	return time.Second
+}
+
+// UsesGossip reports gossip for every capability.
+func (self *testCtrls) UsesGossip(capabilities.ControllerCapability) bool {
+	return self.gossip
+}
+
+func (self *testCtrls) GetSubscriptionController() env.NetworkController {
+	return self.subscription
 }
 
 type testCtrl struct {
@@ -54,6 +66,7 @@ func (self *testCtrl) Channel() channel.Channel {
 // metricsSink records the metrics messages written to it, or fails every send with err when set.
 type metricsSink struct {
 	channel.Channel
+	id          string
 	err         error
 	received    []*metrics_pb.MetricsMessage
 	closeNotify chan struct{}
@@ -61,6 +74,10 @@ type metricsSink struct {
 
 func newMetricsSink() *metricsSink {
 	return &metricsSink{closeNotify: make(chan struct{})}
+}
+
+func (self *metricsSink) Id() string {
+	return self.id
 }
 
 func (self *metricsSink) Send(s channel.Sendable) error {
@@ -166,4 +183,64 @@ func TestControllersReporterMarksCopiesAfterFirstDeliveryDoNotPropagate(t *testi
 	require.Len(t, sink2.received, 1)
 	require.NotEqual(t, sink1.received[0].DoNotPropagate, sink2.received[0].DoNotPropagate,
 		"exactly one delivered copy should be propagated")
+}
+
+func TestControllersReporterSendsToEveryControllerWhenLinkLatencyIsNotInGossip(t *testing.T) {
+	sink1 := newMetricsSink()
+	sink2 := newMetricsSink()
+	ctrl2 := &testCtrl{ch: sink2}
+	reporter := NewControllersReporter(&testCtrls{
+		ctrls: map[string]env.NetworkController{
+			"ctrl1": &testCtrl{ch: sink1},
+			"ctrl2": ctrl2,
+		},
+		subscription: ctrl2,
+	}, 10)
+
+	acceptWithin(t, reporter, "m1")
+
+	require.Len(t, sink1.received, 1)
+	require.Len(t, sink2.received, 1)
+	require.False(t, sink1.received[0].LinkLatencyInGossip)
+	require.False(t, sink2.received[0].LinkLatencyInGossip)
+}
+
+func TestControllersReporterSendsOnlyToSubscriptionControllerWhenLinkLatencyIsInGossip(t *testing.T) {
+	sink1 := newMetricsSink()
+	sink2 := newMetricsSink()
+	sink2.id = "ctrl2"
+	ctrl2 := &testCtrl{ch: sink2}
+	reporter := NewControllersReporter(&testCtrls{
+		ctrls: map[string]env.NetworkController{
+			"ctrl1": &testCtrl{ch: sink1},
+			"ctrl2": ctrl2,
+		},
+		gossip:       true,
+		subscription: ctrl2,
+	}, 10)
+
+	acceptWithin(t, reporter, "m1")
+
+	require.Empty(t, sink1.received)
+	require.Len(t, sink2.received, 1)
+	require.True(t, sink2.received[0].LinkLatencyInGossip)
+	require.False(t, sink2.received[0].DoNotPropagate, "the only delivered copy should be propagated")
+}
+
+func TestControllersReporterQueuesWhileNoSubscriptionControllerIsAvailable(t *testing.T) {
+	sink := newMetricsSink()
+	sink.id = "ctrl1"
+	ctrl1 := &testCtrl{ch: sink}
+	ctrls := &testCtrls{
+		ctrls:  map[string]env.NetworkController{"ctrl1": ctrl1},
+		gossip: true,
+	}
+	reporter := NewControllersReporter(ctrls, 10)
+
+	acceptWithin(t, reporter, "m1")
+	require.Empty(t, sink.received)
+
+	ctrls.subscription = ctrl1
+	acceptWithin(t, reporter, "m2")
+	require.Equal(t, []string{"m1", "m2"}, sink.eventIds())
 }

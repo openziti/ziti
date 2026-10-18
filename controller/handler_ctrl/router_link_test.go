@@ -34,10 +34,14 @@ func Test_linksToPrune(t *testing.T) {
 	other := model.NewRouter("router-other", "", "", 0, true)
 
 	dialed := func(id string) *model.Link {
-		return &model.Link{Id: id, Src: self, DstId: other.Id}
+		l := &model.Link{Id: id, DstId: other.Id}
+		l.Src.Store(self)
+		return l
 	}
 	accepted := func(id string) *model.Link {
-		return &model.Link{Id: id, Src: other, DstId: me}
+		l := &model.Link{Id: id, DstId: me}
+		l.Src.Store(other)
+		return l
 	}
 	reported := func(ids ...string) []*ctrl_pb.RouterLinks_RouterLink {
 		var result []*ctrl_pb.RouterLinks_RouterLink

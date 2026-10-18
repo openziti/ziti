@@ -237,6 +237,28 @@ func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 	self.latencyMetric.Update(now.UnixNano() - ts)
 }
 
+// linkUnhealthyWarnThreshold is how long a link may go unanswered before it is called unhealthy, when the
+// close timeout is long enough to leave room for the warning.
+const linkUnhealthyWarnThreshold = 30 * time.Second
+
+// linkHeartbeatThresholds returns how long a link may go unanswered before it is reported unhealthy and
+// before it is closed, for a configured close timeout.
+//
+// warnAfter is always less than closeAfter when closing is enabled, so a close timeout shorter than
+// linkUnhealthyWarnThreshold is still reachable. A closeTimeout of zero disables closing, reported as a
+// zero closeAfter; the warning still applies, since poisoning the latency metric is what steers smart
+// routing off the link and that is worth keeping when closing is off.
+func linkHeartbeatThresholds(closeTimeout time.Duration) (warnAfter, closeAfter time.Duration) {
+	if closeTimeout <= 0 {
+		return linkUnhealthyWarnThreshold, 0
+	}
+	warnAfter = linkUnhealthyWarnThreshold
+	if closeTimeout/2 < warnAfter {
+		warnAfter = closeTimeout / 2
+	}
+	return warnAfter, closeTimeout
+}
+
 func (self *heartbeatCallback) CheckHeartBeat() {
 	log := pfxlog.Logger().WithField("channelId", self.ch.Label())
 

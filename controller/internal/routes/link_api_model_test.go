@@ -28,7 +28,9 @@ import (
 // newUnresolvedLink returns a link from router-one whose destination it does not hold, as for a destination
 // that is not connected.
 func newUnresolvedLink(destId string) *model.Link {
-	return &model.Link{Id: "l1", Src: model.NewRouter("r1", "router-one", "", 0, false), DstId: destId}
+	link := &model.Link{Id: "l1", DstId: destId}
+	link.Src.Store(model.NewRouter("r1", "router-one", "", 0, false))
+	return link
 }
 
 // Test_linkToRestModel_RendersALinkWhoseDestinationIsGone: a link can outlive its destination router until

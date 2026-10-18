@@ -75,21 +75,22 @@ func (ContentType) EnumDescriptor() ([]byte, []int) {
 }
 
 type MetricsMessage struct {
-	state            protoimpl.MessageState                     `protogen:"open.v1"`
-	EventId          string                                     `protobuf:"bytes,1,opt,name=eventId,proto3" json:"eventId,omitempty"`
-	SourceId         string                                     `protobuf:"bytes,2,opt,name=sourceId,proto3" json:"sourceId,omitempty"`
-	Timestamp        *timestamppb.Timestamp                     `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Tags             map[string]string                          `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	IntValues        map[string]int64                           `protobuf:"bytes,5,rep,name=intValues,proto3" json:"intValues,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	FloatValues      map[string]float64                         `protobuf:"bytes,6,rep,name=floatValues,proto3" json:"floatValues,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
-	Meters           map[string]*MetricsMessage_Meter           `protobuf:"bytes,7,rep,name=meters,proto3" json:"meters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Histograms       map[string]*MetricsMessage_Histogram       `protobuf:"bytes,8,rep,name=histograms,proto3" json:"histograms,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	IntervalCounters map[string]*MetricsMessage_IntervalCounter `protobuf:"bytes,9,rep,name=intervalCounters,proto3" json:"intervalCounters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Timers           map[string]*MetricsMessage_Timer           `protobuf:"bytes,10,rep,name=timers,proto3" json:"timers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	UsageCounters    []*MetricsMessage_UsageCounter             `protobuf:"bytes,11,rep,name=usageCounters,proto3" json:"usageCounters,omitempty"`
-	DoNotPropagate   bool                                       `protobuf:"varint,12,opt,name=doNotPropagate,proto3" json:"doNotPropagate,omitempty"` // if set to true, some other controller has already propagated this event
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state               protoimpl.MessageState                     `protogen:"open.v1"`
+	EventId             string                                     `protobuf:"bytes,1,opt,name=eventId,proto3" json:"eventId,omitempty"`
+	SourceId            string                                     `protobuf:"bytes,2,opt,name=sourceId,proto3" json:"sourceId,omitempty"`
+	Timestamp           *timestamppb.Timestamp                     `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Tags                map[string]string                          `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	IntValues           map[string]int64                           `protobuf:"bytes,5,rep,name=intValues,proto3" json:"intValues,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	FloatValues         map[string]float64                         `protobuf:"bytes,6,rep,name=floatValues,proto3" json:"floatValues,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	Meters              map[string]*MetricsMessage_Meter           `protobuf:"bytes,7,rep,name=meters,proto3" json:"meters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Histograms          map[string]*MetricsMessage_Histogram       `protobuf:"bytes,8,rep,name=histograms,proto3" json:"histograms,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	IntervalCounters    map[string]*MetricsMessage_IntervalCounter `protobuf:"bytes,9,rep,name=intervalCounters,proto3" json:"intervalCounters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Timers              map[string]*MetricsMessage_Timer           `protobuf:"bytes,10,rep,name=timers,proto3" json:"timers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	UsageCounters       []*MetricsMessage_UsageCounter             `protobuf:"bytes,11,rep,name=usageCounters,proto3" json:"usageCounters,omitempty"`
+	DoNotPropagate      bool                                       `protobuf:"varint,12,opt,name=doNotPropagate,proto3" json:"doNotPropagate,omitempty"`           // if set to true, some other controller has already propagated this event
+	LinkLatencyInGossip bool                                       `protobuf:"varint,13,opt,name=linkLatencyInGossip,proto3" json:"linkLatencyInGossip,omitempty"` // if set, the reporting router publishes per-link latency over gossip, so the controller must not derive routing latency from this message
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *MetricsMessage) Reset() {
@@ -202,6 +203,13 @@ func (x *MetricsMessage) GetUsageCounters() []*MetricsMessage_UsageCounter {
 func (x *MetricsMessage) GetDoNotPropagate() bool {
 	if x != nil {
 		return x.DoNotPropagate
+	}
+	return false
+}
+
+func (x *MetricsMessage) GetLinkLatencyInGossip() bool {
+	if x != nil {
+		return x.LinkLatencyInGossip
 	}
 	return false
 }
@@ -798,7 +806,7 @@ var File_metrics_proto protoreflect.FileDescriptor
 
 const file_metrics_proto_rawDesc = "" +
 	"\n" +
-	"\rmetrics.proto\x12\x1cziti.common.servermetrics.pb\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe4\x19\n" +
+	"\rmetrics.proto\x12\x1cziti.common.servermetrics.pb\x1a\x1fgoogle/protobuf/timestamp.proto\"\x96\x1a\n" +
 	"\x0eMetricsMessage\x12\x18\n" +
 	"\aeventId\x18\x01 \x01(\tR\aeventId\x12\x1a\n" +
 	"\bsourceId\x18\x02 \x01(\tR\bsourceId\x128\n" +
@@ -814,7 +822,8 @@ const file_metrics_proto_rawDesc = "" +
 	"\x06timers\x18\n" +
 	" \x03(\v28.ziti.common.servermetrics.pb.MetricsMessage.TimersEntryR\x06timers\x12_\n" +
 	"\rusageCounters\x18\v \x03(\v29.ziti.common.servermetrics.pb.MetricsMessage.UsageCounterR\rusageCounters\x12&\n" +
-	"\x0edoNotPropagate\x18\f \x01(\bR\x0edoNotPropagate\x1a7\n" +
+	"\x0edoNotPropagate\x18\f \x01(\bR\x0edoNotPropagate\x120\n" +
+	"\x13linkLatencyInGossip\x18\r \x01(\bR\x13linkLatencyInGossip\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a<\n" +

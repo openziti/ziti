@@ -17,6 +17,7 @@
 package network
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -92,7 +94,8 @@ func newReportingRouter(t *testing.T, network *Network, addr transport.Address, 
 }
 
 // TestShouldNotifyDestinationRemoved_EveryReporterIsTold: what the reporting router supports has no bearing
-// on whether the destination is gone. Every router that names it is told, whatever it advertised.
+// on whether the destination is gone. A router in link gossip learns of deletions from the router data
+// model, but only where its controllers are new enough to distribute routers there, so it is told too.
 func TestShouldNotifyDestinationRemoved_EveryReporterIsTold(t *testing.T) {
 	req := require.New(t)
 	_, network, addr := newConnectTestNetwork(t)
@@ -101,6 +104,7 @@ func TestShouldNotifyDestinationRemoved_EveryReporterIsTold(t *testing.T) {
 		id   string
 		caps []capabilities.RouterCapability
 	}{
+		{id: "gossiping", caps: []capabilities.RouterCapability{capabilities.RouterLinkGossip}},
 		{id: "other-caps", caps: []capabilities.RouterCapability{capabilities.RouterDataModel}},
 		{id: "no-caps"},
 	} {
@@ -178,6 +182,53 @@ func TestNotifyExistingLink_RefusedDeletedDestNotifiesReporter(t *testing.T) {
 
 	requireRemovalNotice(t, network, src.Id, "deleted-router",
 		"refusing the report must tell the reporting router the destination is gone")
+}
+
+// TestReconcileGossipLinksForRouter_RefusedDeletedDestNotifiesOwner covers the same correction on the gossip
+// path. A gossiping router sends no link reports at all, so without this the notice could never reach the
+// routers that now make up most of a fleet. Reconcile runs on every connect, which is what makes it repeat.
+func TestReconcileGossipLinksForRouter_RefusedDeletedDestNotifiesOwner(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	dialer := newReportingRouter(t, network, addr, "dialer", capabilities.RouterLinkGossip)
+	req.NoError(network.LinkGossipType.Set(LinkGossipKey("l0", 1), dialer.Id,
+		&ctrl_pb.RouterLinks_RouterLink{Id: "l0", DestRouterId: "deleted-router", Iteration: 1}))
+
+	network.ReconcileGossipLinksForRouter(dialer)
+
+	_, held := network.Link.Get("l0")
+	req.False(held, "a link to a router that does not exist must not be recorded")
+
+	requireRemovalNotice(t, network, dialer.Id, "deleted-router",
+		"refusing the gossip entry must tell its owner the destination is gone")
+}
+
+// linkEventCapture records the link events a network under test dispatches. The test dispatcher discards
+// them, so a test that is about what is announced has to stand in front of it.
+type linkEventCapture struct {
+	event.Dispatcher
+	lock   sync.Mutex
+	events []*event.LinkEvent
+}
+
+func (self *linkEventCapture) AcceptLinkEvent(evt *event.LinkEvent) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.events = append(self.events, evt)
+}
+
+// typesFor returns the event types announced for linkId, in order.
+func (self *linkEventCapture) typesFor(linkId string) []event.LinkEventType {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	var result []event.LinkEventType
+	for _, evt := range self.events {
+		if evt.LinkId == linkId {
+			result = append(result, evt.EventType)
+		}
+	}
+	return result
 }
 
 // requireRemovalNotice waits for a peer-state removal of destRouterId to be queued for notifyRouterId. The

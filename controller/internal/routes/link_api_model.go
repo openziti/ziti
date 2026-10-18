@@ -90,7 +90,7 @@ func linkToRestModel(link *model.Link, readRouter func(id string) (*model.Router
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
-		SourceRouter:  ToFabricEntityRef(link.Src.Name, link.Src, FabricRouterLinkFactory),
+		SourceRouter:  ToFabricEntityRef(link.GetSrc().Name, link.GetSrc(), FabricRouterLinkFactory),
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
 		Protocol:      &link.Protocol,

@@ -29,7 +29,7 @@ import (
 // other call would panic loudly rather than pass silently.
 type fakeRegistry struct {
 	xlink.Registry
-	removed      []string
+	removed     []string
 	storeIndexes []uint64
 }
 

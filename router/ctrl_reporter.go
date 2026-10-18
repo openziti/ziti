@@ -19,6 +19,7 @@ package router
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/capabilities"
 	"github.com/openziti/ziti/v2/common/servermetrics"
 	"github.com/openziti/ziti/v2/common/servermetrics/metrics_pb"
 	"github.com/openziti/ziti/v2/router/env"
@@ -55,13 +56,16 @@ func (reporter *controllersReporter) AcceptMetrics(message *metrics_pb.MetricsMe
 	}
 }
 
-// deliver sends message to every registered controller, marking it DoNotPropagate once one has accepted
-// it. It reports whether the message is finished with: accepted by at least one controller, or
+// deliver sends message to the controllers metricsTargets picks, marking it DoNotPropagate once one has
+// accepted it. It reports whether the message is finished with: accepted by at least one controller, or
 // unencodable and so dropped.
 func (reporter *controllersReporter) deliver(message *metrics_pb.MetricsMessage) bool {
+	// A controller doesn't derive routing latency from a message whose link latency is in gossip.
+	message.LinkLatencyInGossip = reporter.ctrls.UsesGossip(capabilities.ControllerLinkGossip)
+
 	delivered := false
 
-	for ctrlId, ctrl := range reporter.ctrls.GetAll() {
+	for ctrlId, ctrl := range reporter.metricsTargets(message.LinkLatencyInGossip) {
 		log := pfxlog.Logger().WithField("ctrlId", ctrlId)
 
 		message.DoNotPropagate = delivered
@@ -83,6 +87,20 @@ func (reporter *controllersReporter) deliver(message *metrics_pb.MetricsMessage)
 	}
 
 	return delivered
+}
+
+// metricsTargets returns the controllers a metrics message goes to: the subscription controller alone when
+// linkLatencyInGossip is set (nil if there is none), otherwise every controller.
+func (reporter *controllersReporter) metricsTargets(linkLatencyInGossip bool) map[string]env.NetworkController {
+	if !linkLatencyInGossip {
+		return reporter.ctrls.GetAll()
+	}
+
+	if sub := reporter.ctrls.GetSubscriptionController(); sub != nil {
+		return map[string]env.NetworkController{sub.Channel().Id(): sub}
+	}
+
+	return nil
 }
 
 // NewControllersReporter creates a metrics handler which sends metrics messages to the controllers,

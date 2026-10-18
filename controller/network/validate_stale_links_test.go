@@ -17,11 +17,9 @@ import (
 func TestScopeLinksToRouters(t *testing.T) {
 	req := require.New(t)
 	mkLink := func(id, srcId, dstId string) *model.Link {
-		return &model.Link{
-			Id:    id,
-			Src:   &model.Router{BaseEntity: models.BaseEntity{Id: srcId}},
-			DstId: dstId,
-		}
+		l := &model.Link{Id: id, DstId: dstId}
+		l.Src.Store(&model.Router{BaseEntity: models.BaseEntity{Id: srcId}})
+		return l
 	}
 	linkMap := map[string]*model.Link{
 		"l1": mkLink("l1", "rA", "rB"), // src in filter
@@ -41,13 +39,9 @@ func TestScopeLinksToRouters(t *testing.T) {
 // twoEndpointLinks builds the sweep's link map for one link between rSrc (the
 // dialer) and rDst, which is what the collector resolves report sides against.
 func twoEndpointLinks(linkId, rSrc, rDst string) map[string]*model.Link {
-	return map[string]*model.Link{
-		linkId: {
-			Id:    linkId,
-			Src:   &model.Router{BaseEntity: models.BaseEntity{Id: rSrc}},
-			DstId: rDst,
-		},
-	}
+	l := &model.Link{Id: linkId, DstId: rDst}
+	l.Src.Store(&model.Router{BaseEntity: models.BaseEntity{Id: rSrc}})
+	return map[string]*model.Link{linkId: l}
 }
 
 func TestStaleLinkReportCollector_RecordConcurrentReports(t *testing.T) {
@@ -196,11 +190,8 @@ func TestStaleLinkQueryBlocker(t *testing.T) {
 
 func TestAppendUnqueryableReasons(t *testing.T) {
 	req := require.New(t)
-	link := &model.Link{
-		Id:    "l1",
-		Src:   &model.Router{BaseEntity: models.BaseEntity{Id: "rA"}},
-		DstId: "rB",
-	}
+	link := &model.Link{Id: "l1", DstId: "rB"}
+	link.Src.Store(&model.Router{BaseEntity: models.BaseEntity{Id: "rA"}})
 
 	req.Empty(appendUnqueryableReasons(nil, map[string]string{}, link))
 	req.Empty(appendUnqueryableReasons(nil, map[string]string{"rZ": "unrelated"}, link),
@@ -377,11 +368,8 @@ func TestAppendUnqueryableReasons_CoversEveryCause(t *testing.T) {
 	// output. Only the last is fixed by changing the command, so an operator who
 	// cannot tell them apart has no way to know whether to widen the filter.
 	req := require.New(t)
-	link := &model.Link{
-		Id:    "l1",
-		Src:   &model.Router{BaseEntity: models.BaseEntity{Id: "rSrc"}},
-		DstId: "rDst",
-	}
+	link := &model.Link{Id: "l1", DstId: "rDst"}
+	link.Src.Store(&model.Router{BaseEntity: models.BaseEntity{Id: "rSrc"}})
 
 	reasons := appendUnqueryableReasons(nil, map[string]string{
 		"rSrc": "router rSrc is not connected",
