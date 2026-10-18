@@ -1,0 +1,337 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
+package handler_ctrl
+
+import (
+	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v5"
+	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/common/pb/gossip_pb"
+	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/network"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
+)
+
+// canaryHandler receives canary sequence numbers and epochs from routers and
+// stores them in the gossip store for distribution to peer controllers.
+type canaryHandler struct {
+	r       *model.Router
+	network *network.Network
+}
+
+func newCanaryHandler(r *model.Router, network *network.Network) *canaryHandler {
+	return &canaryHandler{r: r, network: network}
+}
+
+func (h *canaryHandler) ContentType() int32 {
+	return int32(ctrl_pb.ContentType_CanaryType)
+}
+
+// decodeCanary returns the gossip value a canary message carries and the sender's clock from its payload. ok
+// is false for a message with no sequence. A payload that does not decode is ignored, leaving the value with only
+// its sequence and epoch.
+func (h *canaryHandler) decodeCanary(msg *channel.Message) (value *network.CanaryValue, sentAt int64, ok bool) {
+	seq, ok := msg.GetUint64Header(int32(ctrl_pb.ControlHeaders_CanarySeqHeader))
+	if !ok {
+		return nil, 0, false
+	}
+
+	value = &network.CanaryValue{
+		Seq:   seq,
+		Epoch: msg.Headers[int32(ctrl_pb.ControlHeaders_EpochHeader)],
+	}
+
+	if len(msg.Body) > 0 {
+		payload := &gossip_pb.CanaryPayload{}
+		if err := proto.Unmarshal(msg.Body, payload); err == nil {
+			value.MaxSentVersions = payload.MaxSentVersions
+			value.EntryHashes = payload.EntryHashes
+			value.EntryCounts = payload.EntryCounts
+			value.Version = payload.Version
+			value.Capabilities = payload.Capabilities
+			sentAt = payload.SentAt
+		}
+	}
+	return value, sentAt, true
+}
+
+func (h *canaryHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
+	value, sentAt, ok := h.decodeCanary(msg)
+	if !ok {
+		return
+	}
+
+	if err := h.network.GetGossipApplyPool().QueueOrError(func() {
+		// Routers create tombstones too, and a controller stamps the deadline it reads back, so router
+		// clocks matter as much as peer controllers'. The canary is where that is cheapest to watch, since
+		// it already arrives on a schedule.
+		//
+		// Observed on the pool rather than where the message arrived: the monitor takes a lock shared by
+		// every peer and periodically walks its map under it, and this handler runs on the goroutine
+		// reading a router's control channel. Neither the walk nor the wait for the lock belongs there.
+		h.network.ObserveRouterClock(h.r.Id, sentAt)
+
+		// Rechecked here, not only where the message arrived: this is the path a stale canary would come back
+		// on. A restarting router's hello drops the canary of the lifetime that has gone, precisely so the
+		// restarted sequence is accepted, and a canary from that lifetime still waiting in the pool would be
+		// applied against the now-absent entry and put the departed process's sequence back.
+		if !h.network.IsCurrentConnection(h.r) {
+			pfxlog.Logger().WithField("routerId", h.r.Id).
+				Info("router connection is no longer current, dropping canary")
+			return
+		}
+
+		// Owner is the router, the single source of truth, and the version is the router's monotonic
+		// canary seq, so a stale canary is rejected on version whichever controller received it. Owning it
+		// by receiving controller and versioning it by that controller's clock would instead let a stale
+		// copy survive on a controller that missed updates, masking the divergence the canary reports.
+		if err := h.network.CanaryGossipType.SetWithVersion(h.r.Id, h.r.Id, value.Seq, value); err != nil {
+			pfxlog.Logger().WithError(err).WithField("routerId", h.r.Id).
+				Error("failed to set canary in gossip store")
+		}
+	}); err != nil {
+		h.network.PoolDrops.GossipCanary.Drop()
+	}
+}
+
+const (
+	// gossipStaleBehindTicks is how many consecutive staleness check ticks
+	// (10s each) must pass before triggering a digest exchange.
+	gossipStaleBehindTicks = 3
+
+	// canaryStatusSendTimeout bounds the periodic canary status send to a router.
+	// Kept short (1s): the send is re-issued every tick, so a transient failure
+	// just skips a tick rather than holding the sender.
+	canaryStatusSendTimeout = time.Second
+
+	// gossipDigestCooldown debounces the staleness-driven digest re-trigger per
+	// store type: after sending a digest we won't send another for that type for
+	// this long, so an owner that is slow to converge can't drive a digest every
+	// staleness interval. The router's periodic reconcile backstops anything the
+	// cooldown suppresses.
+	gossipDigestCooldown = time.Minute
+)
+
+// startCanaryStatusSender launches a goroutine that periodically sends this
+// controller's view of the router's canary sequence back to the router. It also
+// checks for gossip staleness: if the router reports a higher max sent version
+// than this controller has, it triggers a digest exchange after a brief delay.
+//
+// The goroutine ties its lifetime to ch.CloseNotify(), which is closed when the
+// channel is closed (including the bind-error path in channel.NewMultiChannel,
+// where the rejected channel's Close() runs all registered handlers and closes
+// CloseNotify). No separate close handler is needed.
+func startCanaryStatusSender(ch channel.Channel, router *model.Router, n *network.Network) {
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		log := pfxlog.Logger().WithField("routerId", router.Id)
+
+		behindTicks := map[string]int{}
+		lastSyncedMaxSent := map[string]uint64{}
+		hashState := map[string]*hashMismatchState{}
+		lastDigestSent := map[string]time.Time{}
+
+		closeNotify := ch.CloseNotify()
+
+		for {
+			select {
+			case <-closeNotify:
+				return
+			case <-ticker.C:
+				if ch.IsClosed() {
+					return
+				}
+
+				msg := channel.NewMessage(int32(ctrl_pb.ContentType_CanaryStatusType), nil)
+
+				// Sent whether or not there is a canary to report. Once a gossip type is given up there is
+				// no canary for the router, and that is exactly when it most needs to hear that the cluster
+				// can no longer carry the feature: a router whose own view says gossip is fine keeps
+				// publishing into a store that is refusing everything.
+				//
+				// Omitted while this controller does not know the cluster's capabilities, so the router
+				// keeps the last answer it had rather than taking "we have not looked yet" for one.
+				if mask := n.ClusterCapabilities(); mask != nil {
+					msg.Headers[int32(ctrl_pb.ControlHeaders_ClusterCapabilitiesHeader)] = mask.Bytes()
+				}
+
+				seq, ok := n.GetCanaryForRouter(router.Id)
+				if ok {
+					msg.PutUint64Header(int32(ctrl_pb.ControlHeaders_CanarySeqHeader), seq)
+				}
+
+				if err := msg.WithTimeout(canaryStatusSendTimeout).Send(ch); err != nil {
+					// A closed channel means we're done; any other error (e.g. a
+					// transient send timeout on a congested-but-live channel) must
+					// NOT kill this goroutine, or the router loses both its canary
+					// status feed and the staleness-driven digest re-trigger until
+					// it reconnects. Skip this tick and retry on the next.
+					if ch.IsClosed() {
+						return
+					}
+					log.WithError(err).Debug("failed to send canary status to router, will retry next tick")
+					continue
+				}
+
+				// Check for gossip staleness per store type.
+				checkGossipStaleness(ch, router, n, log, behindTicks, lastSyncedMaxSent, hashState, lastDigestSent)
+			}
+		}
+	}()
+}
+
+// hashMismatchState tracks previous hash values for a store type so we can
+// detect when both sides have stabilized but still disagree.
+type hashMismatchState struct {
+	ticks          int
+	prevRouterHash uint64
+	prevCtrlHash   uint64
+}
+
+// checkGossipStaleness compares the router's reported max sent versions and
+// entry hashes against this controller's gossip store. If the controller is
+// behind on versions or has a stable hash mismatch for a sustained period, it
+// triggers a digest exchange.
+func checkGossipStaleness(ch channel.Channel, router *model.Router, n *network.Network,
+	log *logrus.Entry, behindTicks map[string]int, lastSyncedMaxSent map[string]uint64,
+	hashState map[string]*hashMismatchState, lastDigestSent map[string]time.Time) {
+
+	// triggerDigest sends a digest for the store type unless one was sent within
+	// gossipDigestCooldown, returning whether it sent. Debounces the re-trigger so
+	// a slow-to-converge owner can't drive a digest every staleness interval.
+	triggerDigest := func(storeType string) bool {
+		if last, ok := lastDigestSent[storeType]; ok && time.Since(last) < gossipDigestCooldown {
+			return false
+		}
+		sendRouterGossipDigest(ch, router, n, storeType)
+		lastDigestSent[storeType] = time.Now()
+		return true
+	}
+
+	canary, ok := n.GetCanaryValueForRouter(router.Id)
+	if !ok {
+		return
+	}
+
+	for storeType, routerMaxSent := range canary.MaxSentVersions {
+		if routerMaxSent == 0 {
+			continue
+		}
+
+		// Already synced for this version; skip.
+		if routerMaxSent <= lastSyncedMaxSent[storeType] {
+			delete(behindTicks, storeType)
+			continue
+		}
+
+		// Look up the gossip type to get the controller's max version.
+		gossipType := n.GetGossipType(storeType)
+		if gossipType == nil {
+			continue
+		}
+
+		ctrlMax := gossipType.MaxVersionForOwner(router.Id)
+
+		if routerMaxSent <= ctrlMax {
+			// In sync.
+			delete(behindTicks, storeType)
+			lastSyncedMaxSent[storeType] = routerMaxSent
+			continue
+		}
+
+		// Controller is behind.
+		behindTicks[storeType]++
+		if behindTicks[storeType] >= gossipStaleBehindTicks && triggerDigest(storeType) {
+			log.WithField("storeType", storeType).
+				WithField("routerMaxSent", routerMaxSent).
+				WithField("ctrlMax", ctrlMax).
+				WithField("behindTicks", behindTicks[storeType]).
+				Info("gossip staleness detected, triggering digest exchange")
+
+			lastSyncedMaxSent[storeType] = routerMaxSent
+			delete(behindTicks, storeType)
+		}
+	}
+
+	// Check entry hash mismatches. First compare entry counts as a cheap
+	// fast-path: if counts differ, we know the state is stale without
+	// computing the expensive hash. Only fall through to hash comparison
+	// when counts match.
+	for storeType, routerHash := range canary.EntryHashes {
+		gossipType := n.GetGossipType(storeType)
+		if gossipType == nil {
+			continue
+		}
+
+		// Fast-path: if the router sent an entry count and it doesn't match,
+		// skip the expensive hash computation.
+		if routerCount, ok := canary.EntryCounts[storeType]; ok {
+			ctrlCount := gossipType.NonTombstoneCount(router.Id)
+			if routerCount != ctrlCount {
+				st := hashState[storeType]
+				if st == nil {
+					st = &hashMismatchState{}
+					hashState[storeType] = st
+				}
+				st.ticks++
+				if st.ticks >= gossipStaleBehindTicks && triggerDigest(storeType) {
+					log.WithField("storeType", storeType).
+						WithField("routerCount", routerCount).
+						WithField("ctrlCount", ctrlCount).
+						Info("gossip entry count mismatch detected, triggering digest exchange")
+					delete(hashState, storeType)
+				}
+				continue
+			}
+		}
+
+		ctrlHash := gossipType.HashForOwner(router.Id)
+		if routerHash == ctrlHash {
+			delete(hashState, storeType)
+			continue
+		}
+
+		st := hashState[storeType]
+		if st == nil {
+			st = &hashMismatchState{}
+			hashState[storeType] = st
+		}
+
+		if routerHash != st.prevRouterHash || ctrlHash != st.prevCtrlHash {
+			// One or both sides changed since last check — still in flux.
+			st.ticks = 0
+		}
+		st.prevRouterHash = routerHash
+		st.prevCtrlHash = ctrlHash
+
+		st.ticks++
+		if st.ticks >= gossipStaleBehindTicks && triggerDigest(storeType) {
+			log.WithField("storeType", storeType).
+				WithField("routerHash", routerHash).
+				WithField("ctrlHash", ctrlHash).
+				WithField("stableMismatchTicks", st.ticks).
+				Info("gossip entry hash mismatch detected, triggering digest exchange")
+
+			delete(hashState, storeType)
+		}
+	}
+}

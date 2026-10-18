@@ -566,7 +566,12 @@ type CanaryPayload struct {
 	// bound on skew, not a clock offset. That is adequate for the seconds-to-
 	// minutes skew that matters against a tombstone lifetime, and unfit for
 	// anything finer.
-	SentAt        int64 `protobuf:"varint,4,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
+	SentAt int64 `protobuf:"varint,4,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
+	// version is the router's binary version and capabilities its capability mask, as it advertises them
+	// when it connects. Carried here so they reach every controller through gossip, whichever controllers
+	// the router is connected to, ordered by the canary sequence.
+	Version       string `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
+	Capabilities  []byte `protobuf:"bytes,6,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -629,6 +634,20 @@ func (x *CanaryPayload) GetSentAt() int64 {
 	return 0
 }
 
+func (x *CanaryPayload) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *CanaryPayload) GetCapabilities() []byte {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
 // CanaryGossipValue is the value stored in the canary gossip store. It carries
 // the canary sequence number, the router's epoch, and per-store-type staleness
 // metadata. Gossiped between controllers so each can track router health.
@@ -639,8 +658,11 @@ type CanaryGossipValue struct {
 	MaxSentVersions map[string]uint64      `protobuf:"bytes,3,rep,name=max_sent_versions,json=maxSentVersions,proto3" json:"max_sent_versions,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	EntryHashes     map[string]uint64      `protobuf:"bytes,4,rep,name=entry_hashes,json=entryHashes,proto3" json:"entry_hashes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	EntryCounts     map[string]int64       `protobuf:"bytes,5,rep,name=entry_counts,json=entryCounts,proto3" json:"entry_counts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// version and capabilities are what the router reported in the canary payload.
+	Version       string `protobuf:"bytes,6,opt,name=version,proto3" json:"version,omitempty"`
+	Capabilities  []byte `protobuf:"bytes,7,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CanaryGossipValue) Reset() {
@@ -708,6 +730,20 @@ func (x *CanaryGossipValue) GetEntryCounts() map[string]int64 {
 	return nil
 }
 
+func (x *CanaryGossipValue) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *CanaryGossipValue) GetCapabilities() []byte {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
 var File_gossip_proto protoreflect.FileDescriptor
 
 const file_gossip_proto_rawDesc = "" +
@@ -755,12 +791,14 @@ const file_gossip_proto_rawDesc = "" +
 	"\fentry_hashes\x18\x01 \x03(\v2/.gossip_pb.GossipDigestRequest.EntryHashesEntryR\ventryHashes\x1a>\n" +
 	"\x10EntryHashesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe3\x03\n" +
+	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xa1\x04\n" +
 	"\rCanaryPayload\x12Y\n" +
 	"\x11max_sent_versions\x18\x01 \x03(\v2-.gossip_pb.CanaryPayload.MaxSentVersionsEntryR\x0fmaxSentVersions\x12L\n" +
 	"\fentry_hashes\x18\x02 \x03(\v2).gossip_pb.CanaryPayload.EntryHashesEntryR\ventryHashes\x12L\n" +
 	"\fentry_counts\x18\x03 \x03(\v2).gossip_pb.CanaryPayload.EntryCountsEntryR\ventryCounts\x12\x17\n" +
-	"\asent_at\x18\x04 \x01(\x03R\x06sentAt\x1aB\n" +
+	"\asent_at\x18\x04 \x01(\x03R\x06sentAt\x12\x18\n" +
+	"\aversion\x18\x05 \x01(\tR\aversion\x12\"\n" +
+	"\fcapabilities\x18\x06 \x01(\fR\fcapabilities\x1aB\n" +
 	"\x14MaxSentVersionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\x1a>\n" +
@@ -769,13 +807,15 @@ const file_gossip_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\x1a>\n" +
 	"\x10EntryCountsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\x82\x04\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xc0\x04\n" +
 	"\x11CanaryGossipValue\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12\x14\n" +
 	"\x05epoch\x18\x02 \x01(\fR\x05epoch\x12]\n" +
 	"\x11max_sent_versions\x18\x03 \x03(\v21.gossip_pb.CanaryGossipValue.MaxSentVersionsEntryR\x0fmaxSentVersions\x12P\n" +
 	"\fentry_hashes\x18\x04 \x03(\v2-.gossip_pb.CanaryGossipValue.EntryHashesEntryR\ventryHashes\x12P\n" +
-	"\fentry_counts\x18\x05 \x03(\v2-.gossip_pb.CanaryGossipValue.EntryCountsEntryR\ventryCounts\x1aB\n" +
+	"\fentry_counts\x18\x05 \x03(\v2-.gossip_pb.CanaryGossipValue.EntryCountsEntryR\ventryCounts\x12\x18\n" +
+	"\aversion\x18\x06 \x01(\tR\aversion\x12\"\n" +
+	"\fcapabilities\x18\a \x01(\fR\fcapabilities\x1aB\n" +
 	"\x14MaxSentVersionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\x1a>\n" +
