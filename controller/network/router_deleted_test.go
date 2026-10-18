@@ -40,7 +40,7 @@ func TestRouterDeletedCleanups_CoverEveryPerRouterStore(t *testing.T) {
 	// Every gossip store keyed by owner holds per-router state, whether or not it takes part in the epoch
 	// sweep. Canaries deliberately sit out the sweep, since they carry the epoch that detects a change, and
 	// that exclusion is exactly what hid their missing delete cleanup.
-	for _, storeType := range []string{LinkGossipStoreType, CanaryGossipStoreType} {
+	for _, storeType := range []string{LinkGossipStoreType, LinkMetricsGossipStoreType, CanaryGossipStoreType} {
 		require.True(t, registered[storeType],
 			"gossip store %q holds per-router state and must register router-deleted cleanup", storeType)
 	}
@@ -272,4 +272,5 @@ func TestGossipTypes_EverySweepDecisionIsDeliberate(t *testing.T) {
 	}
 
 	require.True(t, inSweep[LinkGossipStoreType], "links from a previous router lifetime must be swept")
+	require.True(t, inSweep[LinkMetricsGossipStoreType], "link metrics from a previous router lifetime must be swept")
 }
