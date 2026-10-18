@@ -124,10 +124,11 @@ const (
 //
 // Negative values index down from the top of the mask, so -1 is bit 63, -2 is
 // bit 62, and so on. **-1 is unusable**: bit 63 is the sign bit of the
-// controller's persisted int64 capabilities mask, and the hello path masks it
-// off before storing (see sync_strats). A capability there would negotiate
-// correctly on the control channel and then silently vanish from the persisted
-// mask and the edge-router API. Side-local values therefore start at -2.
+// controller's persisted int64 capabilities mask, and the controller masks it
+// off before storing (see persistedCapabilitiesMask in controller/network). A
+// capability there would negotiate correctly on the control channel and then
+// silently vanish from the persisted mask and the edge-router API. Side-local
+// values therefore start at -2.
 //
 // To add one: take the next value below the lowest in use, define it here, and
 // add it to GetRouterCapabilitiesMask to advertise it.

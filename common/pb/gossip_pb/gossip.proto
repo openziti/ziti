@@ -114,6 +114,12 @@ message CanaryPayload {
     // minutes skew that matters against a tombstone lifetime, and unfit for
     // anything finer.
     int64 sent_at = 4;
+
+    // version is the router's binary version and capabilities its capability mask, as it advertises them
+    // when it connects. Carried here so they reach every controller through gossip, whichever controllers
+    // the router is connected to, ordered by the canary sequence.
+    string version = 5;
+    bytes capabilities = 6;
 }
 
 // CanaryGossipValue is the value stored in the canary gossip store. It carries
@@ -125,4 +131,7 @@ message CanaryGossipValue {
     map<string, uint64> max_sent_versions = 3;
     map<string, uint64> entry_hashes = 4;
     map<string, int64> entry_counts = 5;
+    // version and capabilities are what the router reported in the canary payload.
+    string version = 6;
+    bytes capabilities = 7;
 }

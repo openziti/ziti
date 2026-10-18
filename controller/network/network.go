@@ -132,7 +132,8 @@ type Network struct {
 	metricsRegistry     metrics.Registry
 	VersionProvider     versions.VersionProvider
 
-	GossipStore *gossip.Store
+	GossipStore      *gossip.Store
+	CanaryGossipType *gossip.StateType[*CanaryValue]
 	// gossipTypes drives the epoch sweep only. Router-deleted cleanup is a separate lifecycle with a
 	// different membership, since canaries carry the epoch that detects a change and so must survive one.
 	//
@@ -142,6 +143,8 @@ type Network struct {
 	// for every connected router.
 	gossipTypes                  map[string]gossip.StateTypeInfo // non-generic lookup by store type
 	routerDeletedCleanups        []routerDeletedCleanup
+	canaryListener               *canaryGossipListener
+	routerReportedStates         *routerReportedStates
 	serviceEventMetrics          servermetrics.UsageRegistry
 	serviceDialSuccessCounter    servermetrics.IntervalCounter
 	serviceDialFailCounter       servermetrics.IntervalCounter
@@ -284,6 +287,11 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	network.AddRouterPresenceHandler(network.RouterMessaging)
 	go network.RouterMessaging.run()
 
+	// Before the gossip types, since the canary listener marks routers on it.
+	network.routerReportedStates = newRouterReportedStates(network)
+	network.AddRouterPresenceHandler(network.routerReportedStates)
+	network.onRouterDeleted("routerReportedStates", network.routerReportedStates.forget)
+
 	network.initGossip(config.GetGossipPeering())
 
 	return network, nil
@@ -310,6 +318,7 @@ func (network *Network) initGossip(peering GossipPeering) {
 		})
 	}
 
+	network.initCanaryGossip()
 }
 
 // IsLeader reports whether this controller speaks for the cluster: always true where raft is not
@@ -587,6 +596,7 @@ func (network *Network) GetIoPool() goroutines.Pool {
 type PoolDrops struct {
 	GossipDelta          *servermetrics.DropCounter
 	GossipDigestResponse *servermetrics.DropCounter
+	GossipCanary         *servermetrics.DropCounter
 	GossipDigestRequest  *servermetrics.DropCounter
 }
 
@@ -600,6 +610,8 @@ func newPoolDrops(registry metrics.Registry, closeNotify <-chan struct{}) *PoolD
 			"gossip apply pool full, dropped router gossip deltas"),
 		GossipDigestResponse: newCounter("pool.gossip.apply.dropped.digest_response",
 			"gossip apply pool full, dropped router gossip digest responses"),
+		GossipCanary: newCounter("pool.gossip.apply.dropped.canary",
+			"gossip apply pool full, dropped router canaries"),
 		GossipDigestRequest: newCounter("pool.io.dropped.digest_request",
 			"io pool full, dropped router gossip digest requests"),
 	}
@@ -899,6 +911,21 @@ func (network *Network) runRouterDeletedCleanups(id string) {
 func (network *Network) deleteGossipOwnerBefore(owner string, epoch []byte) {
 	for _, t := range network.gossipTypes {
 		t.DeleteByOwnerBefore(owner, epoch)
+	}
+}
+
+// HandleRouterEpoch processes a router epoch from the hello or canary. If the
+// epoch is newer than the stored epoch, old-epoch entries for this router are
+// deleted across all gossip store types.
+func (network *Network) HandleRouterEpoch(routerId string, epoch []byte) {
+	if len(epoch) == 0 {
+		return
+	}
+
+	// Update the canary listener's epoch tracking and let it handle cleanup.
+	// This reuses the same epoch change detection as the canary path.
+	if network.canaryListener != nil {
+		network.canaryListener.checkEpoch(routerId, epoch)
 	}
 }
 
@@ -1617,6 +1644,7 @@ func (network *Network) Run() {
 	logrus.Info("started")
 
 	go network.watchdog()
+	go network.routerReportedStates.run()
 
 	ticker := time.NewTicker(time.Duration(network.options.CycleSeconds) * time.Second)
 	defer ticker.Stop()
