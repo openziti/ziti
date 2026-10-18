@@ -42,10 +42,17 @@ type LinksInspectResult struct {
 }
 
 type LinkDest struct {
-	Id             string       `json:"id"`
-	Version        string       `json:"version"`
-	Healthy        bool         `json:"healthy"`
-	UnhealthySince *time.Time   `json:"unhealthySince,omitempty"`
+	Id      string `json:"id"`
+	Version string `json:"version"`
+	// Healthy is the union of every health report the router has received for this destination, including
+	// reports from controllers it is no longer connected to. It selects the dial backoff.
+	Healthy        bool       `json:"healthy"`
+	UnhealthySince *time.Time `json:"unhealthySince,omitempty"`
+	// LastAffirmedAt is the last time a controller the router was connected to said this destination was up.
+	// Unlike Healthy it can lapse, and once it has lapsed for long enough the router stops tracking the
+	// destination. A destination reading healthy with an old LastAffirmedAt is one whose only vouching
+	// controller has gone away.
+	LastAffirmedAt *time.Time   `json:"lastAffirmedAt,omitempty"`
 	LinkStates     []*LinkState `json:"linkStates"`
 }
 

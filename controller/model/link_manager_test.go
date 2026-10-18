@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,9 +51,9 @@ func TestLifecycle(t *testing.T) {
 	r1 := NewRouter("r1", "", "", 0, true)
 	l0 := &Link{
 		Id:    "l0",
-		Src:   r0,
 		DstId: r1.Id,
 	}
+	l0.Src.Store(r0)
 	l0.Dst.Store(r1)
 
 	linkController.Add(l0)
@@ -118,7 +119,7 @@ func Test_RouterReportedLink_serializesAndStableOnStaleReport(t *testing.T) {
 	link, created := lm.RouterReportedLink(report(1), src, dst)
 	req.True(created)
 	req.NotNil(link)
-	req.Same(src, link.Src)
+	req.Same(src, link.GetSrc())
 	req.Same(dst, link.GetDest())
 
 	// A stale/same-iteration report returns the existing link unchanged: created is
@@ -129,7 +130,7 @@ func Test_RouterReportedLink_serializesAndStableOnStaleReport(t *testing.T) {
 	again, created2 := lm.RouterReportedLink(report(1), otherSrc, dst)
 	req.False(created2)
 	req.Same(link, again, "same-iteration report returns the existing link")
-	req.Same(src, again.Src, "same-iteration report must not replace the source router")
+	req.Same(src, again.GetSrc(), "same-iteration report must not replace the source router")
 
 	// Concurrent reports for the same link serialize through the per-link lock. With
 	// mixed iterations arriving in arbitrary order the highest iteration must win
@@ -233,7 +234,7 @@ func Test_linkTable_indexStaysConsistentUnderChurn(t *testing.T) {
 	for _, router := range routers {
 		expected := map[string]*Link{}
 		for _, link := range lm.All() {
-			if link.Src.Id == router.Id || link.DstId == router.Id {
+			if link.GetSrc().Id == router.Id || link.DstId == router.Id {
 				expected[link.Id] = link
 			}
 		}
@@ -245,6 +246,166 @@ func Test_linkTable_indexStaysConsistentUnderChurn(t *testing.T) {
 
 		req.Equal(expected, indexed, "index and table disagree for router %v", router.Id)
 	}
+}
+
+// Test_BuildRouterLinks_refreshesStaleSrc covers the gossip scenario: a link can
+// be created referencing a database-loaded (disconnected) source router when its
+// gossip entry arrives before the router connects to this controller. When the
+// router then connects, BuildRouterLinks must repoint the link at the connected
+// router object and index the link under it.
+func Test_BuildRouterLinks_refreshesStaleSrc(t *testing.T) {
+	req := require.New(t)
+	lm := NewLinkManager(nil)
+
+	srcDb := NewRouter("r0", "", "", 0, true) // database-loaded, not connected
+	dst := NewRouter("r1", "", "", 0, true)
+	dst.Connected.Store(true)
+
+	link := NewTestLink("l0", srcDb, dst)
+	lm.Add(link)
+	req.Same(srcDb, link.GetSrc())
+
+	// r0 connects: a fresh, connected router object with the same id.
+	srcConn := NewRouter("r0", "", "", 0, true)
+	srcConn.Connected.Store(true)
+	lm.BuildRouterLinks(srcConn)
+
+	req.Same(srcConn, link.GetSrc(), "link source repointed to the connected router object")
+
+	connLinks := srcConn.routerLinks.GetLinks()
+	req.Len(connLinks, 1, "link indexed under the connected source router")
+	req.Same(link, connLinks[0])
+
+	// The link still removes cleanly (index stays consistent after the refresh).
+	lm.Remove(link)
+	req.False(lm.has(link))
+	req.Len(srcConn.routerLinks.GetLinks(), 0)
+}
+
+// Test_RouterReportedLink_srcConcurrentAccess is the regression guard for the
+// data race the AtomicValue change fixes: the connect-time source repoint
+// (BuildRouterLinks) Stores link.Src while routing/path code Loads it. With Src
+// as a plain pointer this raced; as an AtomicValue it is safe. Run under -race.
+func Test_RouterReportedLink_srcConcurrentAccess(t *testing.T) {
+	lm := NewLinkManager(nil)
+
+	dst := NewRouter("r1", "", "", 0, true)
+	dst.Connected.Store(true)
+	link := NewTestLink("l0", NewRouter("r0", "", "", 0, true), dst)
+	lm.Add(link)
+
+	// Two connected r0 objects so each BuildRouterLinks call repoints (src != router),
+	// keeping the Store path hot against the concurrent readers.
+	srcA := NewRouter("r0", "", "", 0, true)
+	srcA.Connected.Store(true)
+	srcB := NewRouter("r0", "", "", 0, true)
+	srcB.Connected.Store(true)
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					if s := link.GetSrc(); s != nil {
+						_ = s.Id
+					}
+				}
+			}
+		}()
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 2000; i++ {
+			if i%2 == 0 {
+				lm.BuildRouterLinks(srcA)
+			} else {
+				lm.BuildRouterLinks(srcB)
+			}
+		}
+		close(stop)
+	}()
+
+	wg.Wait()
+}
+
+// Test_Link_HasEndpoint covers the authority check for anything a router claims about a link. The comparison
+// is by id rather than by router object so it still answers when the destination is not connected here and
+// the link carries only its id.
+func Test_Link_HasEndpoint(t *testing.T) {
+	req := require.New(t)
+
+	src := NewRouter("r0", "", "", 0, true)
+	dst := NewRouter("r1", "", "", 0, true)
+	link := NewTestLink("l0", src, dst)
+
+	req.True(link.HasEndpoint("r0"), "the source router is an endpoint")
+	req.True(link.HasEndpoint("r1"), "the destination router is an endpoint")
+	req.False(link.HasEndpoint("r2"), "an unrelated router is not an endpoint")
+	req.False(link.HasEndpoint(""), "an empty router id matches nothing")
+
+	// The destination is answered from DstId, so it holds with no connected router object behind it, which is
+	// the case whenever the far end is connected to a different controller.
+	link.Dst.Store(nil)
+	req.True(link.HasEndpoint("r1"), "the destination is identified by id, not by a live router object")
+	req.False(link.HasEndpoint("r2"))
+}
+
+// Test_RouterReportedLink_rejectsReportFromNonSource guards against one router taking over a link between two
+// others. Link ids are generated by the dialing router and reused across its re-dials, with the iteration
+// distinguishing attempts, so a report naming an existing link id from a different router is not a re-dial.
+// Accepting it would drop the real link and install one whose source is the impostor.
+func Test_RouterReportedLink_rejectsReportFromNonSource(t *testing.T) {
+	req := require.New(t)
+	lm := NewLinkManager(nil)
+
+	src := NewRouter("r0", "", "", 0, true)
+	src.Connected.Store(true)
+	dst := NewRouter("r1", "", "", 0, true)
+	dst.Connected.Store(true)
+	impostor := NewRouter("r2", "", "", 0, true)
+	impostor.Connected.Store(true)
+
+	report := func(iteration uint32) *ctrl_pb.RouterLinks_RouterLink {
+		return &ctrl_pb.RouterLinks_RouterLink{
+			Id:           "l0",
+			DestRouterId: dst.Id,
+			LinkProtocol: "tls",
+			DialAddress:  "tcp:localhost:1234",
+			Iteration:    iteration,
+		}
+	}
+
+	link, created := lm.RouterReportedLink(report(1), src, dst)
+	req.True(created)
+	req.NotNil(link)
+
+	// A higher iteration is what would otherwise replace the link, so that is what the impostor reports.
+	taken, created := lm.RouterReportedLink(report(2), impostor, dst)
+	req.Nil(taken, "a report from a router that is not the link's source is refused")
+	req.False(created)
+
+	held, ok := lm.Get("l0")
+	req.True(ok, "the real link must still be in the table")
+	req.Same(link, held, "the real link object must be untouched")
+	req.Equal("r0", held.GetSrc().Id, "the source router must not be replaced")
+	req.Equal(uint32(1), held.Iteration, "the impostor's iteration must not be adopted")
+
+	// The real source can still re-dial afterwards.
+	redialed, created := lm.RouterReportedLink(report(3), src, dst)
+	req.True(created)
+	req.NotNil(redialed)
+	req.Equal("r0", redialed.GetSrc().Id)
+	req.Equal(uint32(3), redialed.Iteration)
+	req.Len(lm.All(), 1)
 }
 
 // Test_linkTable_removeKeepsAReplacementIndexed covers the guard on index cleanup: a removal must not
@@ -466,4 +627,82 @@ func Test_LinkManager_AddAndRemoveSerializeOnLinkId(t *testing.T) {
 		req.Fail("Remove did not proceed once the link's stripe was released")
 	}
 	req.False(lm.has(link))
+}
+
+// Test_RouterReportedLink_destinationExistence covers the link leak a deleted router leaves behind. The
+// routers that dialed it do not know it is gone and re-announce the link on every reconnect, so the
+// controller has to be the one to refuse it. Runs against a real router store, since the check leans on
+// the router cache being invalidated when a router is deleted.
+func Test_RouterReportedLink_destinationExistence(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Cleanup()
+
+	lm := ctx.GetManagers().Link
+	routers := ctx.GetManagers().Router
+
+	src := NewRouter("src", "", "", 0, true)
+	require.NoError(t, routers.Create(src, change.New()))
+	src.Connected.Store(true)
+
+	report := func(linkId, destRouterId string) *ctrl_pb.RouterLinks_RouterLink {
+		return &ctrl_pb.RouterLinks_RouterLink{
+			Id:           linkId,
+			DestRouterId: destRouterId,
+			LinkProtocol: "tls",
+			DialAddress:  "tcp:localhost:1234",
+			Iteration:    1,
+		}
+	}
+
+	// A nil dst is what a destination not connected to this controller looks like, which is also what a
+	// deleted one looks like. Only the store can tell the two apart.
+	t.Run("accepts a destination that exists but is not connected here", func(t *testing.T) {
+		req := require.New(t)
+		dst := NewRouter("live", "", "", 0, true)
+		req.NoError(routers.Create(dst, change.New()))
+
+		link, created := lm.RouterReportedLink(report("l-live", dst.Id), src, nil)
+		req.True(created)
+		req.NotNil(link)
+		req.Equal(dst.Id, link.DstId)
+	})
+
+	t.Run("refuses a destination that has been deleted", func(t *testing.T) {
+		req := require.New(t)
+		dst := NewRouter("deleted", "", "", 0, true)
+		req.NoError(routers.Create(dst, change.New()))
+		req.NoError(routers.Delete(dst.Id, change.New()))
+
+		link, created := lm.RouterReportedLink(report("l-deleted", dst.Id), src, nil)
+		req.Nil(link, "a report naming a router that no longer exists is refused")
+		req.False(created)
+
+		_, ok := lm.Get("l-deleted")
+		req.False(ok, "the refused link must not be in the table")
+	})
+
+	t.Run("refuses a destination that never existed", func(t *testing.T) {
+		req := require.New(t)
+		link, created := lm.RouterReportedLink(report("l-unknown", "never-created"), src, nil)
+		req.Nil(link)
+		req.False(created)
+	})
+
+	// A connected destination is proof enough that the router exists, so the check must not be reached.
+	// Asserting that from outside means using a destination the store has never heard of.
+	t.Run("accepts a connected destination the store does not know", func(t *testing.T) {
+		req := require.New(t)
+		dst := NewRouter("connected-only", "", "", 0, true)
+		dst.Connected.Store(true)
+
+		link, created := lm.RouterReportedLink(report("l-connected", dst.Id), src, dst)
+		req.True(created)
+		req.NotNil(link)
+	})
+}
+
+// Test_DestinationExists_noEnvAllows guards the fallback: with no one to ask, a link report must never be
+// refused on the strength of a missing lookup.
+func Test_DestinationExists_noEnvAllows(t *testing.T) {
+	require.True(t, NewLinkManager(nil).destinationExists("anything"))
 }

@@ -65,6 +65,10 @@ type Registry interface {
 	// DebugForgetLink will remove the link from the registry to inject an error condition
 	DebugForgetLink(linkId string) bool
 
+	// NotifyLinkConnStateChanged notifies the registry that a link's underlying
+	// connection state has changed, triggering re-notification to controllers.
+	NotifyLinkConnStateChanged(link Xlink)
+
 	// GetLinkKey returns the link key for the given link parameters
 	GetLinkKey(dialerBinding, protocol, dest, listenerBinding string) string
 

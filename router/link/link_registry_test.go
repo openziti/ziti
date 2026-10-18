@@ -130,12 +130,17 @@ func (self *testEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
+func (self *testEnv) GetLinkGossipNotifier() env.LinkGossipNotifier {
+	return nil
+}
+
 type testLink struct {
-	id       string
-	key      string
-	destId   string
-	hbLock   sync.Mutex
-	hbPushed []xlink.HeartbeatSettings
+	id        string
+	key       string
+	destId    string
+	iteration uint32
+	hbLock    sync.Mutex
+	hbPushed  []xlink.HeartbeatSettings
 }
 
 func (self *testLink) GetDestinationType() string {
@@ -241,7 +246,7 @@ func (self *testLink) IsDialed() bool {
 }
 
 func (self *testLink) Iteration() uint32 {
-	return 0
+	return self.iteration
 }
 
 func (self *testLink) AreFaultsSent() bool {
@@ -372,6 +377,10 @@ func Test_gcLinkMetrics(t *testing.T) {
 		checkLinkMetrics(linkId, m, false)
 	}
 
+	// nonLinkMetrics is how many metrics the registry publishes that are not per-link, and so survive link
+	// metric collection. Named rather than repeated inline so adding a registry metric is one edit, not four.
+	const nonLinkMetrics = 3
+
 	getRegistryMetrics := func() map[string]metrics.Metric {
 		result := map[string]metrics.Metric{}
 		registry.EachMetric(func(name string, metric metrics.Metric) {
@@ -396,7 +405,7 @@ func Test_gcLinkMetrics(t *testing.T) {
 	req.Equal(0, len(orphaned))
 	checkLinkMetricsDoesntHave(linkId, getRegistryMetrics())
 
-	req.Equal(2, len(getRegistryMetrics()))
+	req.Equal(nonLinkMetrics, len(getRegistryMetrics()))
 
 	linkId2 := idgen.MustNewUUIDString()
 	link3 := newTestLink(reg)
@@ -420,7 +429,7 @@ func Test_gcLinkMetrics(t *testing.T) {
 	addLinkMetrics(link4.id)
 	addLinkMetrics(linkId5)
 
-	req.Equal(9*4+2, len(getRegistryMetrics()))
+	req.Equal(9*4+nonLinkMetrics, len(getRegistryMetrics()))
 
 	orphaned = reg.gcLinkMetrics(nil)
 	req.Equal(18, len(orphaned))
@@ -429,11 +438,11 @@ func Test_gcLinkMetrics(t *testing.T) {
 	checkLinkMetricsDoesntHave(link3.id, orphaned)
 	checkLinkMetricsDoesntHave(link4.id, orphaned)
 
-	req.Equal(9*4+2, len(getRegistryMetrics()))
+	req.Equal(9*4+nonLinkMetrics, len(getRegistryMetrics()))
 
 	orphaned = reg.gcLinkMetrics(orphaned)
 	req.Equal(0, len(orphaned))
-	req.Equal(9*2+2, len(getRegistryMetrics()))
+	req.Equal(9*2+nonLinkMetrics, len(getRegistryMetrics()))
 
 	checkLinkMetricsContains(link3.id, getRegistryMetrics())
 	checkLinkMetricsContains(link4.id, getRegistryMetrics())
@@ -617,6 +626,10 @@ type testCtrls struct {
 }
 
 func (self *testCtrls) GetAll() map[string]env.NetworkController { return self.all }
+
+// UsesGossip reports false: these tests exercise the control-channel announcement path, which is the
+// path a non-gossip cluster takes.
+func (self *testCtrls) UsesGossip(capabilities.ControllerCapability) bool { return false }
 
 // testCtrl is an env.NetworkController double over a test channel.
 type testCtrl struct {
@@ -1153,6 +1166,7 @@ func (self *reportTestLink) DialAddress() string                      { return "
 func (self *reportTestLink) Iteration() uint32                        { return 1 }
 func (self *reportTestLink) IsDialed() bool                           { return true }
 func (self *reportTestLink) GetLinkConnState() *ctrl_pb.LinkConnState { return nil }
+func (self *reportTestLink) IsClosed() bool                           { return false }
 
 // reconnectOnSendChannel records a reconnect of ctrl1 as each write completes, modeling a reconnect that lands
 // between a write and its completion being recorded.

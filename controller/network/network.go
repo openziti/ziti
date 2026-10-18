@@ -132,6 +132,7 @@ type Network struct {
 	VersionProvider     versions.VersionProvider
 
 	GossipStore      *gossip.Store
+	LinkGossipType   *gossip.StateType[*ctrl_pb.RouterLinks_RouterLink]
 	CanaryGossipType *gossip.StateType[*CanaryValue]
 	// gossipTypes drives the epoch sweep only. Router-deleted cleanup is a separate lifecycle with a
 	// different membership, since canaries carry the epoch that detects a change and so must survive one.
@@ -309,6 +310,7 @@ func (network *Network) initGossip(peering GossipPeering) {
 		})
 	}
 
+	network.initLinkGossip()
 	network.initCanaryGossip()
 }
 
@@ -727,6 +729,11 @@ func (network *Network) ConnectRouter(r *model.Router) {
 
 	network.Link.BuildRouterLinks(r)
 
+	// Reconcile gossip entries, for stale Src/Dst pointers and links missed on initial application.
+	if network.GossipStore != nil {
+		network.ReconcileGossipLinksForRouter(r)
+	}
+
 	for _, h := range network.routerPresenceHandlers.Value() {
 		if syncHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncHandler.InvokeRouterConnectedSynchronously() {
 			continue // already called synchronously in QueueRouterConnect
@@ -745,7 +752,7 @@ func (network *Network) ConnectRouter(r *model.Router) {
 // says its whole dialed set again every time it reconnects, and without this nothing retires the links it
 // left behind by restarting: link ids are minted per dial, so it never mentions the old ones again.
 func (network *Network) scanForDeadLinks() {
-	network.Link.ScanForDeadLinks(nil)
+	network.Link.ScanForDeadLinks(network.IsLinkInGossip)
 }
 
 // retireLinksForDeletedRouter removes every link with the deleted router at either end.
@@ -1057,13 +1064,13 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 
 	// remove Links for Router, rerouting circuits off any that were connected
 	for _, l := range links {
-		if l.Src.Id != r.Id {
+		if l.GetSrc().Id != r.Id {
 			continue
 		}
 
-		// A link its dialer does not prune itself is known only from that router's reports, under ids it
-		// will never mention again. This is the only removal such a link will get.
-		if retireUnannounced {
+		// A link its dialer neither publishes in gossip nor prunes itself is known only from that router's
+		// reports, under ids it will never mention again. This is the only removal such a link will get.
+		if retireUnannounced && !network.IsLinkInGossip(l) {
 			network.LinkFaulted(l, false)
 			continue
 		}
@@ -1072,6 +1079,10 @@ func (network *Network) DisconnectRouter(r *model.Router) {
 		// controller. Circuits here move off it regardless: this controller cannot route over a router it
 		// cannot reach, whatever the link says.
 		wasUsable := l.IsUsable()
+		if !network.config.IsRaftEnabled() {
+			// Tombstone it, and let the listener handle removal.
+			network.LinkGossipType.Delete(LinkGossipKey(l.Id, l.Iteration), l.GetSrc().Id)
+		}
 		if wasUsable {
 			network.RerouteLink(l)
 		}
@@ -1618,7 +1629,7 @@ func (network *Network) Run() {
 		case <-ticker.C:
 			network.clean()
 			network.smart()
-			network.Link.ScanForDeadLinks(nil)
+			network.scanForDeadLinks()
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)
@@ -1703,11 +1714,11 @@ func (network *Network) RemoveLink(linkId string) {
 	var routerList []*model.Router
 	if link != nil {
 		iteration = link.Iteration
-		routerList = []*model.Router{link.Src}
+		routerList = []*model.Router{link.GetSrc()}
 		if dst := link.GetDest(); dst != nil {
 			routerList = append(routerList, dst)
 		}
-		log = log.WithField("srcRouterId", link.Src.Id).
+		log = log.WithField("srcRouterId", link.GetSrc().Id).
 			WithField("dstRouterId", link.DstId).
 			WithField("iteration", iteration)
 		log.Info("deleting known link")
@@ -1762,11 +1773,11 @@ func (network *Network) RemoveLinkAtIteration(linkId string, iteration uint32) b
 		return false
 	}
 
-	routerList := []*model.Router{link.Src}
+	routerList := []*model.Router{link.GetSrc()}
 	if dst := link.GetDest(); dst != nil {
 		routerList = append(routerList, dst)
 	}
-	log = log.WithField("srcRouterId", link.Src.Id).WithField("dstRouterId", link.DstId)
+	log = log.WithField("srcRouterId", link.GetSrc().Id).WithField("dstRouterId", link.DstId)
 
 	// Removal is the decision point, not the iteration check above: a newer
 	// incarnation can be installed in between, and only the link table can
@@ -1939,7 +1950,7 @@ func (network *Network) AcceptMetricsMsg(metrics *metrics_pb.MetricsMessage) {
 		}
 
 		if found {
-			if link.Src.Id == router.Id {
+			if link.GetSrc().Id == router.Id {
 				link.SetSrcLatency(latencyCost) // latency is in nanoseconds
 			} else if link.DstId == router.Id {
 				link.SetDstLatency(latencyCost) // latency is in nanoseconds
@@ -2193,7 +2204,11 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 	}
 
 	var linkDetails *inspect.LinksInspectResult
+	routerPublishesGossip := false
 	for _, val := range resp.Values {
+		if val.Name == "gossip-links" {
+			routerPublishesGossip = true
+		}
 		if val.Name == "links" {
 			if err = json.Unmarshal([]byte(val.Value), &linkDetails); err != nil {
 				network.reportRouterLinksError(router, err, cb)
@@ -2213,6 +2228,12 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 	}
 
 	linkMap := network.Link.GetLinkMap()
+
+	// A link is only expected in the gossip store when its owner actually publishes gossip: while the
+	// cluster cannot carry it nothing does, and a router that reports links the pre-gossip way is
+	// deliberately kept out of the store. Only the owner can answer that, and the owner is the dialer, so
+	// the answer is only in hand for the links this router dialed.
+	expectGossip := routerPublishesGossip && network.ClusterSupports(capabilities.ControllerLinkGossip)
 
 	result := &mgmt_pb.RouterLinkDetails{
 		RouterId:        router.Id,
@@ -2244,6 +2265,14 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 		}
 
 		// Gossip entries are owned by the dialing router. From this side of the
+		// validation, if the router we're asking dialed the link, it's the owner;
+		// otherwise the destination is.
+		gossipOwner := router.Id
+		if !link.Dialed {
+			gossipOwner = link.Dest
+		}
+		network.checkLinkGossip(gossipOwner, link, ctrlLink, expectGossip, detail)
+
 		delete(linkMap, link.Id)
 		result.LinkDetails = append(result.LinkDetails, detail)
 	}
@@ -2251,12 +2280,12 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 	for _, link := range linkMap {
 		related := false
 		dest := ""
-		if link.Src.Id == router.Id {
+		if link.GetSrc().Id == router.Id {
 			related = true
 			dest = link.DstId
 		} else if link.DstId == router.Id {
 			related = true
-			dest = link.Src.Id
+			dest = link.GetSrc().Id
 		}
 
 		if related {
@@ -2267,7 +2296,14 @@ func (network *Network) ValidateRouterLinks(router *model.Router, cb LinkValidat
 				RouterState:   mgmt_pb.LinkState_LinkUnknown,
 				IsValid:       false,
 				DestRouterId:  dest,
-				Dialed:        link.Src.Id == router.Id,
+				Dialed:        link.GetSrc().Id == router.Id,
+			}
+
+			gossipKey := LinkGossipKey(link.Id, link.Iteration)
+			if gossipVal, gossipVer, gossipFound := network.LinkGossipType.GetForOwner(link.GetSrc().Id, gossipKey); gossipFound {
+				detail.InGossipStore = true
+				detail.GossipVersion = gossipVer
+				detail.GossipIteration = gossipVal.Iteration
 			}
 
 			result.LinkDetails = append(result.LinkDetails, detail)
@@ -2294,6 +2330,32 @@ func checkLinkDest(ctrlLink *model.Link, detail *mgmt_pb.RouterLinkDetail) {
 	detail.IsValid = false
 	detail.Messages = append(detail.Messages,
 		"destination router is connected but the link does not reference it, so the link carries no adjacency and cannot be routed over")
+}
+
+// checkLinkGossip fills in a link's gossip-store fields and reports the two ways they can disagree with
+// the controller: an entry held at a different iteration than the link, and an entry that should be there
+// and is not.
+//
+// A missing entry is only a fault when its owner publishes gossip, which is what expectGossip says. The
+// owner is the dialer, so that is only answerable for the links the inspected router dialed; for the rest
+// the fields are filled in and nothing is claimed. ctrlLink is nil when this controller holds no such
+// link, in which case there is nothing for the store to be missing.
+func (network *Network) checkLinkGossip(owner string, routerLink *inspect.LinkInspectDetail, ctrlLink *model.Link, expectGossip bool, detail *mgmt_pb.RouterLinkDetail) {
+	gossipVal, gossipVer, found := network.LinkGossipType.GetForOwner(owner, LinkGossipKey(routerLink.Id, routerLink.Iteration))
+	if found {
+		detail.InGossipStore = true
+		detail.GossipVersion = gossipVer
+		detail.GossipIteration = gossipVal.Iteration
+		if ctrlLink != nil && gossipVal.Iteration != ctrlLink.Iteration {
+			detail.Messages = append(detail.Messages, fmt.Sprintf(
+				"gossip iteration (%d) differs from ctrl iteration (%d)", gossipVal.Iteration, ctrlLink.Iteration))
+		}
+		return
+	}
+
+	if expectGossip && routerLink.Dialed && ctrlLink != nil {
+		detail.Messages = append(detail.Messages, "link in ctrl but missing from gossip store")
+	}
 }
 
 // checkLinkConnsReported asserts only that both sides hold connections for the link, for a dialer that does
@@ -2346,7 +2408,7 @@ func (network *Network) checkLinkConns(ctrlLink *model.Link, routerLink *inspect
 	// anti-entropy keeps the two views reconciled. One that does not is checked only for having conn state
 	// at all, for the reason given on checkLinkConnsReported.
 	strictCompare := true
-	if srcR := ctrlLink.Src; srcR != nil {
+	if srcR := ctrlLink.GetSrc(); srcR != nil {
 		connectedSrc := network.Router.GetConnected(srcR.Id)
 		if connectedSrc == nil || connectedSrc.VersionInfo == nil {
 			return
