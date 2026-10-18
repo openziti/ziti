@@ -141,6 +141,9 @@ func NewController(env Env, migrationMgr MigrationManager) *Controller {
 		errorMappers:           map[string]func(map[string]any) error{},
 		decoders:               command.NewDecoders(),
 	}
+	result.readBarriers = newReadBarriers(result.IsLeader, func() (uint64, error) {
+		return takeReadBarrier(result)
+	}, result.sendReadBarrierRequest)
 	result.initErrorMappers()
 	return result
 }
@@ -183,6 +186,7 @@ type Controller struct {
 	raftRateLimiter        rate.AdaptiveRateLimitTracker
 	errorMappers           map[string]func(map[string]any) error
 	decoders               command.Decoders
+	readBarriers           *readBarriers
 }
 
 // GetDecoders returns the command decoder registry this controller's raft FSM uses to decode

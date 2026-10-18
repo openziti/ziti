@@ -18,10 +18,10 @@ package model
 
 import (
 	"crypto/x509"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 // Env defines the core environment interface for Ziti Edge controller operations.
@@ -134,13 +135,33 @@ type Env interface {
 	// and debugging distributed consensus issues.
 	GetRaftInfo() (string, string, string)
 
-	// GetStoreIndex returns the index of the last change applied to this controller's store, which
-	// versions the answers the store gives. Statements this controller makes about what exists can be
-	// ordered against statements another makes, which nothing else sequences.
+	// GetRaftIndex returns the raft index this controller has applied, which versions the answers its stores
+	// give. Statements this controller makes about what exists can be ordered against another controller's,
+	// which nothing else sequences.
 	//
-	// Zero where there is no such index, as on a controller running without raft. It is not the router
-	// data model's index, which counts a different sequence of changes.
-	GetStoreIndex() uint64
+	// Zero where there is no such index, as on a controller running without raft. It is not the router data
+	// model's index, which counts a different sequence of changes.
+	GetRaftIndex() uint64
+
+	// RequestReadBarrier asks the raft leader for a read barrier and returns without waiting; GetReadBarrier
+	// reports the answer once it arrives. A request is not guaranteed an answer, so a caller that still needs
+	// one asks again later. Does nothing without raft.
+	RequestReadBarrier()
+
+	// GetReadBarrier returns the latest answered read barrier: a store index, in the measure GetRaftIndex
+	// reports, and the local time it was requested. Once GetRaftIndex reaches index, this controller has
+	// applied everything the cluster had committed at requestedAt. requestedAt is zero before any has been
+	// answered. Without raft it returns zero and the current time, since a lone controller's store is always
+	// current.
+	GetReadBarrier() (index uint64, requestedAt time.Time)
+
+	// HasRaftLeader reports whether this controller currently knows of a leader, which is true when it is the
+	// leader itself. False when isolated or mid-election.
+	//
+	// Callers that draw conclusions from an entity's absence need this: a controller with no leader is not
+	// receiving commits, so its view is frozen rather than merely behind, and waiting for an index it will
+	// never be told about would let it mistake isolation for deletion. Always true without raft.
+	HasRaftLeader() bool
 
 	// GetApiAddresses provides current API endpoints and their signatures for
 	// service discovery and client configuration updates.

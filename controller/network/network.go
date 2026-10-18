@@ -143,10 +143,18 @@ type Network struct {
 	// only once a router connects and so are ordered after construction. Registering a type later would
 	// race those readers, and the type would in any case be missed by the per-store-type work already done
 	// for every connected router.
-	gossipTypes                  map[string]gossip.StateTypeInfo // non-generic lookup by store type
-	routerDeletedCleanups        []routerDeletedCleanup
-	canaryListener               *canaryGossipListener
-	routerReportedStates         *routerReportedStates
+	gossipTypes           map[string]gossip.StateTypeInfo // non-generic lookup by store type
+	routerDeletedCleanups []routerDeletedCleanup
+	canaryListener        *canaryGossipListener
+	routerReportedStates  *routerReportedStates
+	// gossipLinkSweepPending names the link gossip entries whose destination this controller could not
+	// judge while behind on raft. The sweep re-asks exactly these. See sweepGossipLinks.
+	//
+	// Self-pruning rather than bounded: an entry gone from the store is dropped when the sweep re-reads it,
+	// and one that still cannot be judged is put back by the sweep, so the set cannot outgrow the store.
+	gossipLinkSweepPending map[gossipLinkRef]struct{}
+	gossipLinkSweepLock    sync.Mutex
+
 	serviceEventMetrics          servermetrics.UsageRegistry
 	serviceDialSuccessCounter    servermetrics.IntervalCounter
 	serviceDialFailCounter       servermetrics.IntervalCounter
@@ -184,6 +192,11 @@ type Network struct {
 	PoolDrops              *PoolDrops
 	inspectionTargets      concurrenz.CopyOnWriteSlice[InspectTarget]
 	ctrlDialerValidator    CtrlDialerValidator
+
+	// pendingRemovalNotices holds proved removals that could not yet be told to the router that named them.
+	// See notifyProvedDestinationRemoved.
+	pendingRemovalNoticesLock sync.Mutex
+	pendingRemovalNotices     map[removalNotice]struct{}
 }
 
 func NewNetwork(config Config, env model.Env) (*Network, error) {
@@ -265,7 +278,6 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	env.GetManagers().Router.Store.AddEntityIdListener(network.HandleRouterDelete, boltz.EntityDeletedAsync)
 
 	linkManager := env.GetManagers().Link
-	// Before the index drop, which is what the link lookup below reads.
 	network.onRouterDeleted("links", network.retireLinksForDeletedRouter)
 	network.onRouterDeleted("linkIndex", linkManager.RouterDeleted)
 
@@ -339,8 +351,6 @@ func (network *Network) IsLeader() bool {
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
-	// Before the index drop: retirement reads the per-router index to find what to retire, and dropping it
-	// first leaves the links in place on the surviving endpoint.
 	self.runRouterDeletedCleanups(id)
 	self.Link.RouterDeleted(id)
 }
@@ -810,7 +820,9 @@ func (network *Network) scanForDeadLinks() {
 // id, which only the deprecated create-outside-enrollment path allows, and needs the delete and recreate to
 // land inside that window. Guarding it is not worth the machinery.
 func (network *Network) retireLinksForDeletedRouter(routerId string) {
-	links := network.Link.LinksForRouter(routerId)
+	// Scanned rather than read from the router's index. Whatever finds the router gone may drop that index,
+	// a link report included, and one can get there before this does.
+	links := network.Link.LinksWithEndpoint(routerId)
 	if len(links) == 0 {
 		return
 	}
@@ -821,6 +833,47 @@ func (network *Network) retireLinksForDeletedRouter(routerId string) {
 
 	pfxlog.Logger().WithField("routerId", routerId).WithField("links", len(links)).
 		Info("removed links belonging to a deleted router")
+}
+
+// requestReadBarrier asks for a read barrier while this controller holds a link whose destination it cannot
+// yet judge; see SweepUnresolvedDestinations. Returns without waiting, and the answer is used by a later
+// cycle.
+func (network *Network) requestReadBarrier() {
+	if network.Link.NeedsReadBarrier() {
+		network.env.RequestReadBarrier()
+	}
+}
+
+// sweepUnresolvedLinkDestinations settles links recorded for a destination this controller had not caught up
+// to. A report from a router that does not gossip is recorded even when the destination cannot be judged,
+// since the link table is the only copy of it; this removes the ones whose destination still does not exist
+// once the question can be answered.
+//
+// The dialer is told its destination is gone, for the same reason a refused report is: it does not know, and
+// it re-announces the link on every reconnect until something says so.
+func (network *Network) sweepUnresolvedLinkDestinations() {
+	unresolved := network.Link.SweepUnresolvedDestinations()
+	if len(unresolved) == 0 {
+		return
+	}
+
+	removed := 0
+	for _, link := range unresolved {
+		if !network.Link.RemoveUnresolved(link) {
+			continue
+		}
+		removed++
+
+		network.NotifyLinkEvent(link, event.LinkFault)
+		if src := link.GetSrc(); src != nil {
+			network.notifyProvedDestinationRemoved(src, link.DstId)
+		}
+	}
+
+	if removed > 0 {
+		pfxlog.Logger().WithField("links", removed).
+			Info("removed links naming destinations that do not exist")
+	}
 }
 
 // ClusterCapabilities returns the capabilities every member of the controller cluster supports, or nil when
@@ -1159,7 +1212,10 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 	}
 
 	dst := network.Router.GetConnected(reportedLink.DestRouterId)
-	link, created := network.Link.RouterReportedLink(reportedLink, src, dst)
+	// Unverified: a report arriving this way is from a router that does not gossip, so there is no stored
+	// entry to re-read. The link table is the only copy, so a destination this controller cannot judge yet
+	// is recorded rather than refused, and the sweep settles it.
+	link, outcome := network.Link.RouterReportedLinkUnverified(reportedLink, src, dst)
 
 	unlock()
 
@@ -1167,14 +1223,19 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		network.NotifyLinkIdEvent(reportedLink.Id, event.LinkFromRouterDisconnectedDest)
 	}
 
+	if outcome == model.LinkReportDestinationAbsent {
+		network.notifyProvedDestinationRemoved(src, reportedLink.DestRouterId)
+		return
+	}
+
 	if link == nil {
-		// Refused; RouterReportedLink has already said why. A report naming a destination that no longer
-		// exists is also the evidence that the router never got the removal, so answer it with one.
+		// Refused for a reason other than the destination. The notice is still offered: it re-checks the
+		// destination itself and says nothing unless it is gone.
 		network.notifyDestinationRemovedIfGone(src, reportedLink.DestRouterId, dst)
 		return
 	}
 
-	if created {
+	if outcome == model.LinkReportCreated {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")
 	} else {
@@ -1183,53 +1244,137 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 	}
 }
 
-// notifyDestinationRemovedIfGone tells srcRouter that destRouterId is gone, when a link report or gossip
-// entry naming it has been refused. dst is the destination's connection here, if any.
+// notifyDestinationRemovedIfGone tells srcRouter that destRouterId is gone, if this controller can prove it.
+// For callers that have not proved the absence themselves; one that has uses notifyProvedDestinationRemoved.
+// dst is the destination's connection here, if any.
 func (network *Network) notifyDestinationRemovedIfGone(srcRouter *model.Router, destRouterId string, dst *model.Router) {
 	if network.shouldNotifyDestinationRemoved(srcRouter, destRouterId, dst) {
 		network.RouterMessaging.NotifyRouterRemoved(srcRouter.Id, destRouterId)
 	}
 }
 
-// shouldNotifyDestinationRemoved reports whether to re-assert a removal for destRouterId to srcRouter. dst
-// is the destination's connection here, if any.
+// notifyProvedDestinationRemoved tells srcRouter that destRouterId is gone, for a caller that has already
+// proved the absence and acted on it: refused the entry that named it, or removed the link. If the notice
+// cannot be sent yet it is kept and retried on the next cycle, since the caller has nothing left pending
+// that would raise it again.
+//
+// Does not ask again whether the absence can be judged. That answer rests on a record of when the destination
+// was first named, which is forgotten some time after it is settled (see
+// LinkManager.PruneUnjudgedDestinations), so asking again can come back false for a destination that was
+// proved gone, and drop a correction the router is owed.
+func (network *Network) notifyProvedDestinationRemoved(srcRouter *model.Router, destRouterId string) {
+	// No connection is passed: one still held for a proved-absent destination is a deleted router's,
+	// waiting to be closed, and is no reason to withhold the notice.
+	switch network.removalNoticeFor(srcRouter, destRouterId, nil) {
+	case removalNoticeSend:
+		network.RouterMessaging.NotifyRouterRemoved(srcRouter.Id, destRouterId)
+	case removalNoticeRetry:
+		network.keepRemovalNoticePending(srcRouter.Id, destRouterId)
+	}
+}
+
+// shouldNotifyDestinationRemoved reports whether to re-assert a removal for destRouterId to srcRouter, for a
+// caller that has not proved the absence. dst is the destination's connection here, if any.
 //
 // Peer state is only recomputed when a router connects or disconnects, and a deleted router does neither
 // again, so a removal a router misses is never repeated and it dials the dead destination forever. A link
-// report or a gossip entry naming the destination is the evidence that it was missed, and both repeat, so
-// the correction repeats with them.
+// report or a gossip entry naming the destination is the evidence that it was missed, so it is answered.
 //
 // Every router that names the destination is told, whatever it supports. A router in link gossip learns of
 // deletions from the router data model instead, but only where its controllers distribute routers there,
 // and the statement is true regardless of who hears it.
 //
-// Leader only. This is an unsolicited assertion rather than a reaction to a local event, and it tears links
-// down: a controller lagging on a create would otherwise tell a router to drop a destination that is fine.
-// One controller saying it is enough, since the reports that prompt it repeat.
+// Whoever can prove the absence may say so, leader or not. Gating it on leadership strands the correction
+// when the dialer is connected only to a follower. A barrier is also the stronger evidence: being the
+// caught-up leader is not proof the store holds the create, since raft advances its applied index when it
+// hands entries to the FSM, before the store has them.
 func (network *Network) shouldNotifyDestinationRemoved(srcRouter *model.Router, destRouterId string, dst *model.Router) bool {
-	if srcRouter == nil || destRouterId == "" || dst != nil {
+	if !network.Link.CanJudgeAbsence(destRouterId) {
 		return false
 	}
+	return network.removalNoticeFor(srcRouter, destRouterId, dst) == removalNoticeSend
+}
 
-	if !network.IsLeader() {
-		return false
+// removalNoticeDecision is what removalNoticeFor concluded about a notice.
+type removalNoticeDecision int
+
+const (
+	// removalNoticeNotOwed means there is nothing for this controller to say: the destination exists, is
+	// connected here, or the router to tell is not connected here, which leaves it to a controller that is.
+	removalNoticeNotOwed removalNoticeDecision = iota
+	// removalNoticeSend means the router is owed the notice and can be told now.
+	removalNoticeSend
+	// removalNoticeRetry means the router may be owed the notice but the store could not be read to say.
+	removalNoticeRetry
+)
+
+// removalNoticeFor decides whether srcRouter is owed a notice that destRouterId is gone, taking the absence
+// as already proved. It still re-reads the destination, which costs little and guards against acting on a
+// destination that exists after all.
+func (network *Network) removalNoticeFor(srcRouter *model.Router, destRouterId string, dst *model.Router) removalNoticeDecision {
+	if srcRouter == nil || destRouterId == "" || dst != nil {
+		return removalNoticeNotOwed
 	}
 
 	// A gossip entry names its dialer whether or not that router is connected here, and a router this
 	// controller does not hold is one it cannot tell.
 	if network.Router.GetConnected(srcRouter.Id) == nil {
-		return false
+		return removalNoticeNotOwed
 	}
 
 	exists, err := network.Router.Exists(destRouterId)
 	if err != nil {
 		// Saying a router is gone on the strength of a failed read would have the reporting router tear
-		// down links to one that is probably fine.
+		// down links to one that is probably fine, and not saying it may leave one owed. Asked again later.
 		pfxlog.Logger().WithError(err).WithField("routerId", destRouterId).
 			Error("failed to check if reported link destination exists")
-		return false
+		return removalNoticeRetry
 	}
-	return !exists
+	if exists {
+		return removalNoticeNotOwed
+	}
+	return removalNoticeSend
+}
+
+// removalNotice names one router owed word that another is gone.
+type removalNotice struct {
+	srcRouterId  string
+	destRouterId string
+}
+
+// keepRemovalNoticePending holds a notice that could not be sent, for retryRemovalNotices.
+func (network *Network) keepRemovalNoticePending(srcRouterId, destRouterId string) {
+	network.pendingRemovalNoticesLock.Lock()
+	defer network.pendingRemovalNoticesLock.Unlock()
+	if network.pendingRemovalNotices == nil {
+		network.pendingRemovalNotices = map[removalNotice]struct{}{}
+	}
+	network.pendingRemovalNotices[removalNotice{srcRouterId: srcRouterId, destRouterId: destRouterId}] = struct{}{}
+}
+
+// PendingRemovalNoticeCount returns how many proved removals are still waiting to be told to a router.
+func (network *Network) PendingRemovalNoticeCount() int {
+	network.pendingRemovalNoticesLock.Lock()
+	defer network.pendingRemovalNoticesLock.Unlock()
+	return len(network.pendingRemovalNotices)
+}
+
+// retryRemovalNotices tries again to send the notices that could not be sent. Called on the network cycle.
+// A router no longer connected here is dropped rather than held: it re-reports its links on reconnecting,
+// which raises the question afresh.
+func (network *Network) retryRemovalNotices() {
+	network.pendingRemovalNoticesLock.Lock()
+	pending := network.pendingRemovalNotices
+	network.pendingRemovalNotices = nil
+	network.pendingRemovalNoticesLock.Unlock()
+
+	for notice := range pending {
+		src := network.Router.GetConnected(notice.srcRouterId)
+		if src == nil {
+			continue
+		}
+		network.notifyProvedDestinationRemoved(src, notice.destRouterId)
+	}
 }
 
 func (network *Network) LinkFaulted(link *model.Link, dupe bool) {
@@ -1671,6 +1816,11 @@ func (network *Network) Run() {
 			network.clean()
 			network.smart()
 			network.scanForDeadLinks()
+			network.requestReadBarrier()
+			network.sweepUnresolvedLinkDestinations()
+			network.retryRemovalNotices()
+			network.sweepGossipLinks()
+			network.Link.PruneUnjudgedDestinations()
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)

@@ -227,6 +227,17 @@ message RouterLinks {
   bool fullRefresh = 2;
 }
 
+// LinkMetrics is the value of a link-metrics gossip entry. It carries a router's
+// measured latency cost for a link (latency mean plus queue_time mean, in
+// nanoseconds) along with the link's dial iteration at the time of measurement.
+// The entry is keyed by link id and owned by the reporting router; both ends of
+// a link publish their own measurement.
+message LinkMetrics {
+  string linkId = 1;
+  uint32 iteration = 2;
+  int64 latencyNanos = 3;
+}
+
 enum FaultSubject {
   IngressFault = 0;
   EgressFault = 1;
@@ -458,15 +469,4 @@ message CtrlChanListener {
 
 message CtrlChanListeners {
     repeated CtrlChanListener listeners = 1;
-}
-
-// LinkMetrics is the value of a link-metrics gossip entry. It carries a router's
-// measured latency cost for a link (latency mean plus queue_time mean, in
-// nanoseconds) along with the link's dial iteration at the time of measurement.
-// The entry is keyed by link id and owned by the reporting router; both ends of
-// a link publish their own measurement.
-message LinkMetrics {
-  string linkId = 1;
-  uint32 iteration = 2;
-  int64 latencyNanos = 3;
 }

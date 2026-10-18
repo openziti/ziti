@@ -267,7 +267,7 @@ func (self peerState) toChange(routerId string) *ctrl_pb.PeerStateChange {
 // settles a delete landing mid-computation: the healthy report it produces is stamped below the delete and
 // loses to the removal, which is exactly what the index is for.
 func (self *RouterMessaging) computePeerState(routerId string) peerState {
-	observedAt := self.env.GetStoreIndex()
+	observedAt := self.env.GetRaftIndex()
 
 	exists, err := self.managers.Router.Exists(routerId)
 	if err != nil {
@@ -277,7 +277,7 @@ func (self *RouterMessaging) computePeerState(routerId string) peerState {
 	}
 
 	if !exists {
-		return peerState{state: ctrl_pb.PeerState_Removed, storeIndex: self.env.GetStoreIndex()}
+		return peerState{state: ctrl_pb.PeerState_Removed, storeIndex: self.env.GetRaftIndex()}
 	}
 
 	if router := self.managers.Router.GetConnected(routerId); router != nil {

@@ -38,6 +38,7 @@ func NewBindHandler(n *network.Network, raftCtrl *raft.Controller, gossipStore *
 		channel.AddReceiveHandlers(binding, newRemovePeerHandler(raftCtrl))
 		channel.AddReceiveHandlers(binding, newTransferLeadershipHandler(raftCtrl))
 		channel.AddReceiveHandlers(binding, newInspectHandler(n))
+		channel.AddReceiveHandlers(binding, raftCtrl.ReadBarrierHandlers()...)
 
 		if gossipStore != nil {
 			channel.AddReceiveHandlers(binding, gossipStore.NewDeltaHandler())

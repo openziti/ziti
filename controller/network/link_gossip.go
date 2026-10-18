@@ -90,32 +90,219 @@ func (network *Network) initLinkGossip() {
 	network.onRouterDeleted(LinkGossipStoreType, linkType.DropOwner)
 }
 
-// ReconcileGossipLinksForRouter ensures that every non-tombstoned gossip entry
-// owned by the given router has a corresponding link in the link manager. This
-// covers entries that were applied while the router was unknown (e.g., due to raft
-// replication delay) and whose listener notification was skipped.
-func (network *Network) ReconcileGossipLinksForRouter(router *model.Router) {
-	reconciled := 0
-	refusedDests := map[string]struct{}{}
-	network.LinkGossipType.IterByOwner(router.Id, func(key string, value *ctrl_pb.RouterLinks_RouterLink) {
-		dst := network.Router.GetConnected(value.DestRouterId)
-		if link, created := network.Link.RouterReportedLink(value, router, dst); created {
-			reconciled++
-		} else if link == nil {
-			refusedDests[value.DestRouterId] = struct{}{}
-		}
+// gossipLinkRef names an entry without holding what it said, for a walk that applies entries once it has
+// ended. Applying one reaches the link manager and can queue a notice on the router messaging loop, and the
+// store holds an owner's lock across the whole of a walk.
+type gossipLinkRef struct {
+	key   string
+	owner string
+}
+
+// collectGossipLinkRefsForOwner names every live link entry the given router published.
+func (network *Network) collectGossipLinkRefsForOwner(owner string) []gossipLinkRef {
+	var refs []gossipLinkRef
+	network.LinkGossipType.IterByOwner(owner, func(key string, _ *ctrl_pb.RouterLinks_RouterLink) {
+		refs = append(refs, gossipLinkRef{key: key, owner: owner})
 	})
+	return refs
+}
+
+// applyGossipLinkEntries re-reads each named entry and applies it, reporting how many links it built and
+// how many entries it still could not judge.
+//
+// Each entry is read and applied under the store's delivery lock for its key, so the pair is ordered
+// against the store's own listener callbacks. Reading first and applying after would let a tombstone land
+// in between: its callback removes the link, and this then rebuilds it from a value the store has retired.
+func (network *Network) applyGossipLinkEntries(refs []gossipLinkRef, trigger linkEntryTrigger) (applied int, awaitingCatchUp int) {
+	for _, ref := range refs {
+		network.LinkGossipType.WithEntry(ref.owner, ref.key, func(value *ctrl_pb.RouterLinks_RouterLink, found bool) {
+			if !found {
+				return
+			}
+			switch network.applyGossipLinkEntry(ref.key, ref.owner, value, trigger) {
+			case model.LinkReportCreated:
+				applied++
+			case model.LinkReportDestinationUnknown:
+				awaitingCatchUp++
+			}
+		})
+	}
+	return applied, awaitingCatchUp
+}
+
+// gossipLinkSource returns the router that published a link gossip entry, or nil if it is not known here at
+// all. A router that is not connected to this controller is loaded from the database, so the link is still
+// recorded: this controller cannot route over it either way, and it is the dialer's to retire.
+func (network *Network) gossipLinkSource(owner string) *model.Router {
+	if src := network.Router.GetConnected(owner); src != nil {
+		return src
+	}
+	src, err := network.Router.Read(owner)
+	if err != nil {
+		return nil
+	}
+	return src
+}
+
+// linkEntryTrigger says why an entry is being applied: it has just arrived, or a walk of the store is
+// asking about it again. A re-walk carries no news about a link that is already current, so it does not
+// raise the event an arrival does. A link it builds is news either way.
+type linkEntryTrigger int
+
+const (
+	// linkEntryArrived is the store's delivery of an entry, which is news.
+	linkEntryArrived linkEntryTrigger = iota
+	// linkEntryReconciled is a walk for a router that has just connected, picking up entries whose delivery
+	// was skipped because the owner was unknown then. A first sight like an arrival, but not news.
+	linkEntryReconciled
+	// linkEntrySwept is the sweep reading back an entry whose destination could not be judged before. Not
+	// news either.
+	linkEntrySwept
+)
+
+// applyGossipLinkEntry applies one link entry to the link manager and reports what became of it, so that an
+// entry is acted on the same way whether it has just arrived or is being re-walked out of the store.
+//
+// LinkReportDestinationUnknown marks the entry for the sweep and is the only outcome that is not final for
+// it. An entry whose owning router is not known here at all is reported as refused, since nothing can be
+// built from it and nothing further will change that.
+//
+// Must not be called while iterating the gossip store.
+func (network *Network) applyGossipLinkEntry(key, owner string, value *ctrl_pb.RouterLinks_RouterLink, trigger linkEntryTrigger) model.LinkReportOutcome {
+	linkId, _ := ParseLinkGossipKey(key)
+
+	log := linkGossipLog.With(
+		"linkId", linkId,
+		"gossipKey", key,
+		"srcRouterId", owner,
+		"destRouterId", value.DestRouterId,
+		"iteration", value.Iteration)
+
+	src := network.gossipLinkSource(owner)
+	if src == nil {
+		log.Debug("ignoring gossip link for unknown router")
+		return model.LinkReportRefused
+	}
+
+	dst := network.Router.GetConnected(value.DestRouterId)
+
+	link, outcome := network.Link.RouterReportedLink(value, src, dst)
+
+	switch outcome {
+	case model.LinkReportDestinationAbsent:
+		// Proved gone. An entry naming a destination that no longer exists is the evidence that its dialer
+		// never got the removal, so answer it with one. The dialer then drops the link and retires the entry.
+		// The entry is no longer held, so if the notice cannot go now it is kept and retried on its own.
+		network.notifyProvedDestinationRemoved(src, value.DestRouterId)
+
+	case model.LinkReportRefused:
+		// Refused for a reason other than the destination. The notice is still offered, but only on its own
+		// evidence, since nothing here proved the destination gone.
+		network.notifyDestinationRemovedIfGone(src, value.DestRouterId, dst)
+
+	case model.LinkReportDestinationUnknown:
+		// No copy of the report is held, only its name. The entry stays in the store, and the sweep reads it
+		// from there once this controller can judge the destination.
+		network.markGossipLinkSweepPending(gossipLinkRef{key: key, owner: owner})
+
+	case model.LinkReportCreated:
+		// Reconcile latency from the link-metrics store for both ends. A metrics
+		// entry can arrive before the link-state entry that creates this link
+		// (the two stores replicate independently), so on create or iteration
+		// replace we pull the current latency from the store rather than wait for
+		// the next metrics publish. RouterReportedLink reports created for both a
+		// brand-new link and an iteration replacement, so this covers re-dials.
+		network.reconcileLinkMetricsForLink(link)
+
+		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
+		log.Debug("gossip: link added")
+
+	case model.LinkReportCurrent:
+		// Apply updated ConnState only when the gossip entry's iteration matches
+		// the link's iteration. An old-iteration entry arriving after the link has
+		// been replaced carries a higher StateIteration counter from the old link
+		// lifetime, which would permanently block updates from the new iteration.
+		if value.ConnState != nil && value.Iteration == link.Iteration {
+			link.SetConnsState(value.ConnState)
+		}
+		if trigger == linkEntryArrived {
+			// A walk re-asking about a link that was already current has nothing to report, and raising the
+			// event anyway puts the whole store on the event stream once a cycle for as long as a sweep is
+			// owed, which is while this controller is already behind.
+			network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
+		}
+		log.Debug("gossip: link updated")
+	}
+
+	return outcome
+}
+
+// markGossipLinkSweepPending records an entry whose destination this controller could not judge, for the
+// next sweep to ask about again.
+func (network *Network) markGossipLinkSweepPending(ref gossipLinkRef) {
+	network.gossipLinkSweepLock.Lock()
+	defer network.gossipLinkSweepLock.Unlock()
+	if network.gossipLinkSweepPending == nil {
+		network.gossipLinkSweepPending = map[gossipLinkRef]struct{}{}
+	}
+	network.gossipLinkSweepPending[ref] = struct{}{}
+}
+
+// takeGossipLinkSweepPending empties the pending set and returns what it held.
+func (network *Network) takeGossipLinkSweepPending() []gossipLinkRef {
+	network.gossipLinkSweepLock.Lock()
+	defer network.gossipLinkSweepLock.Unlock()
+	refs := make([]gossipLinkRef, 0, len(network.gossipLinkSweepPending))
+	for ref := range network.gossipLinkSweepPending {
+		refs = append(refs, ref)
+	}
+	network.gossipLinkSweepPending = nil
+	return refs
+}
+
+// GossipLinkSweepPendingCount is how many link gossip entries are waiting on this controller to catch up
+// before their destination can be judged.
+func (network *Network) GossipLinkSweepPendingCount() int {
+	network.gossipLinkSweepLock.Lock()
+	defer network.gossipLinkSweepLock.Unlock()
+	return len(network.gossipLinkSweepPending)
+}
+
+// ReconcileGossipLinksForRouter ensures that every live gossip entry owned by the given router has a
+// corresponding link in the link manager. This covers entries that were applied while the router was
+// unknown (e.g., due to raft replication delay) and whose listener notification was skipped.
+func (network *Network) ReconcileGossipLinksForRouter(router *model.Router) {
+	reconciled, _ := network.applyGossipLinkEntries(network.collectGossipLinkRefsForOwner(router.Id), linkEntryReconciled)
 	if reconciled > 0 {
 		linkGossipLog.Info("reconciled missing links from gossip store on router connect",
 			"routerId", router.Id,
 			"count", reconciled)
 	}
+}
 
-	// Answered after the walk rather than inside it: the notice is queued on the messaging event loop,
-	// which is not somewhere to go while holding the store.
-	for destRouterId := range refusedDests {
-		network.notifyDestinationRemovedIfGone(router, destRouterId, network.Router.GetConnected(destRouterId))
+// sweepGossipLinks asks the store again about the entries whose destination could not be judged when they
+// arrived, because this controller was behind on raft. Called on the network cycle.
+//
+// The pending set is taken before anything is applied, so an entry that cannot be judged during the pass
+// puts itself back rather than having its mark cleared out from under it. In steady state the set is empty
+// and the pass does nothing.
+//
+// Deliberately without an attempt limit. The store holds the entry whichever way this controller decides,
+// so nothing is lost by asking again. A destination that is genuinely gone settles once a read barrier
+// covers it: the entry is refused, its dialer is told the destination was removed, and the dialer retires the
+// entry out of the store.
+func (network *Network) sweepGossipLinks() {
+	refs := network.takeGossipLinkSweepPending()
+	if len(refs) == 0 {
+		return
 	}
+
+	applied, awaitingCatchUp := network.applyGossipLinkEntries(refs, linkEntrySwept)
+
+	linkGossipLog.Info("asked the link gossip store again about entries awaiting catch-up",
+		"entries", len(refs),
+		"applied", applied,
+		"awaitingCatchUp", awaitingCatchUp)
 }
 
 // IsLinkInGossip reports whether link is currently published in the gossip store by its dialer. Only the
@@ -142,63 +329,16 @@ type linkGossipListener struct {
 	network *Network
 }
 
-func (l *linkGossipListener) EntryChanged(key string, value *ctrl_pb.RouterLinks_RouterLink, _ uint64, owner string, created bool, _ gossip.ChangeOrigin) {
-	linkId, _ := ParseLinkGossipKey(key)
-
-	log := linkGossipLog.With(
-		"linkId", linkId,
-		"gossipKey", key,
-		"srcRouterId", owner,
-		"destRouterId", value.DestRouterId,
-		"iteration", value.Iteration)
-
-	src := l.network.Router.GetConnected(owner)
-	if src == nil {
-		// Source router not connected to this controller. Load it from the database so the link is still
-		// recorded: this controller cannot route over it either way, and it is the dialer's to retire.
-		var err error
-		src, err = l.network.Router.Read(owner)
-		if err != nil || src == nil {
-			log.Debug("ignoring gossip link for unknown router")
-			return
-		}
-	}
-
-	dst := l.network.Router.GetConnected(value.DestRouterId)
-
-	link, linkCreated := l.network.Link.RouterReportedLink(value, src, dst)
-	if link == nil {
-		return
-	}
-
-	if linkCreated {
-		// Reconcile latency from the link-metrics store for both ends. A metrics
-		// entry can arrive before the link-state entry that creates this link
-		// (the two stores replicate independently), so on create or iteration
-		// replace we pull the current latency from the store rather than wait for
-		// the next metrics publish. RouterReportedLink reports created for both a
-		// brand-new link and an iteration replacement, so this covers re-dials.
-		l.network.reconcileLinkMetricsForLink(link)
-
-		l.network.NotifyLinkEvent(link, event.LinkFromRouterNew)
-		log.Debug("gossip: link added")
-	} else {
-		// Apply updated ConnState only when the gossip entry's iteration matches
-		// the link's iteration. An old-iteration entry arriving after the link has
-		// been replaced carries a higher StateIteration counter from the old link
-		// lifetime, which would permanently block updates from the new iteration.
-		if value.ConnState != nil && value.Iteration == link.Iteration {
-			link.SetConnsState(value.ConnState)
-		}
-		l.network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
-		log.Debug("gossip: link updated")
-	}
+func (l *linkGossipListener) EntryChanged(key string, value *ctrl_pb.RouterLinks_RouterLink, _ uint64, owner string, _ bool, _ gossip.ChangeOrigin) {
+	l.network.applyGossipLinkEntry(key, owner, value, linkEntryArrived)
 }
 
 // GossipLinkInspectResult is the JSON structure returned by the "gossip-links" inspect key.
 type GossipLinkInspectResult struct {
 	Entries []GossipLinkEntry `json:"entries"`
 	Count   int               `json:"count"`
+	// SweepPending is how many entries name a destination this controller cannot judge until it catches up.
+	SweepPending int `json:"sweepPending"`
 }
 
 // GossipLinkEntry describes a single link entry in the gossip store.
@@ -233,6 +373,7 @@ func (network *Network) inspectGossipLinks() *GossipLinkInspectResult {
 		})
 	})
 	result.Count = len(result.Entries)
+	result.SweepPending = network.GossipLinkSweepPendingCount()
 	return result
 }
 

@@ -328,6 +328,8 @@ type Mesh interface {
 	GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error)
 	GetAdvertiseAddr() raft.ServerAddress
 	GetPeers() map[string]*Peer
+	// GetPeer returns the connected peer at addr, or nil if there is none. It does not dial.
+	GetPeer(addr raft.ServerAddress) *Peer
 
 	// WaitForPeer blocks until a peer at the given address is connected or the timeout expires.
 	WaitForPeer(address string, timeout time.Duration) (*Peer, error)

@@ -6,6 +6,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func (request *ReadBarrierRequest) GetContentType() int32 {
+	return int32(ContentType_ReadBarrierRequestType)
+}
+
+func (request *ReadBarrierResponse) GetContentType() int32 {
+	return int32(ContentType_ReadBarrierResponseType)
+}
+
 func (request *AddPeerRequest) GetContentType() int32 {
 	return int32(ContentType_AddPeerRequestType)
 }

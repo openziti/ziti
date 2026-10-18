@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"sync"
 	"time"
 
 	"github.com/openziti/foundation/v2/versions"
@@ -52,10 +53,19 @@ type TestContext struct {
 	closeNotify     chan struct{}
 	dispatcher      command.Dispatcher
 	eventDispatcher event.Dispatcher
-	// StoreIndex is what GetStoreIndex reports. StoreIndexF takes precedence when set, for tests that need
+	// RaftIndex is what GetRaftIndex reports. RaftIndexF takes precedence when set, for tests that need
 	// the index to move between reads.
-	StoreIndex  uint64
-	StoreIndexF func() uint64
+	RaftIndex  uint64
+	RaftIndexF func() uint64
+	// ReadBarrierUnanswered leaves RequestReadBarrier unanswered, standing in for a leader that cannot take
+	// one.
+	ReadBarrierUnanswered bool
+	readBarrierLock       sync.Mutex
+	readBarrierIndex      uint64
+	readBarrierAt         time.Time
+	readBarrierRequests   int
+	// RaftLeaderless makes HasRaftLeader report false, standing in for an isolated controller.
+	RaftLeaderless bool
 }
 
 func (ctx *TestContext) GetTokenIssuerCache() *TokenIssuerCache {
@@ -187,11 +197,49 @@ func (self *TestContext) GetRaftInfo() (string, string, string) {
 	return "testaddr", "testid", "testversion"
 }
 
-func (self *TestContext) GetStoreIndex() uint64 {
-	if self.StoreIndexF != nil {
-		return self.StoreIndexF()
+func (self *TestContext) HasRaftLeader() bool {
+	return !self.RaftLeaderless
+}
+
+// RequestReadBarrier implements model.Env. It answers at once with the current raft index, as a leader with
+// nothing outstanding would, unless ReadBarrierUnanswered is set.
+func (self *TestContext) RequestReadBarrier() {
+	self.readBarrierLock.Lock()
+	self.readBarrierRequests++
+	self.readBarrierLock.Unlock()
+
+	if !self.ReadBarrierUnanswered {
+		self.SetReadBarrier(self.GetRaftIndex(), time.Now())
 	}
-	return self.StoreIndex
+}
+
+// GetReadBarrier implements model.Env, reporting what SetReadBarrier or RequestReadBarrier last recorded.
+func (self *TestContext) GetReadBarrier() (uint64, time.Time) {
+	self.readBarrierLock.Lock()
+	defer self.readBarrierLock.Unlock()
+	return self.readBarrierIndex, self.readBarrierAt
+}
+
+// SetReadBarrier sets what GetReadBarrier reports.
+func (self *TestContext) SetReadBarrier(index uint64, requestedAt time.Time) {
+	self.readBarrierLock.Lock()
+	defer self.readBarrierLock.Unlock()
+	self.readBarrierIndex = index
+	self.readBarrierAt = requestedAt
+}
+
+// ReadBarrierRequests reports how many times RequestReadBarrier has been called.
+func (self *TestContext) ReadBarrierRequests() int {
+	self.readBarrierLock.Lock()
+	defer self.readBarrierLock.Unlock()
+	return self.readBarrierRequests
+}
+
+func (self *TestContext) GetRaftIndex() uint64 {
+	if self.RaftIndexF != nil {
+		return self.RaftIndexF()
+	}
+	return self.RaftIndex
 }
 
 func (self *TestContext) GetPeerSigners() []*x509.Certificate {

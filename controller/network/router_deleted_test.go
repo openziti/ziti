@@ -274,3 +274,30 @@ func TestGossipTypes_EverySweepDecisionIsDeliberate(t *testing.T) {
 	require.True(t, inSweep[LinkGossipStoreType], "links from a previous router lifetime must be swept")
 	require.True(t, inSweep[LinkMetricsGossipStoreType], "link metrics from a previous router lifetime must be swept")
 }
+
+// TestRouterDeleted_LinkPublishedAfterTheCleanupIsRetired: the cleanup scans the link table once, after the
+// delete commits. A report that resolved the destination's connection before then can publish afterwards, and
+// the reporter is owed word that its destination is gone, since the connection it was handed is a deleted
+// router's.
+func TestRouterDeleted_LinkPublishedAfterTheCleanupIsRetired(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := newReportingRouter(t, network, addr, "reporter")
+	doomed := model.NewRouterForTest("doomed", "", addr, &fakeCtrlChannel{}, 0, false)
+	req.NoError(network.Router.Create(doomed, change.New()))
+	network.Router.MarkConnected(doomed)
+
+	req.NoError(network.Router.Delete(doomed.Id, change.New()))
+	network.runRouterDeletedCleanups(doomed.Id)
+	network.Link.RouterDeleted(doomed.Id)
+	req.NotNil(network.Router.GetConnected(doomed.Id), "its connection has not been torn down yet")
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id: "l0", DestRouterId: doomed.Id, LinkProtocol: "tls", Iteration: 1,
+	})
+
+	_, recorded := network.Link.Get("l0")
+	req.False(recorded, "a link to a deleted router must not survive its cleanup")
+	requireRemovalNotice(t, network, src.Id, doomed.Id, "and the reporter must be told the destination is gone")
+}

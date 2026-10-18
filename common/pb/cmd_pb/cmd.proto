@@ -14,6 +14,22 @@ enum ContentType {
   AddPeerRequestType = 2053;
   RemovePeerRequestType = 2054;
   TransferLeadershipRequestType = 2055;
+  ReadBarrierRequestType = 2056;
+  ReadBarrierResponseType = 2057;
+}
+
+// ReadBarrierRequest asks the leader for a read barrier: the store index a requester has to apply to have
+// seen everything the cluster had committed when the request arrived. requestId is echoed in the response.
+message ReadBarrierRequest {
+  uint64 requestId = 1;
+}
+
+// ReadBarrierResponse answers a ReadBarrierRequest. index is the leader's store index, read after a raft
+// barrier, so it is the same measure the requester tracks its own progress in. A leader that cannot take the
+// barrier sends nothing.
+message ReadBarrierResponse {
+  uint64 requestId = 1;
+  uint64 index = 2;
 }
 
 enum CommandType {

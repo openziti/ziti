@@ -42,6 +42,26 @@ func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 	return links
 }
 
+// routerRef renders a reference to one end of a link. router is nil for an end this controller cannot
+// resolve, which is ordinary for a destination it has not caught up to; the reference then carries the id
+// alone, since that is all that is known about it. Nil where even the id is unknown, which a link's source
+// is when it holds no router: unlike the destination, a link does not record its source's id separately.
+func routerRef(routerId string, router *model.Router) *rest_model.EntityRef {
+	if router != nil {
+		return ToFabricEntityRef(router.Name, router, FabricRouterLinkFactory)
+	}
+	if routerId == "" {
+		return nil
+	}
+	return &rest_model.EntityRef{
+		Entity: FabricRouterLinkFactory.EntityName(),
+		ID:     routerId,
+		Links: rest_model.Links{
+			EntityNameSelf: FabricRouterLinkFactory.SelfLinkFromId(routerId),
+		},
+	}
+}
+
 func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.Link) (interface{}, error) {
 	n := ae.GetHostController().GetNetwork()
 	iteration := int64(link.Iteration)
@@ -52,21 +72,30 @@ func MapLinkToRestModel(ae *env.AppEnv, _ *response.RequestContext, link *model.
 
 	destRouter := link.GetDest()
 	if destRouter == nil {
-		var err error
-		destRouter, err = n.Router.Read(link.DstId)
-		if err != nil {
-			return nil, err
+		// A miss is not an error here: a link can name a destination this controller has not caught up to,
+		// or one deleted since the link was recorded. The link exists and has to render either way, and
+		// failing would fail the whole listing rather than this row.
+		if loaded, err := n.Router.Read(link.DstId); err == nil {
+			destRouter = loaded
 		}
+	}
+
+	// A link records its destination's id but not its source's, so an unresolved source can only render as
+	// absent.
+	srcRouter := link.GetSrc()
+	srcId := ""
+	if srcRouter != nil {
+		srcId = srcRouter.Id
 	}
 
 	ret := &rest_model.LinkDetail{
 		Cost:          &link.Cost,
 		DestLatency:   &link.DstLatency,
-		DestRouter:    ToFabricEntityRef(destRouter.Name, destRouter, FabricRouterLinkFactory),
+		DestRouter:    routerRef(link.DstId, destRouter),
 		Down:          &down,
 		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
-		SourceRouter:  ToFabricEntityRef(link.GetSrc().Name, link.GetSrc(), FabricRouterLinkFactory),
+		SourceRouter:  routerRef(srcId, srcRouter),
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
 		Protocol:      &link.Protocol,
