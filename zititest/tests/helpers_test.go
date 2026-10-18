@@ -44,7 +44,7 @@ func waitForTerminators(t *testing.T, timeout time.Duration, services ...string)
 		t.Fatalf("failed to create management clients: %v", err)
 	}
 
-	if err = clients.Authenticate(username, password); err != nil {
+	if err = clients.AuthenticateAuto(username, password); err != nil {
 		t.Fatalf("failed to authenticate: %v", err)
 	}
 

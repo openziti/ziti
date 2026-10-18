@@ -35,14 +35,16 @@ type CtrlClients struct {
 	initialized atomic.Bool
 }
 
-// Init authenticates to all controllers matching the selector using legacy
-// password authentication.
+// Init authenticates to all controllers matching the selector, over OIDC where
+// a controller offers it and with a legacy session where it does not. One-shot:
+// a second call on the same CtrlClients returns without re-authenticating, so a
+// caller that needs fresh credentials needs a fresh CtrlClients.
 func (self *CtrlClients) Init(run model.Run, selector string) error {
 	return self.initWithLogin(run, selector, chaos.EnsureLoggedIntoCtrl)
 }
 
-// InitOidc authenticates to all controllers matching the selector using the
-// OIDC PKCE flow and starts background session refresh at the given interval.
+// InitOidc authenticates to all controllers matching the selector, demanding the
+// OIDC PKCE flow, and starts background session refresh at the given interval.
 func (self *CtrlClients) InitOidc(run model.Run, selector string, refreshInterval time.Duration) error {
 	return self.initWithLogin(run, selector, func(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error) {
 		return chaos.EnsureLoggedIntoCtrlOidc(run, c, timeout, refreshInterval)
@@ -116,9 +118,11 @@ func (self *CtrlClients) Close() {
 }
 
 // reAuthLoop periodically refreshes the API session on each controller client.
-// A controller restart drops its in-memory session store, so the test's token
-// becomes invalid; refreshing on a timer keeps the clients usable across chaos
-// restarts without the test having to handle 401s in its retry path.
+// A legacy session lives in the controller that issued it, so a restart
+// invalidates the test's token; refreshing on a timer keeps the clients usable
+// across chaos restarts without the test having to handle 401s in its retry
+// path. Against a controller offering OIDC the token outlives the restart on its
+// own, and the refresh is merely redundant.
 func (self *CtrlClients) reAuthLoop(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -142,7 +146,9 @@ func (self *CtrlClients) reAuth() {
 		password := ctrl.MustStringVariable("credentials.edge.password")
 		clients := self.ctrls[i]
 		go func() {
-			resultC <- clients.Authenticate(username, password)
+			// Auto rather than legacy: pinning the flow here would downgrade a client that logged in
+			// over OIDC at the first tick, and pinning latches, so it would never come back.
+			resultC <- clients.AuthenticateAuto(username, password)
 		}()
 	}
 

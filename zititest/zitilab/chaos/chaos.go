@@ -315,15 +315,29 @@ func EnsureUp(run model.Run, spec string, concurrency int, timeout time.Duration
 // LoginFunc authenticates a Clients instance against a controller component.
 type LoginFunc func(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error)
 
+// EnsureLoggedIntoCtrl authenticates to the controller, waiting for it to become reachable.
+//
+// Takes the OIDC flow where the controller offers it, and a legacy session where it does not. OIDC is
+// preferred because a legacy session lives in the controller that issued it, so a chaos model, which
+// restarts controllers constantly, can have a credential rejected moments after obtaining it; an OIDC
+// token is self-contained and signed, so it survives a restart of every controller in the cluster. It is
+// not demanded, because a model that spans releases talks to controllers predating the edge-oidc API being
+// bound by default, which have no such endpoint to offer.
+//
+// No background refresh: a caller that holds a client long enough for the token to age out wants
+// EnsureLoggedIntoCtrlOidc, which starts one.
 func EnsureLoggedIntoCtrl(run model.Run, c *model.Component, timeout time.Duration) (*zitirest.Clients, error) {
 	return ensureLoggedIntoCtrl(run, c, timeout, func(clients *zitirest.Clients, username, password string) error {
-		return clients.Authenticate(username, password)
+		return clients.AuthenticateAuto(username, password)
 	})
 }
 
-// EnsureLoggedIntoCtrlOidc authenticates to the controller using the OIDC PKCE
-// flow and starts a background goroutine that refreshes the session token at
-// the given interval. Use refreshInterval <= 0 to skip automatic refresh.
+// EnsureLoggedIntoCtrlOidc demands the OIDC flow and starts a background goroutine that refreshes the
+// token at the given interval, for a client held long enough to need it. Use refreshInterval <= 0 to skip
+// the refresh. The caller owns StopSessionRefresh.
+//
+// For a model whose subject is OIDC itself, where a controller that cannot serve it is a failure rather
+// than something to work around. Everything else wants EnsureLoggedIntoCtrl.
 func EnsureLoggedIntoCtrlOidc(run model.Run, c *model.Component, timeout time.Duration, refreshInterval time.Duration) (*zitirest.Clients, error) {
 	clients, err := ensureLoggedIntoCtrl(run, c, timeout, func(clients *zitirest.Clients, username, password string) error {
 		return clients.AuthenticateOidc(username, password)

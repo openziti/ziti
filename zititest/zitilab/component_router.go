@@ -237,6 +237,10 @@ func (self *RouterType) CreateAndEnroll(run model.Run, c *model.Component) error
 	return c.GetHost().ExecLogOnlyOnError(cmd)
 }
 
+// CreateAndEnrollTasks returns the tasks that create c's edge router and enroll it. The tasks wait on each other,
+// so they must run in the same parallel set. The create task is safe to retry: before its first request it fails
+// if a router named c.Id already exists, and after it, an unenrolled router of that name is taken as the one an
+// earlier request created.
 func (self *RouterType) CreateAndEnrollTasks(run model.Run, c *model.Component, client *zitirest.Clients) []parallel.LabeledTask {
 	var tasks []parallel.LabeledTask
 
@@ -247,7 +251,25 @@ func (self *RouterType) CreateAndEnrollTasks(run model.Run, c *model.Component, 
 	var idHolder concurrenz.AtomicValue[string]
 	isTunneler := c.HasLocalOrAncestralTag("tunneler")
 
+	// A create can commit after its request reports failure, so once one has been sent, a retry looks for that
+	// router before sending another. Only an unenrolled router can be it: a stale read can still show the
+	// enrolled router a recreate deleted under the same name.
+	createSent := false
+
 	createEdgeRouterTask := parallel.Task(func() error {
+		existing, err := models.ListEdgeRouters(client, fmt.Sprintf(`name="%s"`, c.Id), 15*time.Second)
+		if err != nil {
+			return err
+		}
+		if len(existing) > 0 {
+			if !createSent || existing[0].EnrollmentJWT == nil {
+				return fmt.Errorf("edge router %s already exists and was not created by this task", c.Id)
+			}
+			idHolder.Store(*existing[0].ID)
+			close(createDoneNotify)
+			return nil
+		}
+
 		createRequest := &rest_model.EdgeRouterCreate{
 			Disabled:          util.Ptr(false),
 			IsTunnelerEnabled: isTunneler,
@@ -256,6 +278,7 @@ func (self *RouterType) CreateAndEnrollTasks(run model.Run, c *model.Component, 
 			RoleAttributes:    util.Ptr(rest_model.Attributes(c.Tags)),
 			Tags:              nil,
 		}
+		createSent = true
 		id, err := models.CreateEdgeRouter(client, createRequest, 15*time.Second)
 		if err != nil {
 			return err
