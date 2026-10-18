@@ -1650,3 +1650,120 @@ func Test_RemoveLinkDest_ClosesOffTheEventLoop(t *testing.T) {
 	req.Eventually(func() bool { return link.IsClosed() }, 2*time.Second, 25*time.Millisecond,
 		"and the link is still closed once it can be")
 }
+
+// Test_linkDestUpdate_HealthIsTheUnionAcrossControllers: a controller that loses sight of a destination must
+// not mark it down while another still has it, or the router backs off dialing a destination that is up.
+func Test_linkDestUpdate_HealthIsTheUnionAcrossControllers(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	report := func(ctrlId string, healthy bool) {
+		(&linkDestUpdate{id: "dest", ctrlId: ctrlId, healthy: healthy}).Handle(reg)
+	}
+
+	report("ctrl1", true)
+	report("ctrl2", false)
+	req.True(reg.destinations["dest"].healthy, "ctrl1 still says the destination is up")
+
+	report("ctrl1", false)
+	req.False(reg.destinations["dest"].healthy, "no controller says the destination is up")
+
+	report("ctrl2", true)
+	req.True(reg.destinations["dest"].healthy)
+}
+
+// Test_linkDestUpdate_UnhealthyReportKeepsThePeerDetails: an unhealthy report carries no version or listeners,
+// and the destination stays up through it while another controller says it is. A dial with no version falls
+// back to a single or split link, and the local dialer rescan skips a destination with no listeners.
+func Test_linkDestUpdate_UnhealthyReportKeepsThePeerDetails(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+
+	(&linkDestUpdate{id: "dest", ctrlId: "ctrl1", healthy: true, version: "v1.6.0", listeners: peerListeners()}).Handle(reg)
+	(&linkDestUpdate{id: "dest", ctrlId: "ctrl2", healthy: false}).Handle(reg)
+
+	dest := reg.destinations["dest"]
+	req.True(dest.healthy, "ctrl1 still says the destination is up")
+	req.Equal("v1.6.0", dest.version.Load())
+	req.Len(dest.listeners, 1)
+}
+
+// Test_evaluateDestinations_AbandonsDestNoRegisteredControllerAffirms covers the backstop for a missed
+// removal. Health is a union over every controller that has reported, so a controller that said a
+// destination was up and then went away would hold it up forever. Abandonment asks only the controllers the
+// router still has.
+func Test_evaluateDestinations_AbandonsDestNoRegisteredControllerAffirms(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	withCtrl(reg, "ctrl1", newFlakySendChannel(0))
+
+	addPendingLink := func(dest *linkDest) {
+		dest.linkMap["k"] = &linkState{linkKey: "k", status: StatusDialFailed, dest: dest, nextDial: time.Now().Add(time.Hour)}
+	}
+
+	// Both are up by some controller's account, have nothing established, and have gone unaffirmed past the
+	// grace period. Only the controller vouching for "affirmed" is still registered.
+	for destId, ctrlId := range map[string]string{"orphaned": "departed", "affirmed": "ctrl1"} {
+		(&linkDestUpdate{id: destId, ctrlId: ctrlId, healthy: true}).Handle(reg)
+		dest := reg.destinations[destId]
+		dest.lastAffirmedAt = time.Now().Add(-destAbandonedAfter - time.Minute)
+		addPendingLink(dest)
+	}
+
+	// A destination first heard of as down gets the full grace period.
+	(&linkDestUpdate{id: "fresh", ctrlId: "ctrl1", healthy: false}).Handle(reg)
+	addPendingLink(reg.destinations["fresh"])
+
+	reg.evaluateDestinations()
+
+	req.NotContains(reg.destinations, "orphaned", "a destination only a departed controller vouched for must be abandoned")
+	req.Contains(reg.destinations, "affirmed", "a destination a registered controller still says is up must be kept")
+	req.Contains(reg.destinations, "fresh", "a new destination must not be abandoned the moment it appears")
+}
+
+// Test_evaluateDestinations_KeepsADestAHealthyReportAffirmed: a healthy report affirms the destination when it
+// arrives, not at the next scan. A destination can go long unaffirmed while an established link holds it, as
+// through a controller outage, and a controller that resyncs and drops again before the scan must not leave it
+// judged on the old affirmation.
+func Test_evaluateDestinations_KeepsADestAHealthyReportAffirmed(t *testing.T) {
+	req := require.New(t)
+	reg, tenv := newReconnectTestRegistry(t)
+	dialer := &stubDialer{binding: "transport", groups: []string{"default"}}
+	tenv.setDialers([]xlink.Dialer{dialer})
+	withCtrl(reg, "ctrl1", newFlakySendChannel(0))
+
+	// Long unaffirmed, with a link state the report will match that is not due to dial.
+	dest := newLinkDest("dest")
+	dest.lastAffirmedAt = time.Now().Add(-destAbandonedAfter - time.Minute)
+	listener := peerListeners()[0]
+	linkKey := reg.GetLinkKey(dialer.GetBinding(), listener.Protocol, dest.id, listener.GetLocalBinding())
+	dest.linkMap[linkKey] = &linkState{linkKey: linkKey, status: StatusDialFailed, dest: dest, listener: listener,
+		dialer: dialer, nextDial: time.Now().Add(time.Hour)}
+	reg.destinations[dest.id] = dest
+
+	(&linkDestUpdate{id: dest.id, ctrlId: "ctrl1", healthy: true, listeners: peerListeners()}).Handle(reg)
+	req.Contains(dest.linkMap, linkKey, "the report matches the existing link state")
+	reg.ctrls = &testCtrls{all: map[string]env.NetworkController{}}
+
+	reg.evaluateDestinations()
+	req.Contains(reg.destinations, dest.id, "a destination a controller has just said is up must be kept")
+}
+
+// Test_linkDestUpdate_UnhealthyReportDoesNotAffirm: affirmation follows the reporting controller, not the
+// union. A departed controller's last report holds the union up, so an unhealthy report from a connected one
+// must not count as affirming the destination.
+func Test_linkDestUpdate_UnhealthyReportDoesNotAffirm(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	withCtrl(reg, "ctrl1", newFlakySendChannel(0))
+
+	(&linkDestUpdate{id: "dest", ctrlId: "departed", healthy: true}).Handle(reg)
+	dest := reg.destinations["dest"]
+	dest.linkMap["k"] = &linkState{linkKey: "k", status: StatusDialFailed, dest: dest, nextDial: time.Now().Add(time.Hour)}
+	dest.lastAffirmedAt = time.Now().Add(-destAbandonedAfter - time.Minute)
+
+	(&linkDestUpdate{id: "dest", ctrlId: "ctrl1", healthy: false}).Handle(reg)
+	req.True(dest.healthy, "the departed controller still holds the union up")
+
+	reg.evaluateDestinations()
+	req.NotContains(reg.destinations, "dest", "no connected controller says the destination is up")
+}

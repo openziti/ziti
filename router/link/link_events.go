@@ -126,23 +126,32 @@ func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 
 	dest := registry.destinations[self.id]
 
-	becameHealthy := false
-
 	if dest == nil {
 		dest = newLinkDest(self.id)
 		registry.destinations[self.id] = dest
-	} else {
-		if !dest.healthy && self.healthy {
-			becameHealthy = true
-		}
 	}
-	dest.update(self)
-	// Cache the latest listener set so the registry's local dialer
-	// rescan path (localDialersChangedEvent) can re-evaluate matches
-	// without an upstream listener event.
-	dest.listeners = self.listeners
 
+	wasHealthy := dest.healthy
+	dest.updateHealthFromCtrl(self.ctrlId, self.healthy)
+	dest.healthy = dest.isHealthy()
+
+	if !wasHealthy && dest.healthy {
+		dest.unhealthyAt = time.Time{}
+	} else if wasHealthy && !dest.healthy {
+		dest.unhealthyAt = time.Now()
+	}
+
+	// An unhealthy report carries no version or listeners, and the destination can stay up through one, since
+	// health is a union across controllers. Only a healthy report updates them, or reconciles link states
+	// against them.
 	if self.healthy {
+		dest.lastAffirmedAt = time.Now()
+		dest.version.Store(self.version)
+		// Cache the latest listener set so the registry's local dialer
+		// rescan path (localDialersChangedEvent) can re-evaluate matches
+		// without an upstream listener event.
+		dest.listeners = self.listeners
+		becameHealthy := !wasHealthy && dest.healthy
 		// Peer listener updates are authoritative about which listeners the peer
 		// offers, so a vanished or moved listener closes its established link
 		// here. This is long-standing peer-driven behavior, independent of the

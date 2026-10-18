@@ -730,6 +730,11 @@ func (self *linkRegistryImpl) sendLinkFaultDirect(link xlink.Xlink) {
 	})
 }
 
+// destAbandonedAfter is how long a destination has to go without any connected controller saying it is up
+// before the router stops tracking it. It is deliberately far longer than any controller outage or cluster
+// membership change takes, so lapsed affirmation only ever means the destination is genuinely gone.
+const destAbandonedAfter = 48 * time.Hour
+
 // removedDestTTL is how long a removed destination is remembered so a peer state computed before the removal
 // cannot recreate it. A controller computes peer state against its own store, so one lagging in replication
 // reports from before the removal for as long as it lags. The bound is far longer than any lag or outage a
@@ -737,7 +742,20 @@ func (self *linkRegistryImpl) sendLinkFaultDirect(link xlink.Xlink) {
 const removedDestTTL = 48 * time.Hour
 
 func (self *linkRegistryImpl) evaluateDestinations() {
+	connectedCtrls := map[string]struct{}{}
+	for ctrlId := range self.ctrls.GetAll() {
+		connectedCtrls[ctrlId] = struct{}{}
+	}
+	now := time.Now()
+
 	for destId, dest := range self.destinations {
+		// Refresh the affirmation while any connected controller still says the destination is up. Health
+		// reports only arrive on change (and on a full resync when a controller connects), so a destination
+		// that is up and quiet would otherwise look no different from one nobody has vouched for in days.
+		if dest.affirmedBy(connectedCtrls) {
+			dest.lastAffirmedAt = now
+		}
+
 		hasEstablishedLinks := false
 		for _, state := range dest.linkMap {
 			// verify that links marked as established have an open link. There's a small chance that a link established
@@ -758,15 +776,14 @@ func (self *linkRegistryImpl) evaluateDestinations() {
 			self.evaluateLinkState(state)
 		}
 
-		// we are notified of deleted routers. In case we're unreachable while a router is deleted,
-		// we will also stop trying to contact unhealthy routers after a period. If a destination
-		// has nothing to dial, it should also be removed
-		if len(dest.linkMap) == 0 || (!dest.healthy && !hasEstablishedLinks && time.Since(dest.unhealthyAt) > 48*time.Hour) {
+		// We are notified of deleted routers, but that notification can be missed: we may be unreachable when
+		// the router is deleted, and a controller's resync on connect only covers the routers it currently
+		// sees, so it never says a destination is gone. Lapsed affirmation is the backstop.
+		if dest.abandoned(hasEstablishedLinks, now) {
 			delete(self.destinations, destId)
 		}
 	}
 
-	now := time.Now()
 	for destId, removed := range self.removedDests {
 		if now.Sub(removed.at) > removedDestTTL {
 			delete(self.removedDests, destId)
