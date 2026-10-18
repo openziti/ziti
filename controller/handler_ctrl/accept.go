@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/ziti/controller/xctrl"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
 type CtrlAccepter struct {
@@ -59,15 +58,11 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 	ch := binding.GetChannel()
 
 	log := pfxlog.Logger().WithField("routerId", ch.Id())
-	// Use a new copy of the router instance each time we connect. That way we can tell on disconnect
-	// if we're working with the right connection, in case connects and disconnects happen quickly.
-	// It also means that the channel and connected time fields don't change and we don't have to protect them
-	r, err := self.network.GetReloadedRouter(ch.Id())
+	// A fresh instance per connection, carrying this channel: that is what lets connect and disconnect tell
+	// two connections for one router apart, and keeps them from writing over each other's state.
+	r, err := self.network.NewCtrlChanRouter(ch)
 	if err != nil {
 		return err
-	}
-	if r == nil {
-		return errors.Errorf("no router with id [%v] found, closing connection", ch.Id())
 	}
 
 	if ch.Underlay().Headers() != nil {
@@ -115,8 +110,6 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		return errors.New("channel provided no headers, not accepting router connection as version info not provided")
 	}
 
-	r.Control = ch
-	r.ConnectTime = time.Now()
 	if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
 		return errors.Wrap(err, "error binding router")
 	}
@@ -125,9 +118,19 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		binding.AddPeekHandler(self.traceHandler)
 	}
 
-	log.Info("accepted new router connection")
+	if err = self.network.ConnectRouter(r); err != nil {
+		if network.IsConnectRejected(err) {
+			log.Info("router connect rejected; another connection is already current, router will redial")
+		}
+		// A failed bind only closes the underlay, so close the channel as well: that runs the close handlers
+		// bound above, which stop the heartbeat and xctrl goroutines. Returning the error keeps rx from starting.
+		if closeErr := ch.Close(); closeErr != nil {
+			log.WithError(closeErr).Debug("error closing rejected router control channel")
+		}
+		return err
+	}
 
-	self.network.ConnectRouter(r)
+	log.Info("accepted new router connection")
 
 	return nil
 }
