@@ -173,6 +173,14 @@ func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 }
 
 func (self *impl) GetLinkConnState() *ctrl_pb.LinkConnState {
+	// Read the iteration before collecting the connections, not after. A controller only accepts a state
+	// whose iteration is higher than the one it holds, so a snapshot labelled newer than the connections it
+	// actually describes is never superseded: an underlay arriving mid-collection would otherwise produce
+	// the new iteration alongside the old connection set, and every later report of the true set would
+	// carry that same iteration and be refused. Reading it first can only understate the iteration, which
+	// the next report corrects.
+	stateIteration := self.ch.GetConnStateIteration()
+
 	var connections []*ctrl_pb.LinkConn
 	for _, u := range self.ch.GetChannel().GetUnderlays() {
 		localAddr := u.GetLocalAddr()
@@ -188,7 +196,7 @@ func (self *impl) GetLinkConnState() *ctrl_pb.LinkConnState {
 		})
 	}
 	return &ctrl_pb.LinkConnState{
-		StateIteration: self.ch.GetConnStateIteration(),
+		StateIteration: stateIteration,
 		Conns:          connections,
 	}
 }
