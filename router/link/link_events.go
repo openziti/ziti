@@ -121,12 +121,19 @@ func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
 	if dest == nil {
 		dest = newLinkDest(self.id)
 		registry.destinations[self.id] = dest
-	} else {
-		if !dest.healthy && self.healthy {
-			becameHealthy = true
-		}
 	}
-	dest.update(self)
+
+	wasHealthy := dest.healthy
+	dest.updateHealthFromCtrl(self.ctrlId, self.healthy)
+	dest.healthy = dest.isHealthy()
+	becameHealthy = !wasHealthy && dest.healthy
+
+	if dest.healthy {
+		dest.lastAffirmedAt = time.Now()
+		dest.version.Store(self.version)
+	} else if wasHealthy {
+		dest.unhealthyAt = time.Now()
+	}
 	// Cache the latest listener set so the registry's local dialer
 	// rescan path (localDialersChangedEvent) can re-evaluate matches
 	// without an upstream listener event.
