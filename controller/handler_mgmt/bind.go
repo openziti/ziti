@@ -70,6 +70,12 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 		Handler: validateStaleLinksRequestHandler.HandleReceive,
 	})
 
+	validateGossipRequestHandler := newValidateGossipHandler(bindHandler.network)
+	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
+		Type:    validateGossipRequestHandler.ContentType(),
+		Handler: validateGossipRequestHandler.HandleReceive,
+	})
+
 	validateSdkTerminatorsRequestHandler := newValidateRouterSdkTerminatorsHandler(bindHandler.network)
 	channel.AddReceiveHandlers(binding, &channel.AsyncFunctionReceiveAdapter{
 		Type:    validateSdkTerminatorsRequestHandler.ContentType(),

@@ -141,6 +141,18 @@ func (context *inspectRequestContext) processLocal() {
 			} else {
 				context.appendValue(requested, js)
 			}
+		} else if lc == "gossip-links" {
+			if notifier := context.handler.env.GetLinkGossipNotifier(); notifier != nil {
+				context.handleJsonResponse(requested, notifier.InspectGossipLinks())
+			} else {
+				context.appendError("link gossip notifier not configured")
+			}
+		} else if lc == "gossip-store" {
+			if notifier := context.handler.env.GetLinkGossipNotifier(); notifier != nil {
+				context.handleJsonResponse(requested, notifier.InspectGossipStore())
+			} else {
+				context.appendError("link gossip notifier not configured")
+			}
 		} else if lc == "router-data-model" {
 			result := context.handler.env.GetRouterDataModel()
 			context.handleJsonResponse(requested, result.ToMap())

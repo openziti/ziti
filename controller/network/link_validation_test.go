@@ -362,6 +362,101 @@ func TestCheckLinkGossip_IterationMismatchIsReported(t *testing.T) {
 	require.Equal(t, []string{"gossip iteration (2) differs from ctrl iteration (5)"}, detail.Messages)
 }
 
+// TestValidateControllerGossip_LegacyRouterLinkIsNotAnOrphan: a link reported the pre-gossip way sits in
+// the link manager and deliberately not in the gossip store. Treating that as an orphan fails the whole
+// controller check for every older router in a mixed-version network.
+func TestValidateControllerGossip_LegacyRouterLinkIsNotAnOrphan(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	legacy := newPersistedRouter(t, network, addr, "legacy")
+	peer := newPersistedRouter(t, network, addr, "peer")
+
+	link := model.NewTestLink("legacy-link", legacy, peer)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
+
+	var results []*mgmt_pb.GossipValidationDetails
+	network.validateControllerGossip(map[string]struct{}{}, func(d *mgmt_pb.GossipValidationDetails) {
+		results = append(results, d)
+	})
+
+	req.Len(results, 1)
+	req.True(results[0].ValidateSuccess, "a link whose router does not publish gossip owes the store nothing")
+	req.Len(results[0].LinkDetails, 1)
+	req.True(results[0].LinkDetails[0].IsValid)
+	req.Empty(results[0].LinkDetails[0].Messages)
+}
+
+// TestValidateControllerGossip_GossipingRouterLinkIsAnOrphan is the other half: for a router that answered
+// this pass saying it publishes gossip, a link in the manager with no entry is a real orphan.
+func TestValidateControllerGossip_GossipingRouterLinkIsAnOrphan(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	gossiping := newPersistedRouter(t, network, addr, "gossiping")
+	peer := newPersistedRouter(t, network, addr, "peer")
+
+	link := model.NewTestLink("gossiped-link", gossiping, peer)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
+
+	var results []*mgmt_pb.GossipValidationDetails
+	network.validateControllerGossip(map[string]struct{}{gossiping.Id: {}}, func(d *mgmt_pb.GossipValidationDetails) {
+		results = append(results, d)
+	})
+
+	req.Len(results, 1)
+	req.False(results[0].ValidateSuccess)
+	req.Len(results[0].LinkDetails, 1)
+	req.False(results[0].LinkDetails[0].IsValid)
+	req.Contains(results[0].LinkDetails[0].Messages[0], "orphan")
+}
+
+// TestValidateControllerGossip_GossipingRouterLinkWithEntryIsValid keeps the check from passing by never
+// finding anything: a gossiping router's link that is in the store must come back valid.
+func TestValidateControllerGossip_GossipingRouterLinkWithEntryIsValid(t *testing.T) {
+	req := require.New(t)
+	_, network, addr := newConnectTestNetwork(t)
+
+	gossiping := newPersistedRouter(t, network, addr, "gossiping")
+	peer := newPersistedRouter(t, network, addr, "peer")
+
+	link := model.NewTestLink("gossiped-link", gossiping, peer)
+	link.SetState(model.Connected)
+	network.Link.Add(link)
+	seedGossipLink(t, network, gossiping.Id, link.Id, link.Iteration)
+
+	var results []*mgmt_pb.GossipValidationDetails
+	network.validateControllerGossip(map[string]struct{}{gossiping.Id: {}}, func(d *mgmt_pb.GossipValidationDetails) {
+		results = append(results, d)
+	})
+
+	req.Len(results, 1)
+	req.True(results[0].ValidateSuccess)
+	req.Len(results[0].LinkDetails, 1)
+	req.True(results[0].LinkDetails[0].IsValid)
+}
+
+// TestValidateControllerGossip_EntryWithNoLinkIsStillReported: the reverse direction does not depend on
+// knowing who gossips, so gating the orphan check must not have disabled it.
+func TestValidateControllerGossip_EntryWithNoLinkIsStillReported(t *testing.T) {
+	req := require.New(t)
+	_, network, _ := newConnectTestNetwork(t)
+
+	seedGossipLink(t, network, "r1", "no-such-link", 1)
+
+	var results []*mgmt_pb.GossipValidationDetails
+	network.validateControllerGossip(map[string]struct{}{}, func(d *mgmt_pb.GossipValidationDetails) {
+		results = append(results, d)
+	})
+
+	req.Len(results, 1)
+	req.False(results[0].ValidateSuccess)
+	req.Len(results[0].LinkDetails, 1)
+	req.Contains(results[0].LinkDetails[0].Messages[0], "no link in link manager")
+}
+
 // TestCheckLinkConns_NonGossipDialerCountMismatchIsTolerated: a dialer that does not publish conn state
 // through gossip versions it with an iteration that does not always move when the connection set does, so
 // two views carrying the same iteration are not necessarily describing the same state. Comparing them for
