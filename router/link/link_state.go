@@ -66,7 +66,13 @@ type linkDest struct {
 	version     concurrenz.AtomicValue[string]
 	healthy     bool
 	unhealthyAt time.Time
-	linkMap     map[string]*linkState
+	ctrlHealth  map[string]bool // per-controller health reports
+	// lastAffirmedAt is the last time a controller the router was connected to said this destination was up.
+	// It drives removal of an abandoned destination, which healthy cannot: healthy is a sticky union over
+	// every report ever received, so a controller that said "up" and then went away holds it true forever.
+	// See affirmedBy for why removal asks a different question than the dial backoff does.
+	lastAffirmedAt time.Time
+	linkMap        map[string]*linkState
 
 	// listeners caches the most recent listener set advertised by this
 	// destination router. Stored so we can re-evaluate matches when the
@@ -75,16 +81,42 @@ type linkDest struct {
 	listeners []*ctrl_pb.Listener
 }
 
-func (self *linkDest) update(update *linkDestUpdate) {
-	if self.healthy && !update.healthy {
-		self.unhealthyAt = time.Now()
+// updateHealthFromCtrl records a health report from a specific controller.
+func (self *linkDest) updateHealthFromCtrl(ctrlId string, healthy bool) {
+	if self.ctrlHealth == nil {
+		self.ctrlHealth = map[string]bool{}
 	}
+	self.ctrlHealth[ctrlId] = healthy
+}
 
-	self.healthy = update.healthy
-
-	if update.healthy {
-		self.version.Store(update.version)
+// isHealthy returns true if any controller reports the destination as healthy.
+func (self *linkDest) isHealthy() bool {
+	for _, healthy := range self.ctrlHealth {
+		if healthy {
+			return true
+		}
 	}
+	return false
+}
+
+// affirmedBy reports whether any of the given controllers says this destination is up. It exists so that
+// deciding a destination has been abandoned can ignore reports from controllers the router is no longer
+// connected to, which isHealthy deliberately does not.
+//
+// The two want different answers. The dial backoff reads isHealthy, and treating a controller outage as
+// "nobody says this is up" would switch every destination to the unhealthy backoff, whose retry interval
+// starts at a minute and multiplies by ten toward an hour; a controller restart would then stall re-dialing
+// links that are perfectly fine. Removal has no such problem, because the caller only acts once a destination
+// has gone unaffirmed for far longer than any outage lasts.
+func (self *linkDest) affirmedBy(ctrlIds map[string]struct{}) bool {
+	for ctrlId, healthy := range self.ctrlHealth {
+		if healthy {
+			if _, ok := ctrlIds[ctrlId]; ok {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type linkFault struct {
