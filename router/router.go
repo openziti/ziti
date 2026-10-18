@@ -92,6 +92,7 @@ type Router struct {
 	config              *env.Config
 	routerCapabilities  *capabilities.RouterCapabilityMask
 	ctrls               env.NetworkControllers
+	rxPool              goroutines.Pool
 	ctrlBindhandler     channel.BindHandler
 	faulter             *forwarder.Faulter
 	forwarder           *forwarder.Forwarder
@@ -667,6 +668,10 @@ func (self *Router) initGoroutinePools() error {
 		return err
 	}
 
+	if err := self.initRxPool(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -728,6 +733,37 @@ func rateLimiterWorker(_ uint32, f func()) {
 
 func (self *Router) GetLinkDialerPool() goroutines.Pool {
 	return self.linkDialerPool
+}
+
+// initRxPool builds the pool for work lifted off a control channel's receive goroutine. It is deliberately
+// separate from the rate limiter pool: that pool's workers park waiting for controller send capacity, so
+// sharing it would leave receiving to compete with, and be starved by, the back-pressure that moving work
+// off the receive goroutine exists to survive.
+func (self *Router) initRxPool() error {
+	rxPoolConfig := goroutines.PoolConfig{
+		QueueSize:   env.DefaultRxPoolQueueLength,
+		MinWorkers:  0,
+		MaxWorkers:  env.DefaultRxPoolWorkerCount,
+		IdleTime:    30 * time.Second,
+		CloseNotify: self.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during control channel receive processing")
+		},
+	}
+
+	servermetrics.ConfigureGoroutinesPoolMetrics(&rxPoolConfig, self.GetMetricsRegistry(), "pool.router.rx")
+
+	rxPool, err := goroutines.NewPool(rxPoolConfig)
+	if err != nil {
+		return errors.Wrap(err, "error creating control channel receive pool")
+	}
+
+	self.rxPool = rxPool
+	return nil
+}
+
+func (self *Router) GetRxPool() goroutines.Pool {
+	return self.rxPool
 }
 
 func (self *Router) GetRateLimiterPool() goroutines.Pool {
