@@ -144,9 +144,46 @@ func (self *Clients) Authenticate(user, password string) error {
 	return nil
 }
 
+// AuthenticateAuto authenticates with username/password over whichever flow the
+// controller offers: OIDC where it advertises the capability, a legacy
+// zt-session where it does not. This is what `ziti edge login` does.
+//
+// Prefer it over Authenticate and AuthenticateOidc, which pin the flow and fail
+// outright against a controller that does not serve it. A controller only
+// serves OIDC when the edge-oidc API is bound, which releases before 2.0 do not
+// do on their own, so anything talking to a fleet that spans versions has to ask
+// rather than assume.
+//
+// The resulting session type is logged. Falling back to a legacy session is not
+// an error, but it gives up a credential that survives a controller restart, so
+// it should be visible rather than inferred.
+func (self *Clients) AuthenticateAuto(user, password string) error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	// Deliberately not SetUseOidc: that latches the client to one flow for good,
+	// and the point here is to let the controller decide.
+	self.mgmt.SetAllowOidcDynamicallyEnabled(true)
+
+	session, err := self.mgmt.Authenticate(edge_apis.NewUpdbCredentials(user, password), nil)
+	if err != nil {
+		return err
+	}
+
+	self.lastAuth = time.Now()
+	if session != nil && session.GetType() == edge_apis.ApiSessionTypeOidc {
+		pfxlog.Logger().Debug("OIDC authentication successful")
+	} else {
+		pfxlog.Logger().Infof("authenticated to %v with a legacy session; the controller does not advertise OIDC", self.host)
+	}
+	return nil
+}
+
 // AuthenticateOidc performs OIDC PKCE authentication with username/password
-// credentials. Delegated to sdk-golang's edge_apis flow, which also supports
-// TOTP if the controller demands it.
+// credentials, failing where the controller does not serve it. Delegated to
+// sdk-golang's edge_apis flow, which also supports TOTP if the controller
+// demands it. Callers that only want the best available flow want
+// AuthenticateAuto.
 func (self *Clients) AuthenticateOidc(user, password string) error {
 	self.lock.Lock()
 	defer self.lock.Unlock()
@@ -162,13 +199,16 @@ func (self *Clients) AuthenticateOidc(user, password string) error {
 }
 
 // AuthenticateIfNeeded re-authenticates only if it has been longer than
-// maxTimeBetweenLogins since the last successful authentication.
+// maxTimeBetweenLogins since the last successful authentication. Re-runs the
+// same flow selection as AuthenticateAuto rather than inheriting the previous
+// session's type, so a controller that has gained OIDC since the last login is
+// used over it.
 func (self *Clients) AuthenticateIfNeeded(user, password string, maxTimeBetweenLogins time.Duration) error {
 	self.lock.Lock()
 	doAuth := time.Since(self.lastAuth) > maxTimeBetweenLogins
 	self.lock.Unlock()
 	if doAuth {
-		return self.Authenticate(user, password)
+		return self.AuthenticateAuto(user, password)
 	}
 	return nil
 }
@@ -247,7 +287,7 @@ func (self *Clients) refreshSession(username, password string) error {
 		pfxlog.Logger().Debug("OIDC session refreshed successfully")
 		return nil
 	}
-	return self.Authenticate(username, password)
+	return self.AuthenticateAuto(username, password)
 }
 
 // NewWsMgmtChannel opens a websocket connection to the controller's fabric

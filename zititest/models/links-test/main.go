@@ -23,6 +23,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
@@ -30,13 +31,14 @@ import (
 	"github.com/openziti/fablab/kernel/lib/actions/semaphore"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
-	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
+	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	awsSshKeyDispose "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/openziti/fablab/kernel/model/aws"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
@@ -47,6 +49,27 @@ import (
 )
 
 const TargetZitiVersion = ""
+
+// Component logs rotate: chaos restarts components constantly, so a log that truncated on start would keep
+// only the latest lifetime. Retention per component is maxSizeMb * (maxBackups + 1). A router host packs 10
+// routers onto a ~6.8G disk, so each router keeps 120MB; a controller has a 40G disk to itself and keeps the
+// defaults.
+var (
+	ctrlLogConfig   = rotatingLogConfig(zitilab.DefaultLogRotateMaxSizeMb, zitilab.DefaultLogRotateMaxBackups)
+	routerLogConfig = rotatingLogConfig(20, 5)
+)
+
+// rotatingLogConfig returns a rotate log config with the given retention. The pipe runs the local build,
+// since the old versions a mixed run cycles through predate "ops log-pipe".
+func rotatingLogConfig(maxSizeMb, maxBackups int) zitilab.LogConfig {
+	localBuild := ""
+	return zitilab.LogConfig{
+		Strategy:          zitilab.LogStrategyRotate,
+		RotateMaxSizeMb:   maxSizeMb,
+		RotateMaxBackups:  maxBackups,
+		PipeBinaryVersion: &localBuild,
+	}
+}
 
 //go:embed configs
 var configResource embed.FS
@@ -59,9 +82,9 @@ func (self scaleStrategy) IsScaled(entity model.Entity) bool {
 
 func (self scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 	if entity.GetType() == model.EntityTypeComponent {
-		return 20
+		return 10
 	}
-	return 5
+	return 10
 }
 
 var m = &model.Model{
@@ -69,6 +92,13 @@ var m = &model.Model{
 	Scope: model.Scope{
 		Defaults: model.Variables{
 			"environment": "links-test",
+
+			// Version mix for the run; see mixed_version.go and version_cycle.go.
+			"routerVersionMix":   false,
+			"ctrlVersionMode":    "latest",
+			"oldVersion":         "v2.0.8",
+			"oldestVersion":      "v1.6.22",
+			"iterationsPerPhase": 3,
 			"credentials": model.Variables{
 				"aws": model.Variables{
 					"managed_key": true,
@@ -91,10 +121,25 @@ var m = &model.Model{
 	},
 	StructureFactories: []model.Factory{
 		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
+		// After scaling, since the scaled routers do not exist before it. Puts the components on the
+		// versions this run is configured for; both are no-ops for a run using only the local build, and
+		// the first resolves the version configuration the rest of the run reads.
+		model.FactoryFunc(assignRouterVersions),
+		model.FactoryFunc(assignCtrlVersions),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
-					host.InstanceType = "c5.large"
+					host.InstanceType = "c5.xlarge"
+				}
+				// The default 6.8GB root volume fills under sustained metrics
+				// emission (long fablab runs rotate hundreds of metrics.log
+				// files). Bump controllers to 20GB so a multi-hour chaos run
+				// has headroom; routers keep the default.
+				host.InstanceResourceType = "ondemand_iops"
+				host.AWS.Volume = aws.EC2Volume{
+					Type:   "gp3",
+					SizeGB: 40,
+					IOPS:   1000,
 				}
 				return nil
 			})
@@ -107,19 +152,19 @@ var m = &model.Model{
 		}),
 	},
 	Factories: []model.Factory{
-		model.FactoryFunc(func(m *model.Model) error {
-			return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
-				if routerType, ok := c.Type.(*zitilab.RouterType); ok {
-					clone := *routerType
-					c.Type = &clone
-					// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
-					if c.ScaleIndex >= 14 {
-						clone.Version = "v1.6.21"
-					}
-				}
-				return nil
-			})
-		}),
+		//model.FactoryFunc(func(m *model.Model) error {
+		//	return m.ForEachComponent("component.router", 1, func(c *model.Component) error {
+		//		if routerType, ok := c.Type.(*zitilab.RouterType); ok {
+		//			clone := *routerType
+		//			c.Type = &clone
+		//			// fmt.Printf("%s: %d - %s - \n", c.Id, c.ScaleIndex, routerType.Version)
+		//			if c.ScaleIndex >= 14 {
+		//				clone.Version = "v1.5.4"
+		//			}
+		//		}
+		//		return nil
+		//	})
+		//}),
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
@@ -136,7 +181,8 @@ var m = &model.Model{
 						"ctrl1": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+								Version:   TargetZitiVersion,
+								LogConfig: ctrlLogConfig,
 							},
 						},
 					},
@@ -147,7 +193,8 @@ var m = &model.Model{
 						"router-us-east-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
 							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+								Version:   TargetZitiVersion,
+								LogConfig: routerLogConfig,
 							},
 						},
 					},
@@ -163,7 +210,8 @@ var m = &model.Model{
 						"ctrl2": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+								Version:   TargetZitiVersion,
+								LogConfig: ctrlLogConfig,
 							},
 						},
 					},
@@ -174,7 +222,8 @@ var m = &model.Model{
 						"router-us-west-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
 							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+								Version:   TargetZitiVersion,
+								LogConfig: routerLogConfig,
 							},
 						},
 					},
@@ -190,7 +239,8 @@ var m = &model.Model{
 						"ctrl3": {
 							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
-								Version: TargetZitiVersion,
+								Version:   TargetZitiVersion,
+								LogConfig: ctrlLogConfig,
 							},
 						},
 					},
@@ -201,7 +251,8 @@ var m = &model.Model{
 						"router-eu-west-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
 							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+								Version:   TargetZitiVersion,
+								LogConfig: routerLogConfig,
 							},
 						},
 					},
@@ -219,7 +270,8 @@ var m = &model.Model{
 						"router-eu-central-{{ .Host.ScaleIndex }}.{{ .ScaleIndex }}": {
 							Scope: model.Scope{Tags: model.Tags{"router", "scaled"}},
 							Type: &zitilab.RouterType{
-								Version: TargetZitiVersion,
+								Version:   TargetZitiVersion,
+								LogConfig: routerLogConfig,
 							},
 						},
 					},
@@ -233,6 +285,7 @@ var m = &model.Model{
 			workflow := actions.Workflow()
 
 			workflow.AddAction(host.GroupExec("*", 500, "touch .hushlogin"))
+			workflow.AddAction(host.GroupExec("*", 500, "sudo sysctl -w net.ipv4.ip_local_port_range='10240 65535'"))
 			workflow.AddAction(component.StopInParallel("*", 500))
 			workflow.AddAction(host.GroupExec("*", 500, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
@@ -245,17 +298,28 @@ var m = &model.Model{
 
 			workflow.AddAction(edge.Login("#ctrl1"))
 
-			ctrls := models.CtrlClients{}
-			var ctrl1 *zitirest.Clients
+			// Held only for the enrolment below, and closed straight after. Built per execution, and
+			// deliberately not held across them: the version cycle re-bootstraps to put the cluster back on
+			// the previous release, which clears controller state, so a client authenticated against the
+			// cluster that was there before is no longer good. CtrlClients.Init is one-shot, so a fresh one
+			// is the only way to re-authenticate.
+			var enrolmentCtrls *models.CtrlClients
 
 			workflow.AddAction(edge.InitEdgeRoutersWithClients(models.RouterTag, 50, func(run model.Run) (*zitirest.Clients, error) {
-				if ctrl1 == nil {
-					if err := ctrls.Init(run, "#ctrl1"); err != nil {
-						return nil, err
-					}
-					ctrl1 = ctrls.GetCtrl("ctrl1")
+				enrolmentCtrls = &models.CtrlClients{}
+				if err := enrolmentCtrls.Init(run, "#ctrl1"); err != nil {
+					return nil, err
 				}
-				return ctrl1, nil
+				return enrolmentCtrls.GetCtrl("ctrl1"), nil
+			}))
+
+			// Its re-auth loop runs until stopped, and bootstrap runs again on every version cycle.
+			workflow.AddAction(model.ActionFunc(func(run model.Run) error {
+				if enrolmentCtrls != nil {
+					enrolmentCtrls.Close()
+					enrolmentCtrls = nil
+				}
+				return nil
 			}))
 
 			workflow.AddAction(component.Start(".ctrl"))
@@ -268,7 +332,7 @@ var m = &model.Model{
 			return workflow
 		}),
 		"clean": model.Bind(actions.Workflow(
-			component.StopInParallelHostExclusive("*", 15),
+			component.StopInParallelHostExclusive("*", 1000),
 			host.GroupExec("*", 25, "rm -f logs/*"),
 		)),
 		"login":    model.Bind(edge.Login("#ctrl1")),
@@ -276,6 +340,9 @@ var m = &model.Model{
 		"login3":   model.Bind(edge.Login("#ctrl3")),
 		"sowChaos": model.Bind(model.ActionFunc(sowChaos)),
 		"validateUp": model.BindF(func(run model.Run) error {
+			if err := unblockAllHosts(run); err != nil {
+				pfxlog.Logger().WithError(err).Warn("error unblocking all hosts")
+			}
 			if err := chaos.ValidateUp(run, ".ctrl", 3, 15*time.Second); err != nil {
 				return err
 			}
@@ -285,9 +352,51 @@ var m = &model.Model{
 			return nil
 		}),
 		"validateLinks": model.BindF(validateLinks),
-		"testIteration": model.BindF(func(run model.Run) error {
-			return run.GetModel().Exec(run, "sowChaos", "validateUp", "validateLinks")
+		"validateGossipEmpty": model.BindF(func(run model.Run) error {
+			return validateGossipStoresEmpty(run, 5*time.Minute)
 		}),
+		"validateMetrics":      model.BindF(validateMetrics),
+		"validateGossipOwners": model.BindF(validateGossipOwners),
+		"recreateRouters": model.BindF(func(run model.Run) error {
+			ctrls := models.CtrlClients{}
+			if err := ctrls.Init(run, "#ctrl1"); err != nil {
+				return err
+			}
+			// Closed here rather than left to the run: this action fires every third iteration, and each
+			// Init starts a re-auth loop that outlives it.
+			defer ctrls.Close()
+			return recreateRouters(run, ctrls.GetCtrl("ctrl1"))
+		}),
+		"testIteration": model.BindF(func(run model.Run) error {
+			// Entity churn every third iteration, so most rounds still exercise the connection-level chaos
+			// the model was built for while the delete path is reached often enough to matter over a long
+			// run.
+			//
+			// Immediately after sowChaos, so the deletes land while the cluster is still settling from it:
+			// controllers restarting, raft rejoining, routers reconnecting. That is where an asynchronous
+			// cleanup handler is most likely to run late, which is the condition per-router state teardown
+			// has to survive. Before it, the deletes would run against a quiet cluster and exercise only
+			// the easy case.
+			actions := []string{"sowChaos"}
+
+			// Skipped while the controllers span versions: raft is read-only then, so every create and
+			// delete is refused. Nothing else in an iteration changes the model.
+			if iterationCount%3 == 0 && !clusterReadOnly() {
+				actions = append(actions, "recreateRouters")
+			}
+
+			actions = append(actions, validationActions()...)
+
+			iterationCount++
+			return run.GetModel().Exec(run, actions...)
+		}),
+
+		// One pass of the upgrade story, and the phases it is made of, so a cycle can also be driven by
+		// hand. See version_cycle.go.
+		"versionCycle":    model.BindF(versionCycle),
+		"ctrlPhaseOld":    model.BindF(resetCtrlsToOld),
+		"ctrlPhaseMixed":  model.BindF(func(run model.Run) error { return upgradeCtrlsTo(run, ctrlVersionMixed) }),
+		"ctrlPhaseLatest": model.BindF(func(run model.Run) error { return upgradeCtrlsTo(run, ctrlVersionLatest) }),
 	},
 
 	Infrastructure: model.Stages{
@@ -302,6 +411,9 @@ var m = &model.Model{
 
 	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
+		// Before the rsync, so the extra binaries travel with everything else and a phase change is a
+		// version swap and a restart rather than a download.
+		model.StageActionF(stageMixedVersions),
 		rsync.RsyncStaged(),
 	},
 
