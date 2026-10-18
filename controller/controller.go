@@ -53,6 +53,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/events"
+	"github.com/openziti/ziti/v2/controller/gossip"
 	"github.com/openziti/ziti/v2/controller/handler_ctrl"
 	"github.com/openziti/ziti/v2/controller/handler_peer_ctrl"
 	"github.com/openziti/ziti/v2/controller/network"
@@ -184,6 +185,54 @@ func (c *Controller) GetRaftIndex() uint64 {
 	return c.raftController.GetAppliedIndex()
 }
 
+// GetRaftCommitIndex returns the highest index known to be committed, which is the barrier to wait for in
+// order to see everything the cluster had committed when it was read. Zero without raft.
+func (c *Controller) GetRaftCommitIndex() uint64 {
+	if c.raftController == nil {
+		return 0
+	}
+	r := c.raftController.GetRaft()
+	if r == nil {
+		return 0
+	}
+	return r.CommitIndex()
+}
+
+// HasRaftLeader reports whether this controller knows of a leader, itself included. False when isolated or
+// mid-election. True without raft.
+func (c *Controller) HasRaftLeader() bool {
+	if c.raftController == nil {
+		return true
+	}
+	r := c.raftController.GetRaft()
+	if r == nil {
+		return false
+	}
+	_, leaderId := r.LeaderWithID()
+	return leaderId != ""
+}
+
+// IsRaftCaughtUp reports whether this controller has applied every entry the cluster is known to have
+// committed. False while leaderless, and while applying entries committed before this controller caught up,
+// which includes the window after winning an election. True without raft, where there is nothing to lag.
+//
+// The commit index a follower knows is the one carried by the last append it received, so this is a lower
+// bound rather than a live view of the leader. Callers that need certainty about an absent entity should
+// re-check over a window rather than treat one true answer as final.
+func (c *Controller) IsRaftCaughtUp() bool {
+	if c.raftController == nil {
+		return true
+	}
+	if !c.HasRaftLeader() {
+		return false
+	}
+	r := c.raftController.GetRaft()
+	if r == nil {
+		return false
+	}
+	return c.raftController.GetAppliedIndex() >= r.CommitIndex()
+}
+
 func (c *Controller) GetStartRaftIndex() uint64 {
 	return c.raftController.Fsm.GetStartIndex()
 }
@@ -207,6 +256,19 @@ func (c *Controller) GetVersionProvider() versions.VersionProvider {
 
 func (c *Controller) GetCloseNotify() <-chan struct{} {
 	return c.shutdownC
+}
+
+// GetGossipPeering tells the network how to reach its peers. The raft controller is created and initialized
+// before the network is, so its mesh is available here and gossip needs nothing handed to it later. Without
+// raft there are no peers, and the zero value runs gossip with none.
+func (c *Controller) GetGossipPeering() network.GossipPeering {
+	if c.raftController == nil {
+		return network.GossipPeering{}
+	}
+	return network.GossipPeering{
+		Mesh:                     gossip.NewRaftMeshAdapter(c.raftController.GetMesh()),
+		WatchClusterCapabilities: c.raftController.RegisterClusterCapabilityHandler,
+	}
 }
 
 func (c *Controller) GetRaftConfig() *config.RaftConfig {
@@ -552,8 +614,19 @@ func (c *Controller) Run() error {
 
 	ctrlAcceptors := map[string]channel.HelloAcceptor{}
 	if c.raftController != nil {
-		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.config.Ctrl.Options.PeerHeartbeatOptions))
-		ctrlAcceptors[mesh.ChannelTypeMesh] = channel.AsHelloAcceptor(c.raftController.GetMesh())
+		raftMesh := c.raftController.GetMesh()
+		c.eventDispatcher.AddClusterEventHandler(event.ClusterEventHandlerF(func(evt *event.ClusterEvent) {
+			for _, peer := range evt.Peers {
+				switch evt.EventType {
+				case event.ClusterPeerConnected:
+					c.network.GossipStore.PeerConnected(peer.Id)
+				case event.ClusterPeerDisconnected:
+					c.network.GossipStore.PeerDisconnected(peer.Id)
+				}
+			}
+		}))
+		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.network.GossipStore, c.config.Ctrl.Options.PeerHeartbeatOptions))
+		ctrlAcceptors[mesh.ChannelTypeMesh] = channel.AsHelloAcceptor(raftMesh)
 	}
 
 	// Channel types with a dedicated acceptor below validate their own peers; the connect handler
@@ -1026,5 +1099,14 @@ func (c *Controller) GetHelloHeaderProviders() []mesh.HeaderProvider {
 		}
 	})
 
-	return []mesh.HeaderProvider{apiAddrProvider, preferredLeaderProvider}
+	// Peers need each other's capabilities, not just versions, to agree on which cluster-wide features are
+	// usable. The accepting side of a mesh connection already sends these, since the ctrl listener's hello
+	// headers carry them for routers; these providers are what puts them on the dialing side too.
+	capabilityProvider := mesh.HeaderProviderFunc(func(headers map[int32][]byte) {
+		mask := capabilities.GetControllerCapabilitiesMask().Bytes()
+		headers[int32(ctrl_pb.ControlHeaders_CapabilitiesHeader)] = mask
+		headers[ctrl_pb.LegacyCapabilitiesHeader] = mask
+	})
+
+	return []mesh.HeaderProvider{apiAddrProvider, preferredLeaderProvider, capabilityProvider}
 }
