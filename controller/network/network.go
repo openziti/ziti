@@ -131,7 +131,8 @@ type Network struct {
 	metricsRegistry     metrics.Registry
 	VersionProvider     versions.VersionProvider
 
-	GossipStore *gossip.Store
+	GossipStore      *gossip.Store
+	CanaryGossipType *gossip.StateType[*CanaryValue]
 	// gossipTypes drives the epoch sweep only. Router-deleted cleanup is a separate lifecycle with a
 	// different membership, since canaries carry the epoch that detects a change and so must survive one.
 	//
@@ -141,6 +142,7 @@ type Network struct {
 	// for every connected router.
 	gossipTypes                  map[string]gossip.StateTypeInfo // non-generic lookup by store type
 	routerDeletedCleanups        []routerDeletedCleanup
+	canaryListener               *canaryGossipListener
 	serviceEventMetrics          servermetrics.UsageRegistry
 	serviceDialSuccessCounter    servermetrics.IntervalCounter
 	serviceDialFailCounter       servermetrics.IntervalCounter
@@ -307,6 +309,7 @@ func (network *Network) initGossip(peering GossipPeering) {
 		})
 	}
 
+	network.initCanaryGossip()
 }
 
 // IsLeader reports whether this controller speaks for the cluster: always true where raft is not
@@ -873,6 +876,21 @@ func (network *Network) runRouterDeletedCleanups(id string) {
 func (network *Network) deleteGossipOwnerBefore(owner string, epoch []byte) {
 	for _, t := range network.gossipTypes {
 		t.DeleteByOwnerBefore(owner, epoch)
+	}
+}
+
+// HandleRouterEpoch processes a router epoch from the hello or canary. If the
+// epoch is newer than the stored epoch, old-epoch entries for this router are
+// deleted across all gossip store types.
+func (network *Network) HandleRouterEpoch(routerId string, epoch []byte) {
+	if len(epoch) == 0 {
+		return
+	}
+
+	// Update the canary listener's epoch tracking and let it handle cleanup.
+	// This reuses the same epoch change detection as the canary path.
+	if network.canaryListener != nil {
+		network.canaryListener.checkEpoch(routerId, epoch)
 	}
 }
 

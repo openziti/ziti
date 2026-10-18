@@ -85,6 +85,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		Handler: self.network.RouterMessaging.NewValidationResponseHandler(self.network, self.router),
 	})
 	channel.AddReceiveHandlers(binding, newSendClusterMembersHandler(self.router, self.network))
+	channel.AddReceiveHandlers(binding, newCanaryHandler(self.router, self.network))
 	channel.AddReceiveHandlers(binding, newCtrlGossipDeltaHandler(self.router, self.network))
 	channel.AddReceiveHandlers(binding, newCtrlGossipDigestResponseHandler(self.router, self.network))
 	channel.AddReceiveHandlers(binding, newCtrlGossipDigestRequestHandler(self.router, self.network))
@@ -122,6 +123,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	}
 
 	binding.AddCloseHandler(newCloseHandler(self.router, self.network))
+	startCanaryStatusSender(binding.GetChannel(), self.router, self.network)
 
 	// Send a gossip digest to the router for each registered store type so it
 	// can reconcile on reconnect. Run async — old routers won't respond, and

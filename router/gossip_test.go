@@ -226,6 +226,51 @@ func epochAt(millis uint64) []byte {
 	return epoch
 }
 
+// Test_canaryEmitter_sequenceOrdersAcrossLifetimes covers the guarantee a restart depends on. A controller
+// stores a canary under its sequence as the version and refuses anything not newer, so the sequence a restarted
+// router starts from has to exceed whatever its predecessor reached.
+//
+// Seeding from the epoch gives that with no margin to choose, which is the point: the epoch advances by the
+// whole elapsed wall time, the previous lifetime's uptime included, while the sequence advances once per tick.
+// A lifetime can only tick its way to uptime/interval, so however long it ran and however briefly it was down,
+// the next epoch is already past it.
+func Test_canaryEmitter_sequenceOrdersAcrossLifetimes(t *testing.T) {
+	const tickMillis = 5_000 // the emitter's interval, which is what bounds how far a lifetime can tick
+
+	tests := []struct {
+		name     string
+		uptime   time.Duration
+		downtime time.Duration
+	}{
+		{name: "a brief lifetime, restarted at once", uptime: time.Second, downtime: time.Millisecond},
+		{name: "a day of uptime, restarted at once", uptime: 24 * time.Hour, downtime: time.Millisecond},
+		{name: "a year of uptime, restarted at once", uptime: 365 * 24 * time.Hour, downtime: time.Millisecond},
+		{name: "a year of uptime, down for a week", uptime: 365 * 24 * time.Hour, downtime: 7 * 24 * time.Hour},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			startMillis := uint64(1_700_000_000_000)
+
+			previous := newCanaryEmitter(nil, epochAt(startMillis), nil, nil, nil, nil)
+			require.Equal(t, startMillis, previous.seq.Load(),
+				"the sequence starts at the epoch's millisecond timestamp, not at zero")
+
+			// As far as the lifetime could have ticked in its uptime.
+			ticks := uint64(test.uptime.Milliseconds()) / tickMillis
+			previous.seq.Add(ticks)
+			previousLast := previous.seq.Load()
+
+			// The restart takes its epoch at startup, so the whole uptime and the downtime have elapsed.
+			restartMillis := startMillis + uint64(test.uptime.Milliseconds()) + uint64(test.downtime.Milliseconds())
+			current := newCanaryEmitter(nil, epochAt(restartMillis), nil, nil, nil, nil)
+
+			require.Greater(t, current.seq.Add(1), previousLast,
+				"a restarted router's first sequence must exceed its predecessor's last, or its canaries are refused")
+		})
+	}
+}
+
 func Test_EpochMillis(t *testing.T) {
 	t.Run("reads the leading 48 bits big-endian", func(t *testing.T) {
 		epoch := make([]byte, 16)
