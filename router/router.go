@@ -876,7 +876,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	if len(controllers) > 0 {
-		self.ctrls.LoadControllerDetails(controllers)
+		self.ctrls.UpdateControllerDetails(controllers, false)
 	} else {
 		self.ctrls.ConnectToInitialEndpoints(endpoints)
 	}
@@ -1107,8 +1107,8 @@ func (self *Router) getInitialCtrlEndpoints() ([]string, []*ctrl_pb.CtrlDetail, 
 	return endpoints, controllers, nil
 }
 
-func (self *Router) UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail) {
-	self.ctrls.UpdateControllerDetails(controllers)
+func (self *Router) UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) {
+	self.ctrls.UpdateControllerDetails(controllers, authoritative)
 	if err := self.config.SaveControllerDetails(controllers); err != nil {
 		pfxlog.Logger().WithError(err).Error("unable to save updated controller details")
 	}

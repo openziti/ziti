@@ -46,11 +46,7 @@ func (m *MockNetworkControllers) GetControllerDetails() map[string]*ctrl_pb.Ctrl
 	return nil
 }
 
-func (m *MockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
-	return false
-}
-
-func (m *MockNetworkControllers) LoadControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
+func (m *MockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool {
 	return false
 }
 
