@@ -90,6 +90,7 @@ const (
 	CircuitFailureRouterResponseTimeout            CircuitFailureCause = "ROUTER_RESPONSE_TIMEOUT"
 	CircuitFailureRouterErrGeneric                 CircuitFailureCause = "ROUTER_ERR_GENERIC"
 	CircuitFailureRouterErrInvalidTerminator       CircuitFailureCause = "ROUTER_ERR_INVALID_TERMINATOR"
+	CircuitFailureRouterErrUnusableTerminator      CircuitFailureCause = "ROUTER_ERR_UNUSABLE_TERMINATOR"
 	CircuitFailureRouterErrMisconfiguredTerminator CircuitFailureCause = "ROUTER_ERR_MISCONFIGURED_TERMINATOR"
 	CircuitFailureRouterErrDialTimedOut            CircuitFailureCause = "ROUTER_ERR_DIAL_TIMED_OUT"
 	CircuitFailureRouterErrDialConnRefused         CircuitFailureCause = "ROUTER_ERR_CONN_REFUSED"

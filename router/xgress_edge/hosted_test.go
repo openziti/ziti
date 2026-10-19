@@ -17,6 +17,7 @@
 package xgress_edge
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -743,6 +744,99 @@ func Test_edgeTerminator_replaceCopiesCreateConfirmed(t *testing.T) {
 	replacement.replace(other)
 
 	req.True(replacement.createConfirmed.Load(), "replace must carry over the adopted terminator's create confirmation")
+}
+
+// newBoundTerminator builds a terminator bound under listener id "listener" on its own SDK
+// connection, with the listener wiring a takeover touches.
+func newBoundTerminator(registry *hostedServiceRegistry, id string, termState xgress_common.TerminatorState, connClosed bool) *edgeTerminator {
+	term := newDialTestTerminator(id, termState, connClosed)
+	term.listenerId = "listener"
+	term.edgeClientConn.listener = &listener{
+		id:      &identity.TokenId{Token: "router"},
+		factory: &Factory{hostedServices: registry},
+	}
+	return term
+}
+
+func Test_findMatchingEvent_handle(t *testing.T) {
+	t.Run("terminator whose channel has closed is not taken over", func(t *testing.T) {
+		req := require.New(t)
+		registry := &hostedServiceRegistry{terminators: cmap.New[*edgeTerminator]()}
+
+		existing := newBoundTerminator(registry, "existing", xgress_common.TerminatorStateEstablished, true)
+		registry.Put(existing)
+
+		bind := newBoundTerminator(registry, "new", xgress_common.TerminatorStateEstablishing, false)
+		event := &findMatchingEvent{terminator: bind, resultC: make(chan listenerIdCheckResult, 1)}
+		event.handle(registry)
+		result := <-event.resultC
+
+		req.False(result.replaceExisting)
+		req.Same(bind, result.terminator)
+		req.Equal("new", bind.terminatorId, "the bind must keep its own id")
+
+		current, _ := registry.Get("new")
+		req.Same(bind, current)
+		current, _ = registry.Get("existing")
+		req.Same(existing, current, "the closed terminator is left for channel close cleanup")
+	})
+
+	t.Run("lookup that sees the channel close during a takeover gets the replacement", func(t *testing.T) {
+		req := require.New(t)
+		registry := &hostedServiceRegistry{terminators: cmap.New[*edgeTerminator]()}
+
+		existing := newBoundTerminator(registry, "existing", xgress_common.TerminatorStateEstablished, false)
+		registry.Put(existing)
+		bind := newBoundTerminator(registry, "new", xgress_common.TerminatorStateEstablishing, false)
+
+		// The channel closes right after the takeover has checked it, and the takeover holds there
+		// until the lookup has seen the channel closed.
+		existingCh := existing.GetChannel().(*closeableCh)
+		takeoverChecked := make(chan struct{})
+		lookupSawClosed := make(chan struct{})
+		releaseTakeover := make(chan struct{})
+		var checks atomic.Int32
+		existingCh.onIsClosed = func() {
+			switch checks.Add(1) {
+			case 1:
+				existingCh.closed.Store(true)
+				close(takeoverChecked)
+				<-releaseTakeover
+			case 2:
+				close(lookupSawClosed)
+			}
+		}
+
+		event := &findMatchingEvent{terminator: bind, resultC: make(chan listenerIdCheckResult, 1)}
+		go event.handle(registry)
+		<-takeoverChecked
+
+		type lookupResult struct {
+			terminator *edgeTerminator
+			err        error
+		}
+		lookupC := make(chan lookupResult, 1)
+		d := &dialer{factory: &Factory{hostedServices: registry}, options: &Options{}}
+		go func() {
+			found, err := d.lookupHost("existing")
+			lookupC <- lookupResult{terminator: found, err: err}
+		}()
+		<-lookupSawClosed
+
+		var early *lookupResult
+		select {
+		case result := <-lookupC:
+			early = &result
+		case <-time.After(50 * time.Millisecond):
+		}
+		close(releaseTakeover)
+		req.Nil(early, "the lookup must wait for the takeover to register its replacement")
+
+		result := <-lookupC
+		req.NoError(result.err)
+		req.Same(bind, result.terminator)
+		req.True((<-event.resultC).replaceExisting)
+	})
 }
 
 // deleteQueueTestEnv supplies the only env surface evaluateDeleteQueue reaches once a terminator is
