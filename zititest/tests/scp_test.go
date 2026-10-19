@@ -30,10 +30,7 @@ func TestScp(t *testing.T) {
 	allZetHostedFailed := true
 	allZetClientsFailed := true
 
-	waitForTerminators(t, 30*time.Second,
-		"ert-ssh", "ert-ssh-unencrypted",
-		"zet-ssh", "zet-ssh-unencrypted",
-		"ziti-tunnel-ssh", "ziti-tunnel-ssh-unencrypted")
+	waitForTerminators(t, 30*time.Second, hostedServices("ssh", "ert", "zet", "ziti-tunnel")...)
 
 	t.Run("scp-tests", func(t *testing.T) {
 		t.Run("test-ert-scp", func(t *testing.T) {
@@ -85,6 +82,11 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 	encDesk := "encrypted"
 	if !encrypted {
 		encDesk = "unencrypted"
+	}
+
+	if support := hostingSupport(hostType); !support.Supported {
+		t.Run(fmt.Sprintf("(%s<->%s)-%v", hostSelector, hostType, encDesk), func(t *testing.T) { t.Skip(support.Reason) })
+		return true
 	}
 
 	success := true

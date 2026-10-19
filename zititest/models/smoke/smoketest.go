@@ -20,7 +20,6 @@ import (
 	"embed"
 	"os"
 	"path"
-	"slices"
 	"strings"
 	"time"
 
@@ -36,7 +35,6 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/ziti/zititest/models/smoke/actions"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
@@ -49,23 +47,6 @@ const ZitiRouterVersion = ""
 
 //go:embed configs
 var configResource embed.FS
-
-// managedLinkConfigMinVersion is the first router release that applies controller-managed link config.
-const managedLinkConfigMinVersion = "v2.1.0-pre2"
-
-// supportsManagedLinkConfig reports whether a router at version applies controller-managed link
-// config. An empty version is the local build, which does. An unparsable version reports false, since
-// local link config works on every version.
-func supportsManagedLinkConfig(version string) bool {
-	if version == "" {
-		return true
-	}
-	v, err := versions.ParseSemVer(version)
-	if err != nil {
-		return false
-	}
-	return v.CompareTo(versions.MustParseSemVer(managedLinkConfigMinVersion)) >= 0
-}
 
 func getUniqueId() string {
 	if runId := os.Getenv("GITHUB_RUN_ID"); runId != "" {
@@ -113,17 +94,11 @@ var Model = &model.Model{
 				varName := strings.ReplaceAll(c.Id, "-", "_") + "_version"
 				if version, found := m.GetStringVariable(varName); found {
 					router.Version = version
-					// an older router ignores managedConfig and would start with no link listeners or
-					// dialers, so it keeps its link config local instead
-					if !supportsManagedLinkConfig(version) {
-						c.Scope.Tags = slices.DeleteFunc(c.Scope.Tags, func(tag string) bool {
-							return tag == "ctrl-managed-link"
-						})
-					}
 				}
 				return nil
 			})
 		}),
+		model.FactoryFunc(applyCapabilities),
 	},
 
 	Factories: []model.Factory{
