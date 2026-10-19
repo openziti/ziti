@@ -69,6 +69,10 @@ type Dispatcher interface {
 	// was committed when it took leadership. Required rather than IsLeader when a local read decides
 	// whether a replicated mutation is needed.
 	IsLeaderAndCaughtUp() bool
+
+	// LeadershipTerm returns a raft term and whether this node led it, read so both describe the same
+	// term. Without raft the term is 0.
+	LeadershipTerm() (term uint64, isLeader bool)
 	GetPeers() map[string]channel.Channel
 	GetRateLimiter() rate.RateLimiter
 	Bootstrap() error
@@ -102,6 +106,10 @@ func (self *LocalDispatcher) Bootstrap() error {
 
 func (self *LocalDispatcher) IsLeader() bool {
 	return true
+}
+
+func (self *LocalDispatcher) LeadershipTerm() (uint64, bool) {
+	return 0, true
 }
 
 // IsLeaderAndCaughtUp is always true without raft: there is no log for the local view to trail.

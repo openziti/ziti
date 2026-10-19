@@ -312,10 +312,14 @@ message UpdateCtrlAddresses {
   uint64 index = 2;
   bool isLeader = 3;
   repeated CtrlDetail controllers = 4;
+  // term is the raft term the sender leads when isLeader is set. 0 from controllers that don't send it.
+  uint64 term = 5;
 }
 
 message UpdateClusterLeader {
   uint64 index = 1;
+  // term is the raft term the sender leads. 0 from controllers that don't send it.
+  uint64 term = 2;
 }
 
 enum PeerState {
