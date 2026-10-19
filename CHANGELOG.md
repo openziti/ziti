@@ -1,3 +1,15 @@
+# Release 2.0.9
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4605](https://github.com/openziti/ziti/issues/4605) - [Backport-2.0] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
+
+
 # Release 2.0.8
 
 ## What's New
