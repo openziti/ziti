@@ -304,8 +304,12 @@ func (o *QuickstartOpts) run(ctx context.Context) error {
 	go waitForController(ctx, o.ControllerHostPort(), c)
 
 	select {
-	case <-c:
-		//completed normally
+	case err := <-c:
+		if err != nil {
+			o.cleanupHome()
+			cancel()
+			return fmt.Errorf("stopped waiting for controller: %s: %w", o.ControllerHostPort(), err)
+		}
 		logrus.Info("Controller online. Continuing...")
 	case <-time.After(timeout):
 		o.cleanupHome()
