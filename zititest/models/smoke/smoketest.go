@@ -98,6 +98,7 @@ var Model = &model.Model{
 				return nil
 			})
 		}),
+		model.FactoryFunc(applyCapabilities),
 	},
 
 	Factories: []model.Factory{

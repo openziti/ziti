@@ -24,7 +24,34 @@ import (
 
 	"github.com/openziti/ziti/v2/controller/rest_client/terminator"
 	"github.com/openziti/ziti/v2/zitirest"
+	"github.com/openziti/ziti/zititest/models/smoke"
 )
+
+// sdkHostingSupport reports whether the hosting routers can carry SDK-hosted services.
+func sdkHostingSupport() smoke.Support {
+	return smoke.RoutersSupport(run.GetModel(), ".host", smoke.CapSdkHosting)
+}
+
+// hostingSupport reports whether the hosting routers can carry services hosted by hostType. Every host
+// type but the router's own tunneler, "ert", hosts through the SDK.
+func hostingSupport(hostType string) smoke.Support {
+	if hostType == "ert" {
+		return smoke.Support{Supported: true}
+	}
+	return sdkHostingSupport()
+}
+
+// hostedServices returns the encrypted and unencrypted kind services of each of hostTypes that the
+// hosting routers can carry.
+func hostedServices(kind string, hostTypes ...string) []string {
+	var result []string
+	for _, hostType := range hostTypes {
+		if hostingSupport(hostType).Supported {
+			result = append(result, hostType+"-"+kind, hostType+"-"+kind+"-unencrypted")
+		}
+	}
+	return result
+}
 
 func waitForTerminators(t *testing.T, timeout time.Duration, services ...string) {
 	t.Helper()
