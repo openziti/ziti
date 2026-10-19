@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -75,13 +76,12 @@ type NetworkControllers interface {
 	MarkChannelEstablished()
 	EverConnected() bool
 	GetControllerDetails() map[string]*ctrl_pb.CtrlDetail
-	// UpdateControllerDetails replaces the controller set with one a controller advertised. From then on
-	// a controller absent from the set is treated as removed.
-	UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool
-	// LoadControllerDetails replaces the controller set with one recorded earlier, such as the endpoints
-	// file. It is a starting point, not an authority: a controller reached that is absent from it is
-	// still registered, and the first advertised set corrects it.
-	LoadControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool
+	// UpdateControllerDetails replaces the controller set, dropping and dialing controllers to match.
+	// authoritative marks the set as the cluster's complete membership; pass it only for a set known to be
+	// complete, such as the leader's list at a newer version. From then on a controller absent from the
+	// set is refused when it connects, and dials learn nothing. Any other set is a starting point, and a
+	// controller absent from it is still registered when it connects.
+	UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool
 	ConnectToInitialEndpoints(endpoints []string)
 	UpdateLeader(leaderId string)
 	GetAll() map[string]NetworkController
@@ -124,8 +124,8 @@ type networkControllers struct {
 	heartbeatOptions      *HeartbeatOptions
 	defaultRequestTimeout time.Duration
 	idsBeingDialed        cmap.ConcurrentMap[string, struct{}]
-	// detailsAuthoritative is set once a controller has sent the cluster's controller set. From then on
-	// omission from that set means removal, and nothing learned from a dial may add to it.
+	// detailsAuthoritative is set once an authoritative controller set has been installed. From then on
+	// omission from the set means removal, and nothing learned from a dial may add to it.
 	detailsAuthoritative atomic.Bool
 	ctrls                concurrenz.CopyOnWriteMap[string, NetworkController]
 	leaderId             concurrenz.AtomicValue[string]
@@ -176,19 +176,7 @@ func (self *networkControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlD
 	return maps.Clone(self.controllerDetails.Load())
 }
 
-func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
-	return self.replaceControllerDetails(controllers, true)
-}
-
-func (self *networkControllers) LoadControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
-	return self.replaceControllerDetails(controllers, false)
-}
-
-// replaceControllerDetails installs controllers as the set, dropping and dialing to match. authoritative
-// marks the set as advertised by a controller; a recorded set never is, since the ids in it may no longer
-// match the controllers at those addresses, and refusing what they reach would leave the router unable
-// to connect until the file is removed.
-func (self *networkControllers) replaceControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool {
+func (self *networkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -259,28 +247,48 @@ func (self *networkControllers) getControllerDetail(controllerId string) *ctrl_p
 	return self.controllerDetails.Load()[controllerId]
 }
 
-// learnControllerDetail records endpoint as the detail for a controller no detail is known for. A
-// controller that never advertises a cluster (a standalone controller sends none) is otherwise known
-// only as the endpoint it was dialed on, and the close handler redials only controllers it has a detail
-// for. Once a controller has advertised the cluster's controller set, nothing is learned: that set is
-// authoritative, and a controller absent from it was removed.
+// learnControllerDetail adds endpoint to ctrlId's detail, creating the detail if none is known, unless the
+// endpoint is already in it. A controller that never advertises a cluster (a standalone controller sends
+// none) is otherwise known only by the endpoints it was dialed on, and the close handler redials only
+// controllers it has a detail for. Once the controller set is authoritative nothing is learned: a
+// controller absent from it was removed, and the set carries the endpoints of those in it.
 func (self *networkControllers) learnControllerDetail(ctrlId string, endpoint string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	if self.detailsAuthoritative.Load() || self.getControllerDetail(ctrlId) != nil {
+	if self.detailsAuthoritative.Load() {
 		return
 	}
+
+	detail := &ctrl_pb.CtrlDetail{Id: ctrlId}
+	if existing := self.getControllerDetail(ctrlId); existing != nil {
+		for _, ep := range existing.Endpoints {
+			if ep.Address == endpoint {
+				return
+			}
+		}
+		detail.Endpoints = slices.Clone(existing.Endpoints)
+	}
+	detail.Endpoints = append(detail.Endpoints, &ctrl_pb.CtrlEndpoint{Address: endpoint})
 
 	details := maps.Clone(self.controllerDetails.Load())
 	if details == nil {
 		details = map[string]*ctrl_pb.CtrlDetail{}
 	}
-	details[ctrlId] = &ctrl_pb.CtrlDetail{
-		Id:        ctrlId,
-		Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: endpoint}},
-	}
+	details[ctrlId] = detail
 	self.controllerDetails.Store(details)
+}
+
+// addDialed registers a channel dialed on endpoint, as Add does, and adds endpoint to the reached
+// controller's detail when the channel is registered or refused as a duplicate. Either way the endpoint
+// is known to reach that controller.
+func (self *networkControllers) addDialed(endpoint string, ctrlCh ctrlchan.CtrlChannel, ch channel.Channel, underlay channel.Underlay) (NetworkController, error) {
+	ctrl, err := self.Add(endpoint, ctrlCh, ch, underlay)
+	var duplicate *errDuplicateChannel
+	if err == nil || errors.As(err, &duplicate) {
+		self.learnControllerDetail(ch.Id(), endpoint)
+	}
+	return ctrl, err
 }
 
 func (self *networkControllers) connectToControllerWithBackoff(detail *ctrl_pb.CtrlDetail) {
@@ -404,9 +412,9 @@ func firstUnderlayHeaders(base channel.Headers) channel.Headers {
 	return first
 }
 
-// connectToController dials endpoint and registers the resulting control channel, recording the endpoint
-// as the reached controller's detail while no controller has advertised the cluster's set. The dial may
-// have started from a recorded detail whose id the controller no longer has; the detail is recorded under
+// connectToController dials endpoint and registers the resulting control channel, adding the endpoint to
+// the reached controller's detail while the controller set is not authoritative. The dial may have
+// started from a recorded detail whose id the controller no longer has; the endpoint is recorded under
 // the id the controller reports, which is the one a close handler looks up.
 func (self *networkControllers) connectToController(endpoint string, addr transport.Address) error {
 	headers, err := self.dialEnv.GetChannelHeaders()
@@ -478,12 +486,10 @@ func (self *networkControllers) connectToController(endpoint string, addr transp
 		id := binding.GetChannel().Id()
 		binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CurrentIndexMessageType), self.handleRouterDataModelIndexUpdate)
 
-		ctrl, err := self.Add(endpoint, dialCtrlChan, binding.GetChannel(), underlay)
+		ctrl, err := self.addDialed(endpoint, dialCtrlChan, binding.GetChannel(), underlay)
 		if err != nil {
 			return err
 		}
-
-		self.learnControllerDetail(id, endpoint)
 
 		binding.AddCloseHandler(channel.CloseHandlerF(func(channel.Channel) {
 			self.handleChannelClose(id, ctrl, time.Second)
@@ -558,9 +564,9 @@ func (self *networkControllers) Add(address string, ctrlCh ctrlchan.CtrlChannel,
 	// controller id, so idsBeingDialed cannot keep them apart.
 	self.lock.Lock()
 
-	// Once a controller has advertised the cluster's controller set, a controller absent from it was
-	// removed, however the channel to it came about: a dial that started from a bare endpoint before the
-	// set arrived, or the controller dialing in.
+	// Once the controller set is authoritative, a controller absent from it was removed, however the
+	// channel to it came about: a dial that started from a bare endpoint before the set arrived, or the
+	// controller dialing in.
 	if self.detailsAuthoritative.Load() && self.getControllerDetail(ch.Id()) == nil {
 		self.lock.Unlock()
 		return nil, &errControllerNotInCluster{ctrlId: ch.Id()}
@@ -606,7 +612,7 @@ func (self *errDuplicateChannel) Error() string {
 }
 
 // errControllerNotInCluster reports that a control channel was refused because the controller it reached is
-// not in the cluster's advertised controller set.
+// not in the authoritative controller set.
 type errControllerNotInCluster struct {
 	ctrlId string
 }

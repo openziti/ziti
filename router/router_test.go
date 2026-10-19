@@ -31,7 +31,7 @@ func newMockNetworkControllers() *mockNetworkControllers {
 	}
 }
 
-func (m *mockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
+func (m *mockNetworkControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool {
 	changed := false
 	newEndpoints := make(map[string]struct{})
 	for _, ctrl := range controllers {
@@ -164,11 +164,11 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 			Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: ep}},
 		})
 	}
-	r.UpdateCtrlEndpointDetails(details)
+	r.UpdateCtrlEndpointDetails(details, true)
 
 	r.UpdateCtrlEndpointDetails([]*ctrl_pb.CtrlDetail{{
 		Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:localhost:6565"}},
-	}})
+	}}, true)
 	req.FileExists(path.Join(tmpDir, "endpoints"))
 
 	b, err := os.ReadFile(path.Join(tmpDir, "endpoints"))
