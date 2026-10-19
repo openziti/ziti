@@ -46,6 +46,8 @@ type ctrlListControllers struct {
 	leaderHook func()
 	// leaderCtrl is what GetLeader returns.
 	leaderCtrl env.NetworkController
+	// authoritative records the authoritative flag of each UpdateControllerDetails, in order.
+	authoritative []bool
 }
 
 func newCtrlListControllers(ids ...string) *ctrlListControllers {
@@ -68,9 +70,10 @@ func (c *ctrlListControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlDet
 	return maps.Clone(c.details)
 }
 
-func (c *ctrlListControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
+func (c *ctrlListControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	c.authoritative = append(c.authoritative, authoritative)
 	c.details = map[string]*ctrl_pb.CtrlDetail{}
 	for _, ctrl := range controllers {
 		c.details[ctrl.Id] = ctrl
@@ -202,6 +205,13 @@ func (c *ctrlListControllers) detail(id string) *ctrl_pb.CtrlDetail {
 	return c.details[id]
 }
 
+// updates returns the authoritative flag of each controller set update so far.
+func (c *ctrlListControllers) updates() []bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return slices.Clone(c.authoritative)
+}
+
 func (c *ctrlListControllers) leader() string {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -226,8 +236,8 @@ func (e *ctrlListEnv) GetNetworkControllers() env.NetworkControllers {
 	return e.ctrls
 }
 
-func (e *ctrlListEnv) UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail) {
-	e.ctrls.UpdateControllerDetails(controllers)
+func (e *ctrlListEnv) UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) {
+	e.ctrls.UpdateControllerDetails(controllers, authoritative)
 }
 
 func (e *ctrlListEnv) UpdateLeader(leaderId string) {
@@ -414,6 +424,30 @@ func Test_UpdateCtrlAddresses_LeaderListAtRecordedVersionRestoresMissing(t *test
 
 	sendCtrlList(t, handler, "ctrl1", 3432, true, "ctrl1", "ctrl2")
 	req.Equal([]string{"ctrl1", "ctrl2", "ctrl3"}, ctrls.ids(), "only a newer leader list may remove controllers")
+}
+
+// Test_UpdateCtrlAddresses_OnlyNewerLeaderListIsAuthoritative: only a leader's list at a newer version
+// is the complete controller set. Every other update only adds, so a controller it omits must still be
+// accepted when it connects.
+func Test_UpdateCtrlAddresses_OnlyNewerLeaderListIsAuthoritative(t *testing.T) {
+	req := require.New(t)
+	ctrls := newCtrlListControllers("ctrl1", "ctrl2")
+	handler := newCtrlListHandler(t, ctrls)
+
+	sendCtrlList(t, handler, "ctrl2", 5, false, "ctrl1", "ctrl3")
+	req.Equal([]bool{false}, ctrls.updates(), "a follower's list is not the complete set")
+
+	sendCtrlList(t, handler, "ctrl1", 10, true, "ctrl1", "ctrl2")
+	req.Equal([]bool{false, true}, ctrls.updates(), "a newer leader list is the complete set")
+
+	sendCtrlList(t, handler, "ctrl1", 10, true, "ctrl1", "ctrl2", "ctrl4")
+	req.Equal([]bool{false, true, false}, ctrls.updates(), "a leader's list at the recorded version only adds")
+
+	sendCtrlList(t, handler, "ctrl2", 11, false, "ctrl1", "ctrl5")
+	req.Equal([]bool{false, true, false, false}, ctrls.updates(), "a follower's list after the leader's only adds")
+
+	sendNewCtrlAddress(t, handler, "ctrl1", "tls:ctrl1-new:6262")
+	req.Equal([]bool{false, true, false, false, false}, ctrls.updates(), "a new address is not the complete set")
 }
 
 // Test_UpdateCtrlAddresses_IndexResetAcceptsLowerLeaderList: after an index reset, a leader's list at a
