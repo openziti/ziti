@@ -146,6 +146,7 @@ func (self *fakeCtrlChannel) GetHighPrioritySender() channel.Sender { return sel
 func (self *fakeCtrlChannel) GetLowPrioritySender() channel.Sender  { return self.sender }
 func (self *fakeCtrlChannel) IsConnected() bool                     { return true }
 func (self *fakeCtrlChannel) Close() error                          { return nil }
+func (self *fakeCtrlChannel) Reconnect() error                      { return nil }
 func (self *fakeCtrlChannel) IsClosed() bool                        { return false }
 
 // newCtrlErrorTestConn builds the minimum needed to call the create-circuit senders. The circuit
