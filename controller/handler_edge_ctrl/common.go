@@ -144,15 +144,6 @@ func (self *baseSessionRequestContext) sessionLoggingFields() logrus.Fields {
 	return fields
 }
 
-// apiSessionLoggingFields returns the log fields describing the api session this request
-// authenticated with, empty when no api session has been loaded. The api session token is a
-// credential and is never among the fields.
-func (self *baseSessionRequestContext) apiSessionLoggingFields() logrus.Fields {
-	fields := self.apiSession.LoggingFields()
-	maps.Copy(fields, self.accessClaims.LoggingFields())
-	return fields
-}
-
 func (self *baseSessionRequestContext) getApiSessionId() string {
 	if self.apiSession != nil {
 		return self.apiSession.Id

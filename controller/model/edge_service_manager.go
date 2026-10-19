@@ -20,14 +20,14 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
@@ -327,8 +327,25 @@ type PolicyPostureChecks struct {
 	PolicyName    string
 }
 
+// GetPolicyPostureChecks returns, keyed by policy id, the posture checks of each service policy
+// that links identityId to serviceId. A policy with no checks maps to an empty list. The map is
+// empty when no posture checks exist at all.
 func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
+	var result map[string]*PolicyPostureChecks
+	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
+		result = self.getPolicyPostureChecksInTx(tx, identityId, serviceId)
+		return nil
+	})
+	return result
+}
+
+// getPolicyPostureChecksInTx is GetPolicyPostureChecks within the caller's read transaction.
+func (self *EdgeServiceManager) getPolicyPostureChecksInTx(tx *bbolt.Tx, identityId, serviceId string) map[string]*PolicyPostureChecks {
 	policyIdToChecks := map[string]*PolicyPostureChecks{}
+
+	if !self.env.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue).IsValid() {
+		return policyIdToChecks
+	}
 
 	postureCheckCache := map[string]*PostureCheck{}
 
@@ -336,52 +353,45 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 	postureCheckLinks := servicePolicyStore.GetLinkCollection(db.EntityTypePostureChecks)
 	serviceLinks := servicePolicyStore.GetLinkCollection(db.EntityTypeServices)
 
-	policyNameSymbol := self.env.GetStores().ServicePolicy.GetSymbol(db.FieldName)
-	policyTypeSymbol := self.env.GetStores().ServicePolicy.GetSymbol(db.FieldServicePolicyType)
+	policyNameSymbol := servicePolicyStore.GetSymbol(db.FieldName)
+	policyTypeSymbol := servicePolicyStore.GetSymbol(db.FieldServicePolicyType)
 
-	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
-		if !self.env.GetStores().PostureCheck.IterateIds(tx, ast.BoolNodeTrue).IsValid() {
-			return nil
-		}
-
-		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, db.EntityTypeServicePolicies, true)
-		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
-			return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))
-		})
-
-		for policyCursor.IsValid() {
-			policyIdBytes := policyCursor.Current()
-			policyIdStr := string(policyIdBytes)
-			policyCursor.Next()
-
-			policyName := boltz.FieldToString(policyNameSymbol.Eval(tx, policyIdBytes))
-			policyType := db.PolicyTypeDial
-			if fieldType, policyTypeValue := policyTypeSymbol.Eval(tx, policyIdBytes); fieldType == boltz.TypeString {
-				policyType = db.PolicyType(policyTypeValue)
-			}
-
-			//required to provide an entry for policies w/ no checks
-			policyIdToChecks[policyIdStr] = &PolicyPostureChecks{
-				PostureChecks: []*PostureCheck{},
-				PolicyType:    policyType,
-				PolicyName:    *policyName,
-			}
-
-			cursor := postureCheckLinks.IterateLinks(tx, policyIdBytes)
-			for cursor.IsValid() {
-				checkId := string(cursor.Current())
-				if postureCheck, found := postureCheckCache[checkId]; !found {
-					postureCheck, _ := self.env.GetManagers().PostureCheck.readInTx(tx, checkId)
-					postureCheckCache[checkId] = postureCheck
-					policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
-				} else {
-					policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
-				}
-				cursor.Next()
-			}
-		}
-		return nil
+	policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, db.EntityTypeServicePolicies, true)
+	policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
+		return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))
 	})
+
+	for policyCursor.IsValid() {
+		policyIdBytes := policyCursor.Current()
+		policyIdStr := string(policyIdBytes)
+		policyCursor.Next()
+
+		policyName := boltz.FieldToString(policyNameSymbol.Eval(tx, policyIdBytes))
+		policyType := db.PolicyTypeDial
+		if fieldType, policyTypeValue := policyTypeSymbol.Eval(tx, policyIdBytes); fieldType == boltz.TypeString {
+			policyType = db.PolicyType(policyTypeValue)
+		}
+
+		//required to provide an entry for policies w/ no checks
+		policyIdToChecks[policyIdStr] = &PolicyPostureChecks{
+			PostureChecks: []*PostureCheck{},
+			PolicyType:    policyType,
+			PolicyName:    *policyName,
+		}
+
+		cursor := postureCheckLinks.IterateLinks(tx, policyIdBytes)
+		for cursor.IsValid() {
+			checkId := string(cursor.Current())
+			if postureCheck, found := postureCheckCache[checkId]; !found {
+				postureCheck, _ := self.env.GetManagers().PostureCheck.readInTx(tx, checkId)
+				postureCheckCache[checkId] = postureCheck
+				policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
+			} else {
+				policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
+			}
+			cursor.Next()
+		}
+	}
 
 	return policyIdToChecks
 }
