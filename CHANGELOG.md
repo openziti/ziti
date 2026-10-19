@@ -1,3 +1,15 @@
+# Release 1.6.23
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4613](https://github.com/openziti/ziti/issues/4613) - [Backport-1.6] Controller deadlocks when posture data changes for an identity with legacy API sessions
+
+
 # Release 1.6.22
 
 ## What's New
@@ -7,7 +19,6 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.21 -> v1.6.22](https://github.com/openziti/ziti/compare/v1.6.21...v1.6.22)
-    * [Issue #4613](https://github.com/openziti/ziti/issues/4613) - [Backport-1.6] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4463](https://github.com/openziti/ziti/issues/4463) - [Backport-1.6] Router gives up announcing its links to a controller after a reconnect, leaving the controller missing links
     * [Issue #4464](https://github.com/openziti/ziti/issues/4464) - [Backport-1.6] Checking whether a half-built split link is closed panics
     * [Issue #4465](https://github.com/openziti/ziti/issues/4465) - [Backport-1.6] A dialed link the router has no state for is left up and never reported
