@@ -76,7 +76,7 @@ func TestCheckHeartBeat_ReconnectsWhenNoResponse(t *testing.T) {
 	require.False(t, ch.IsClosed(), "the channel itself must stay open so its registration survives")
 }
 
-// TestCheckHeartBeat_TimeoutWindowRestartsAfterReconnect: a reconnect restarts the response window.
+// TestCheckHeartBeat_TimeoutWindowRestartsAfterReconnect: a reconnect starts a timeout window of its own.
 // Without that, every check until the next answered heartbeat would act again on the underlays that had
 // just been re-established, and the channel could never come back.
 func TestCheckHeartBeat_TimeoutWindowRestartsAfterReconnect(t *testing.T) {
@@ -89,7 +89,21 @@ func TestCheckHeartBeat_TimeoutWindowRestartsAfterReconnect(t *testing.T) {
 	ctrl.CheckHeartBeat()
 	require.EqualValues(t, 1, ch.reconnects.Load(), "a check immediately after a reconnect must not act again")
 	require.False(t, ch.IsClosed())
-	require.Less(t, ctrl.timeSinceLastResponse(), time.Minute)
+}
+
+// TestCheckHeartBeat_ReconnectIsNotAResponse: a reconnect is not an answer from the controller. Until one
+// arrives the controller stays unresponsive, so it isn't offered for requests it can't serve.
+func TestCheckHeartBeat_ReconnectIsNotAResponse(t *testing.T) {
+	ctrl, ch := newHeartbeatTestCtrl(t)
+
+	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
+	ctrl.lastTx = time.Now().Add(-10 * time.Second).UnixMilli()
+	ctrl.CheckHeartBeat()
+	require.EqualValues(t, 1, ch.reconnects.Load())
+
+	ctrl.CheckHeartBeat()
+	require.True(t, ctrl.IsUnresponsive(), "a controller that has not answered since the reconnect must stay unresponsive")
+	require.Greater(t, ctrl.timeSinceLastResponse(), time.Minute, "the reconnect must not be recorded as a response")
 }
 
 // TestCheckHeartBeat_ConsecutiveTimeoutCloses: a reconnect that has not produced an answered heartbeat by
@@ -105,7 +119,7 @@ func TestCheckHeartBeat_ConsecutiveTimeoutCloses(t *testing.T) {
 	require.False(t, ch.IsClosed(), "the first timeout reconnects rather than closes")
 
 	// Another full window with no answer.
-	ctrl.lastRx = time.Now().Add(-2 * time.Minute).UnixMilli()
+	ctrl.reconnectedAt.Store(time.Now().Add(-2 * time.Minute).UnixMilli())
 	ctrl.CheckHeartBeat()
 	require.True(t, ch.IsClosed(), "a timeout following an unanswered reconnect must close the channel")
 	require.EqualValues(t, 1, ch.reconnects.Load(), "the second timeout must not reconnect again")

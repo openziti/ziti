@@ -64,12 +64,13 @@ type networkCtrl struct {
 	lastRx           int64
 	latency          atomic.Int64
 	unresponsive     atomic.Bool
-	// reconnectPending is set when the heartbeat check has reconnected the channel and cleared by the next
-	// answered heartbeat. A timeout while it is set means the reconnect did not produce a live channel.
-	reconnectPending atomic.Bool
-	versionInfo      *versions.VersionInfo
-	lastContact      atomic.Int64
-	currentIndex     atomic.Uint64
+	// reconnectedAt is when the heartbeat check last reconnected the channel, in unix millis, and 0 once a
+	// heartbeat has been answered since. A timeout measured from it means the reconnect did not produce a
+	// live channel.
+	reconnectedAt atomic.Int64
+	versionInfo   *versions.VersionInfo
+	lastContact   atomic.Int64
+	currentIndex  atomic.Uint64
 }
 
 func (self *networkCtrl) TimeSinceLastContact() time.Duration {
@@ -143,7 +144,7 @@ func (self *networkCtrl) HeartbeatRespRx(ts int64) {
 	self.lastRx = now.UnixMilli()
 	self.latency.Store(now.UnixNano() - ts)
 	self.lastContact.Store(self.lastRx)
-	self.reconnectPending.Store(false)
+	self.reconnectedAt.Store(0)
 }
 
 func (self *networkCtrl) CheckHeartBeat() {
@@ -168,11 +169,16 @@ func (self *networkCtrl) CheckHeartBeat() {
 	// controller is still gone, or something on this channel is wedged. Closing then lets the close handler
 	// redial a channel that shares nothing with this one.
 	if timeout := self.heartbeatOptions.CloseUnresponsiveTimeout; timeout > 0 && self.timeSinceLastResponse() > timeout {
+		reconnectedAt := self.reconnectedAt.Load()
+		if reconnectedAt != 0 && time.Now().UnixMilli()-reconnectedAt <= timeout.Milliseconds() {
+			return
+		}
+
 		log := pfxlog.Logger().
 			WithField("address", self.address).
 			WithField("timeSinceLastResponse", self.timeSinceLastResponse())
 
-		if self.reconnectPending.Load() {
+		if reconnectedAt != 0 {
 			log.Error("no heartbeat response from controller since reconnecting, closing control channel")
 			if err := self.ch.Close(); err != nil {
 				log.WithError(err).Error("error closing unresponsive control channel")
@@ -184,10 +190,7 @@ func (self *networkCtrl) CheckHeartBeat() {
 		if err := self.ch.Reconnect(); err != nil {
 			log.WithError(err).Error("error reconnecting unresponsive control channel")
 		}
-		self.reconnectPending.Store(true)
-		// Restart the timeout window, otherwise every check until the next answered heartbeat would tear
-		// down the underlays that have just been re-established.
-		self.lastRx = time.Now().UnixMilli()
+		self.reconnectedAt.Store(time.Now().UnixMilli())
 	}
 }
 
