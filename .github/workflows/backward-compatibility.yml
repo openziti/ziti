@@ -98,6 +98,14 @@ jobs:
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
+      - name: Stop Fablab
+        # a cancelled step leaves fablab and terraform running, and teardown needs terraform's final state
+        if: always()
+        timeout-minutes: 15
+        uses: ./.github/actions/stop-fablab
+        with:
+          model: smoketest
+
       - name: Create Logs Archive
         if: always()
         run: |
