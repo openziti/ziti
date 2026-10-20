@@ -618,8 +618,15 @@ func (self *Controller) ApplyWithTimeout(log []byte) (interface{}, uint64, error
 	return secondPhase()
 }
 
-// ApplyTwoPhase applies the given command to the RAFT distributed but returns an operation which will return the result
+// ApplyTwoPhase applies the given command to the RAFT distributed but returns an operation which will return the result.
+// It is the one path to Raft.Apply for local and forwarded commands alike, and refuses, before taking a
+// rate limiter slot, an encoding this controller's registry cannot decode or whose Validate fails. Every
+// member decodes with the same registry, so an undecodable entry would halt all of them.
 func (self *Controller) ApplyTwoPhase(log []byte) (func() (interface{}, uint64, error), error) {
+	if err := self.validateEncodedCommand(log); err != nil {
+		return nil, err
+	}
+
 	start := time.Now()
 	raftOperation, err := self.raftRateLimiter.RunRateLimited("raft operation")
 	if err != nil {
@@ -659,6 +666,18 @@ func (self *Controller) ApplyTwoPhase(log []byte) (func() (interface{}, uint64, 
 		index := f.Index()
 		return response, index, nil
 	}, nil
+}
+
+// validateEncodedCommand decodes an encoded command with this controller's registry and runs its Validate, if any.
+func (self *Controller) validateEncodedCommand(encoded []byte) error {
+	cmd, err := self.decoders.Decode(encoded)
+	if err != nil {
+		return fmt.Errorf("refusing to submit command that cannot be decoded: %w", err)
+	}
+	if validatable, ok := cmd.(command.Validatable); ok {
+		return validatable.Validate()
+	}
+	return nil
 }
 
 // Init sets up the Mesh and Raft instances
