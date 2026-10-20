@@ -239,6 +239,14 @@ jobs:
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
+      - name: Stop Fablab
+        # a cancelled step leaves fablab and terraform running, and teardown needs terraform's final state
+        if: always()
+        timeout-minutes: 15
+        uses: ./.github/actions/stop-fablab
+        with:
+          model: smoketest
+
       - name: Create fablab instance archive
         # always create, even if cancelled, because the teardown job needs it to destroy the created test environment
         if: always()
@@ -364,6 +372,14 @@ jobs:
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
 
+      - name: Stop Fablab
+        # a cancelled step leaves fablab and terraform running, and teardown needs terraform's final state
+        if: always()
+        timeout-minutes: 15
+        uses: ./.github/actions/stop-fablab
+        with:
+          model: smoketest
+
       - name: Create fablab instance archive
         if: always()
         timeout-minutes: 30
@@ -418,7 +434,7 @@ jobs:
           terraform_version: ~1.5
 
       - name: Teardown Test Environment
-        if: needs.fablab-smoketest-ha.result != 'skipped'
+        if: needs.fablab-ha-smoketest.result != 'skipped'
         timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
