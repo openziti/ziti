@@ -45,11 +45,26 @@ type Faulter struct {
 	closeNotify   <-chan struct{}
 	linkFaults    metrics.Meter
 	circuitFaults metrics.Meter
+
+	// Endpoint faults are delivered per controller, separately from the batched forwarding
+	// faults above: they are reported when a circuit's endpoint goes away rather than when
+	// traffic arrives for an unknown circuit, so nothing re-reports them and each needs its own
+	// retry. Senders are created on demand, since a router does not necessarily hold circuits
+	// for every controller.
+	endpointFaultSenders   cmap.ConcurrentMap[string, *endpointFaultSender]
+	endpointFaultRetention time.Duration
+	endpointFaultsSent     metrics.Meter
+	endpointFaultsExpired  metrics.Meter
 }
 
 type FaultReceiver interface {
 	Report(circuitId string, ctrlId string)
 	NotifyInvalidLink(linkId string)
+
+	// ReportEndpointFault reports that a circuit's ingress or egress endpoint on this router has
+	// gone away, so the controller can remove the circuit. It does not block and does not wait
+	// for the controller; delivery, retry and eventual expiry are the faulter's.
+	ReportEndpointFault(circuitId string, ctrlId string, subject ctrl_pb.FaultSubject)
 }
 
 func NewFaulter(routerEnv env.RouterEnv, interval time.Duration) *Faulter {
@@ -60,13 +75,67 @@ func NewFaulter(routerEnv env.RouterEnv, interval time.Duration) *Faulter {
 		closeNotify:   routerEnv.GetCloseNotify(),
 		linkFaults:    routerEnv.GetMetricsRegistry().Meter("faults.link"),
 		circuitFaults: routerEnv.GetMetricsRegistry().Meter("faults.circuit"),
+
+		endpointFaultSenders:   cmap.New[*endpointFaultSender](),
+		endpointFaultRetention: routerEnv.GetConfig().Forwarder.EndpointFaultRetention,
+		endpointFaultsSent:     routerEnv.GetMetricsRegistry().Meter("faults.circuit.endpoint"),
+		endpointFaultsExpired:  routerEnv.GetMetricsRegistry().Meter("faults.circuit.endpoint.expired"),
 	}
+
+	// Endpoint faults are delivered regardless of the forwarding fault interval: unlike a
+	// forwarding fault, which the forwarder re-reports while traffic keeps arriving, an
+	// unreported endpoint fault leaves the controller holding a circuit forever.
+	routerEnv.GetNetworkControllers().AddChangeListener(env.CtrlEventListenerFunc(f.notifyOfCtrlEvent))
 
 	if interval > 0 {
 		go f.run()
 	}
 
 	return f
+}
+
+// notifyOfCtrlEvent keeps the per-controller endpoint fault senders in step with the cluster. A
+// reconnecting controller is woken so anything held for it goes out immediately rather than
+// waiting for the sweep; a removed controller's senders are shut down, abandoning what they hold,
+// since a controller that has left the cluster has no circuits to clean up.
+func (self *Faulter) notifyOfCtrlEvent(event env.CtrlEvent) {
+	if event.Controller == nil {
+		return
+	}
+
+	ctrlId := event.Controller.Channel().Id()
+
+	switch event.Type {
+	case env.ControllerReconnected, env.ControllerAdded:
+		if sender, found := self.endpointFaultSenders.Get(ctrlId); found {
+			sender.wake()
+		}
+	case env.ControllerRemoved:
+		if sender, found := self.endpointFaultSenders.Get(ctrlId); found {
+			self.endpointFaultSenders.Remove(ctrlId)
+			sender.shutdown()
+		}
+	}
+}
+
+func (self *Faulter) ReportEndpointFault(circuitId string, ctrlId string, subject ctrl_pb.FaultSubject) {
+	if ctrlId == "" {
+		faultLog.Error("cannot report circuit endpoint fault, no controller for circuit",
+			"circuitId", circuitId,
+			"subject", subject.String(),
+		)
+		return
+	}
+
+	sender := self.endpointFaultSenders.Upsert(ctrlId, nil, func(exists bool, current *endpointFaultSender, _ *endpointFaultSender) *endpointFaultSender {
+		if current != nil {
+			return current
+		}
+		return newEndpointFaultSender(ctrlId, self)
+	})
+
+	self.circuitFaults.Mark(1)
+	sender.report(endpointFaultKey{circuitId: circuitId, subject: subject})
 }
 
 func (self *Faulter) Report(circuitId string, ctrlId string) {
