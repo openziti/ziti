@@ -67,7 +67,7 @@ func TestIPerf(t *testing.T) {
 	})
 }
 
-func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted bool, reversed bool) bool {
+func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted bool, reversed bool) {
 	encDesk := "encrypted"
 	if !encrypted {
 		encDesk = "unencrypted"
@@ -78,26 +78,12 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 		direction = "<-"
 	}
 
-	success := false
-
 	t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, direction, hostType, encDesk), func(t *testing.T) {
 		if support := pathSupport(hostSelector, hostType); !support.Supported {
 			t.Skip(support.Reason)
 		}
 		o, err := smoke.TestIperf(hostSelector, hostType, encrypted, reversed, run)
-		if hostType == "zet" && err != nil {
-			t.Skipf("zet hosted iperf test failed [%v]", err.Error())
-			return
-		}
-
-		if hostSelector == "zet" && err != nil {
-			t.Skipf("zet client iperf test failed [%v]", err.Error())
-			return
-		}
-
 		t.Log(o)
 		require.NoError(t, err)
-		success = true
 	})
-	return success
 }

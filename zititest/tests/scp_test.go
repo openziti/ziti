@@ -27,9 +27,6 @@ import (
 )
 
 func TestScp(t *testing.T) {
-	allZetHostedFailed := true
-	allZetClientsFailed := true
-
 	waitForTerminators(t, 30*time.Second, hostedServices("ssh", "ert", "zet", "ziti-tunnel")...)
 
 	t.Run("scp-tests", func(t *testing.T) {
@@ -37,10 +34,7 @@ func TestScp(t *testing.T) {
 			t.Parallel()
 			for _, hostType := range []string{"ert", "zet", "ziti-tunnel"} {
 				for _, encrypted := range []bool{true, false} {
-					success := testScp(t, "ert", hostType, encrypted)
-					if hostType == "zet" && success {
-						allZetHostedFailed = false
-					}
+					testScp(t, "ert", hostType, encrypted)
 				}
 			}
 		})
@@ -49,13 +43,7 @@ func TestScp(t *testing.T) {
 			t.Parallel()
 			for _, hostType := range []string{"zet", "ziti-tunnel", "ert"} {
 				for _, encrypted := range []bool{true, false} {
-					success := testScp(t, "zet", hostType, encrypted)
-					if hostType == "zet" && success {
-						allZetHostedFailed = false
-					}
-					if success {
-						allZetClientsFailed = false
-					}
+					testScp(t, "zet", hostType, encrypted)
 				}
 			}
 		})
@@ -64,32 +52,18 @@ func TestScp(t *testing.T) {
 			t.Parallel()
 			for _, hostType := range []string{"ziti-tunnel", "ert", "zet"} {
 				for _, encrypted := range []bool{true, false} {
-					success := testScp(t, "ziti-tunnel", hostType, encrypted)
-					if hostType == "zet" && success {
-						allZetHostedFailed = false
-					}
+					testScp(t, "ziti-tunnel", hostType, encrypted)
 				}
 			}
 		})
 	})
-
-	req := require.New(t)
-	req.False(allZetHostedFailed, "all zet hosted file transfer should not failed, indicates bigger issue")
-	req.False(allZetClientsFailed, "all zet client file transfers should not failed, indicates bigger issue")
 }
 
-func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool) bool {
+func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool) {
 	encDesk := "encrypted"
 	if !encrypted {
 		encDesk = "unencrypted"
 	}
-
-	if support := pathSupport(hostSelector, hostType); !support.Supported {
-		t.Run(fmt.Sprintf("(%s<->%s)-%v", hostSelector, hostType, encDesk), func(t *testing.T) { t.Skip(support.Reason) })
-		return true
-	}
-
-	success := true
 
 	nameExtra := ""
 	if !encrypted {
@@ -111,23 +85,16 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, test.direction, hostType, encDesk), func(t *testing.T) {
-			success = false
+			if support := pathSupport(hostSelector, hostType); !support.Supported {
+				t.Skip(support.Reason)
+			}
 			host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
 			req := require.New(t)
 			req.NoError(err)
 
 			o, err := host.ExecLoggedWithTimeout(50*time.Second, test.cmd)
-			if hostType == "zet" && err != nil {
-				t.Skipf("zet hosted ssh failed [%v]", err.Error())
-			} else if hostSelector == "zet" && err != nil {
-				t.Skipf("zet client ssh failed [%v]", err.Error())
-			} else {
-				t.Log(o)
-				req.NoError(err)
-				success = true
-			}
+			t.Log(o)
+			req.NoError(err)
 		})
 	}
-
-	return success
 }
