@@ -213,7 +213,7 @@ func (self *IdentityManager) CreateWithAuthenticators(identity *Identity, authen
 	err = self.Dispatch(cmd)
 
 	if err != nil {
-		return "", nil, nil
+		return "", nil, err
 	}
 
 	return identity.Id, authenticatorIds, nil
