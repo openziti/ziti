@@ -47,6 +47,8 @@ type HostingContext interface {
 	GetTerminatorIdCacheKey() string
 	ServiceName() string
 	ListenOptions() *ziti.ListenOptions
+	// Dial connects to the upstream selected by options, an accepted conn's app data, and reports
+	// whether the returned conn supports half close. It must be safe for concurrent use.
 	Dial(options map[string]interface{}) (net.Conn, bool, error)
 	GetHealthChecks() []health.CheckDefinition
 	GetInitialHealthState() (ziti.Precedence, uint16)
@@ -129,6 +131,9 @@ func (self *contextProvider) HostService(hostCtx HostingContext) (HostControl, e
 	return listener, nil
 }
 
+// accept hands each conn accepted on listener to its own goroutine, so a slow upstream dial or
+// accept completion holds up only that conn. It calls hostCtx.OnClose once the listener closes,
+// which may be before conns already handed off have finished.
 func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingContext) {
 	defer hostCtx.OnClose()
 
@@ -141,41 +146,50 @@ func (self *contextProvider) accept(listener edge.Listener, hostCtx HostingConte
 			return
 		}
 
-		options, err := AppDataToMap(conn.GetAppData())
-		if err != nil {
-			logger.WithError(err).Error("dial failed")
-			conn.CompleteAcceptFailed(err)
-			if closeErr := conn.Close(); closeErr != nil {
-				logger.WithError(closeErr).Error("close of ziti connection failed")
-			}
-			continue
-		}
-
-		externalConn, halfClose, err := hostCtx.Dial(options)
-		if err != nil {
-			logger.WithError(err).Error("dial failed")
-			conn.CompleteAcceptFailed(err)
-			if closeErr := conn.Close(); closeErr != nil {
-				logger.WithError(closeErr).Error("close of ziti connection failed")
-			}
-			continue
-		}
-
-		logger.Infof("successful connection %v->%v", conn.LocalAddr(), conn.RemoteAddr())
-
-		if err := conn.CompleteAcceptSuccess(); err != nil {
-			logger.WithError(err).Error("complete accept success failed")
-
-			if closeErr := conn.Close(); closeErr != nil {
-				logger.WithError(closeErr).Error("close of ziti connection failed")
-			}
-
-			if closeErr := externalConn.Close(); closeErr != nil {
-				logger.WithError(closeErr).Error("close of external connection failed")
-			}
-			continue
-		}
-
-		go Run(conn, externalConn, halfClose)
+		go handleAccepted(conn, hostCtx, logger)
 	}
+}
+
+// handleAccepted dials the upstream for an accepted conn, completes the accept, and runs the
+// connection until both directions finish. On failure it closes conn and any upstream conn it
+// opened.
+func handleAccepted(conn edge.Conn, hostCtx HostingContext, logger *logrus.Entry) {
+	logger = logger.WithField("circuitId", conn.GetCircuitId())
+
+	options, err := AppDataToMap(conn.GetAppData())
+	if err != nil {
+		logger.WithError(err).Error("dial failed")
+		conn.CompleteAcceptFailed(err)
+		if closeErr := conn.Close(); closeErr != nil {
+			logger.WithError(closeErr).Error("close of ziti connection failed")
+		}
+		return
+	}
+
+	externalConn, halfClose, err := hostCtx.Dial(options)
+	if err != nil {
+		logger.WithError(err).Error("dial failed")
+		conn.CompleteAcceptFailed(err)
+		if closeErr := conn.Close(); closeErr != nil {
+			logger.WithError(closeErr).Error("close of ziti connection failed")
+		}
+		return
+	}
+
+	logger.Infof("successful connection %v->%v", conn.LocalAddr(), conn.RemoteAddr())
+
+	if err := conn.CompleteAcceptSuccess(); err != nil {
+		logger.WithError(err).Error("complete accept success failed")
+
+		if closeErr := conn.Close(); closeErr != nil {
+			logger.WithError(closeErr).Error("close of ziti connection failed")
+		}
+
+		if closeErr := externalConn.Close(); closeErr != nil {
+			logger.WithError(closeErr).Error("close of external connection failed")
+		}
+		return
+	}
+
+	Run(conn, externalConn, halfClose)
 }
