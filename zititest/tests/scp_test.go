@@ -18,11 +18,12 @@ package tests
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestScp(t *testing.T) {
@@ -81,6 +82,11 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 	encDesk := "encrypted"
 	if !encrypted {
 		encDesk = "unencrypted"
+	}
+
+	if support := pathSupport(hostSelector, hostType); !support.Supported {
+		t.Run(fmt.Sprintf("(%s<->%s)-%v", hostSelector, hostType, encDesk), func(t *testing.T) { t.Skip(support.Reason) })
+		return true
 	}
 
 	success := true
