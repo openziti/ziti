@@ -180,6 +180,20 @@ func Test_Services(t *testing.T) {
 		service.validate(ctx, jsonService)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonService)
 	})
+
+	t.Run("patch to a duplicate name should fail and leave the name unchanged", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		first := ctx.AdminManagementSession.requireNewService(nil, nil)
+		second := ctx.AdminManagementSession.requireNewService(nil, nil)
+		originalName := second.Name
+
+		second.Name = first.Name
+		resp := ctx.AdminManagementSession.patchEntity(second, "name")
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "name")
+
+		detail := ctx.AdminManagementSession.requireQuery("services/" + second.Id)
+		ctx.Req.Equal(originalName, ctx.RequireGetNonNilPathValue(detail, "data", "name").Data().(string))
+	})
 }
 
 func Test_ServiceListWithConfigs(t *testing.T) {
