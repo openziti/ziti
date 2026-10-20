@@ -50,11 +50,12 @@ var (
 		Description: "binds SDK-hosted terminators with the JWT service sessions a 2.x controller issues",
 	}
 
-	// The floor is the oldest line the compat test has run with OIDC on, not a confirmed boundary.
+	// Routers before 1.6 handle OIDC api sessions only partly: 1.1 rejects them outright, and 1.6
+	// fixed many bugs in the rest.
 	CapOidc = Capability{
 		Name:        "oidc",
 		MinVersion:  "v1.6.0",
-		Description: "accepts OIDC api sessions from a 2.x controller",
+		Description: "handles the OIDC api sessions SDK clients get from a 2.x controller",
 	}
 )
 
@@ -82,6 +83,17 @@ func RouterSupports(m *model.Model, c *model.Component, capability Capability) S
 	}
 	override, overridden := m.GetStringVariable(capability.variable())
 	return capability.supportedBy(c.Id, router.Version, override, overridden)
+}
+
+// And reports whether both s and other hold, with both reasons when they don't.
+func (s Support) And(other Support) Support {
+	var reasons []string
+	for _, support := range []Support{s, other} {
+		if !support.Supported {
+			reasons = append(reasons, support.Reason)
+		}
+	}
+	return combine(reasons)
 }
 
 // RoutersSupport reports whether every router selected by selector has every one of capabilities.
@@ -139,8 +151,8 @@ func combine(reasons []string) Support {
 }
 
 // applyCapabilities fits the model's config to what its edge routers support: a router without
-// managed link config keeps its link config local, and OIDC defaults off when any router lacks it,
-// though an oidc label still decides. It runs after the routers' versions are set.
+// managed link config keeps its link config local. It also rejects malformed capability overrides and
+// logs what each router lacks. It runs after the routers' versions are set.
 func applyCapabilities(m *model.Model) error {
 	for _, capability := range Capabilities {
 		if override, found := m.GetStringVariable(capability.variable()); found && override != "on" && override != "off" {
@@ -148,8 +160,7 @@ func applyCapabilities(m *model.Model) error {
 		}
 	}
 
-	oidc := true
-	err := m.ForEachComponent(".edge-router", 1, func(c *model.Component) error {
+	return m.ForEachComponent(".edge-router", 1, func(c *model.Component) error {
 		if support := combine(gaps(m, c, Capabilities)); !support.Supported {
 			pfxlog.Logger().Infof("router capabilities: %s", support.Reason)
 		}
@@ -159,17 +170,6 @@ func applyCapabilities(m *model.Model) error {
 				return tag == "ctrl-managed-link"
 			})
 		}
-		if !RouterSupports(m, c, CapOidc).Supported {
-			oidc = false
-		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	if !oidc {
-		m.Scope.Defaults["oidc"] = false
-	}
-	return nil
 }
