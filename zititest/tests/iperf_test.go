@@ -26,9 +26,7 @@ import (
 )
 
 func TestIPerf(t *testing.T) {
-	waitForTerminators(t, 30*time.Second,
-		"ert-iperf", "ert-iperf-unencrypted",
-		"ziti-tunnel-iperf", "ziti-tunnel-iperf-unencrypted")
+	waitForTerminators(t, 30*time.Second, hostedServices("iperf", "ert", "ziti-tunnel")...)
 
 	t.Run("iperf-tests", func(t *testing.T) {
 		t.Run("ert-hosted", func(t *testing.T) {
@@ -83,6 +81,9 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 	success := false
 
 	t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, direction, hostType, encDesk), func(t *testing.T) {
+		if support := pathSupport(hostSelector, hostType); !support.Supported {
+			t.Skip(support.Reason)
+		}
 		o, err := smoke.TestIperf(hostSelector, hostType, encrypted, reversed, run)
 		if hostType == "zet" && err != nil {
 			t.Skipf("zet hosted iperf test failed [%v]", err.Error())

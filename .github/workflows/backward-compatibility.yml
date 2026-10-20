@@ -1,11 +1,18 @@
 name: Backward Compatibility Test
 
 on:
+  workflow_call:
   workflow_dispatch:
+    inputs:
+      labels:
+        description: 'Extra fablab labels for every job, comma separated, such as capability_oidc=on'
+        type: string
+        required: false
 
-# cancel older, redundant runs of same workflow on same branch
+# cancel older, redundant runs of same workflow on same branch. Under workflow_call, github.workflow
+# names the caller, so the suffix keeps this group distinct from the caller's other jobs.
 concurrency:
-  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-backward-compatibility
   cancel-in-progress: true
 
 env:
@@ -18,23 +25,41 @@ env:
 
 jobs:
   fablab-compat-smoketest:
-    name: Fablab Compat Smoketest - ${{ matrix.name }}
+    name: Fablab Compat Smoketest - ${{ matrix.side }}-${{ matrix.line }}
     if: github.repository_owner == 'openziti'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: east-1.6
-            labels: "router_east_1_version=v1.6.12,router_east_2_version=v1.6.12"
-          - name: west-1.6
-            labels: "router_west_version=v1.6.12"
-          - name: east-1.5
-            labels: "oidc=false,router_east_1_version=v1.5.11,router_east_2_version=v1.5.11"
-          - name: west-1.5
-            labels: "oidc=false,router_west_version=v1.5.11"
- 
+        # Each release line runs with the old routers on the client side (east) and, separately, on
+        # the hosting side (west), against the newest stable (promoted) release of that line.
+        line: [ "1.6", "1.5", "1.1" ]
+        side: [ east, west ]
+
     steps:
+      - name: Resolve Router Version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LINE: ${{ matrix.line }}
+          SIDE: ${{ matrix.side }}
+        shell: bash
+        run: |
+          releases=$(gh release list --repo openziti/ziti --exclude-drafts --exclude-pre-releases --limit 1000 --json tagName --jq '.[].tagName')
+          version=$(grep -E "^v${LINE//./\\.}\.[0-9]+$" <<< "$releases" | sort -V | tail -n 1 || true)
+          if [ -z "$version" ]; then
+            echo "no stable release found for line $LINE" >&2
+            exit 1
+          fi
+
+          case "$SIDE" in
+            east) labels="router_east_1_version=$version,router_east_2_version=$version" ;;
+            west) labels="router_west_version=$version" ;;
+            *) echo "unknown side $SIDE" >&2; exit 1 ;;
+          esac
+
+          echo "ROUTER_LABELS=$labels" >> "$GITHUB_ENV"
+          echo "Testing $SIDE routers on $version (labels: $labels)" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Git Checkout
         uses: actions/checkout@v6
         with:
@@ -66,10 +91,12 @@ jobs:
       - name: Create Test Environment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # inputs reach the script through the environment, never interpolated into it
+          EXTRA_LABELS: ${{ inputs.labels }}
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.name }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.name }}-${GITHUB_RUN_NUMBER} -l ${{ matrix.labels }},environment=gh-fablab-compat-smoketest
+          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${ROUTER_LABELS},environment=gh-fablab-compat-smoketest${EXTRA_LABELS:+,$EXTRA_LABELS}"
           $(go env GOPATH)/bin/smoketest up
 
       - name: Test Ziti Command
@@ -77,6 +104,14 @@ jobs:
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+
+      - name: Stop Fablab
+        # a cancelled step leaves fablab and terraform running, and teardown needs terraform's final state
+        if: always()
+        timeout-minutes: 15
+        uses: ./.github/actions/stop-fablab
+        with:
+          model: smoketest
 
       - name: Create Logs Archive
         if: always()
@@ -87,7 +122,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: logs-compat-${{ matrix.name }}-${{ github.run_id }}
+          name: logs-compat-${{ matrix.side }}-${{ matrix.line }}-${{ github.run_id }}
           path: logs/
           compression-level: 7
           retention-days: 5
