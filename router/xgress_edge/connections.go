@@ -681,7 +681,18 @@ func (handler *sessionConnectionHandler) validateApiSession(binding channel.Bind
 			handler.invalidApiSessionTokenDuringSync.Mark(1)
 		}
 
-		return fmt.Errorf("no api session found for token [%s], fingerprint: [%v], subjects [%v]", token, fingerprint, subjects)
+		tokenHash := state.LogHash(token)
+
+		// The raw token stays behind trace level. It can still be live here: the legacy lookup
+		// exists for the window where the controller has created the session and the router has
+		// not been told yet, so the token that just failed may be a working credential. At trace
+		// it is there for the support case where the hash alone does not identify what a client
+		// sent, since a hash cannot be turned back into a token.
+		pfxlog.Logger().WithField("tokenHash", tokenHash).Tracef("no api session found for token [%s]", token)
+
+		// The error carries the hash instead. It is stable, so it still correlates with the rest
+		// of the session logging, which identifies tokens the same way.
+		return fmt.Errorf("no api session found for token hash [%s], fingerprint: [%v], subjects [%v]", tokenHash, fingerprint, subjects)
 	}
 
 	edgeConn.apiSessionToken = apiSession
