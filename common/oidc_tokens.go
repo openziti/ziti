@@ -55,6 +55,10 @@ const (
 	DefaultIdTokenDuration      = 30 * time.Minute
 	DefaultRefreshTokenDuration = 24 * time.Hour
 
+	DefaultAuthRequestDuration = 10 * time.Minute
+	MinAuthRequestDuration     = 1 * time.Minute
+	MaxAuthRequestDuration     = 30 * time.Minute
+
 	TokenTypeAccess        = "a"
 	TokenTypeRefresh       = "r"
 	TokenTypeServiceAccess = "s"

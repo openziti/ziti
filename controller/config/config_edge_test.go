@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/ziti/v2/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -360,6 +361,65 @@ func Test_CalculateCaPems(t *testing.T) {
 		}
 	})
 
+}
+
+func Test_loadOidcSection_authRequestDuration(t *testing.T) {
+	t.Run("an absent value yields the default", func(t *testing.T) {
+		req := require.New(t)
+		c := NewEdgeConfig()
+
+		err := c.loadOidcSection(map[any]any{})
+
+		req.NoError(err)
+		req.Equal(common.DefaultAuthRequestDuration, c.Oidc.AuthRequestDuration)
+	})
+
+	t.Run("an in range value is used", func(t *testing.T) {
+		req := require.New(t)
+		c := NewEdgeConfig()
+
+		err := c.loadOidcSection(map[any]any{
+			"oidc": map[any]any{"authRequestDuration": "5m"},
+		})
+
+		req.NoError(err)
+		req.Equal(5*time.Minute, c.Oidc.AuthRequestDuration)
+	})
+
+	t.Run("a value below the minimum is raised to the minimum", func(t *testing.T) {
+		req := require.New(t)
+		c := NewEdgeConfig()
+
+		err := c.loadOidcSection(map[any]any{
+			"oidc": map[any]any{"authRequestDuration": "30s"},
+		})
+
+		req.NoError(err)
+		req.Equal(common.MinAuthRequestDuration, c.Oidc.AuthRequestDuration)
+	})
+
+	t.Run("a value above the maximum is lowered to the maximum", func(t *testing.T) {
+		req := require.New(t)
+		c := NewEdgeConfig()
+
+		err := c.loadOidcSection(map[any]any{
+			"oidc": map[any]any{"authRequestDuration": "2h"},
+		})
+
+		req.NoError(err)
+		req.Equal(common.MaxAuthRequestDuration, c.Oidc.AuthRequestDuration)
+	})
+
+	t.Run("an unparsable value is an error", func(t *testing.T) {
+		req := require.New(t)
+		c := NewEdgeConfig()
+
+		err := c.loadOidcSection(map[any]any{
+			"oidc": map[any]any{"authRequestDuration": "ten minutes"},
+		})
+
+		req.ErrorContains(err, "edge.oidc.authRequestDuration")
+	})
 }
 
 func Test_loadExternalJwtSignersSection(t *testing.T) {
