@@ -25,7 +25,7 @@ import (
 )
 
 func TestSdkSim(t *testing.T) {
-	if support := sdkHostingSupport(); !support.Supported {
+	if support := sdkClientSupport().And(sdkHostingSupport()); !support.Supported {
 		t.Skip(support.Reason)
 	}
 	waitForTerminators(t, 30*time.Second, "sim")

@@ -59,3 +59,14 @@ func TestCapabilityMinVersionsParse(t *testing.T) {
 		require.NoError(t, err, capability.Name)
 	}
 }
+
+func TestSupportAnd(t *testing.T) {
+	yes := Support{Supported: true}
+	noClient := Support{Reason: "client router lacks it"}
+	noHost := Support{Reason: "host router lacks it"}
+
+	require.Equal(t, yes, yes.And(yes))
+	require.Equal(t, noClient, noClient.And(yes))
+	require.Equal(t, noHost, yes.And(noHost))
+	require.Equal(t, Support{Reason: "client router lacks it; host router lacks it"}, noClient.And(noHost))
+}
