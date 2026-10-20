@@ -18,9 +18,10 @@ package tests
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestDownloadFiles(t *testing.T) {
@@ -106,10 +107,16 @@ func testFileDownload(t *testing.T, hostSelector string, client smoke.HttpClient
 		encDesk = "unencrypted"
 	}
 
+	name := fmt.Sprintf("%v-(%s<-%s)-%s-%v", client, hostSelector, hostType, fileSize, encDesk)
+	if support := pathSupport(hostSelector, hostType); !support.Supported {
+		t.Run(name, func(t *testing.T) { t.Skip(support.Reason) })
+		return true
+	}
+
 	success := false
 	testRun := false
 
-	t.Run(fmt.Sprintf("%v-(%s<-%s)-%s-%v", client, hostSelector, hostType, fileSize, encDesk), func(t *testing.T) {
+	t.Run(name, func(t *testing.T) {
 		testRun = true
 		o, err := smoke.TestFileDownload(hostSelector, client, hostType, encrypted, fileSize)
 		t.Log(o)

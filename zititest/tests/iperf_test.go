@@ -18,9 +18,10 @@ package tests
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestIPerf(t *testing.T) {
@@ -77,6 +78,9 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 	success := false
 
 	t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, direction, hostType, encDesk), func(t *testing.T) {
+		if support := pathSupport(hostSelector, hostType); !support.Supported {
+			t.Skip(support.Reason)
+		}
 		o, err := smoke.TestIperf(hostSelector, hostType, encrypted, reversed, run)
 		if hostType == "zet" && err != nil {
 			t.Skipf("zet hosted iperf test failed [%v]", err.Error())
