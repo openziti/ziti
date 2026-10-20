@@ -81,7 +81,7 @@ func testIPerf(t *testing.T, hostSelector string, hostType string, encrypted boo
 	success := false
 
 	t.Run(fmt.Sprintf("(%s%s%s)-%v", hostSelector, direction, hostType, encDesk), func(t *testing.T) {
-		if support := hostingSupport(hostType); !support.Supported {
+		if support := pathSupport(hostSelector, hostType); !support.Supported {
 			t.Skip(support.Reason)
 		}
 		o, err := smoke.TestIperf(hostSelector, hostType, encrypted, reversed, run)
