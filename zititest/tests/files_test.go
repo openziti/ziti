@@ -111,7 +111,7 @@ func testFileDownload(t *testing.T, hostSelector string, client smoke.HttpClient
 	}
 
 	name := fmt.Sprintf("%v-(%s<-%s)-%s-%v", client, hostSelector, hostType, fileSize, encDesk)
-	if support := hostingSupport(hostType); !support.Supported {
+	if support := pathSupport(hostSelector, hostType); !support.Supported {
 		t.Run(name, func(t *testing.T) { t.Skip(support.Reason) })
 		return true
 	}
