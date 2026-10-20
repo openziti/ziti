@@ -178,6 +178,15 @@ func Test_Services(t *testing.T) {
 		service.validate(ctx, jsonService)
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonService)
 	})
+
+	t.Run("create with duplicate name should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		service := ctx.AdminManagementSession.requireNewService(nil, nil)
+		duplicate := ctx.newService(nil, nil)
+		duplicate.Name = service.Name
+		resp := ctx.AdminManagementSession.createEntity(duplicate)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "name")
+	})
 }
 
 func Test_ServiceListWithConfigs(t *testing.T) {
