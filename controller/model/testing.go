@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"time"
 
+	"github.com/openziti/foundation/v2/rate"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/v2/common/ctrlchan"
@@ -56,6 +57,10 @@ type TestContext struct {
 
 func (ctx *TestContext) GetTokenIssuerCache() *TokenIssuerCache {
 	panic("implement me")
+}
+
+func (ctx *TestContext) GetAuthRateLimiter() rate.AdaptiveRateLimiter {
+	return command.NoOpAdaptiveRateLimiter{}
 }
 
 func (ctx *TestContext) CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error) {
