@@ -1,0 +1,135 @@
+name: Backward Compatibility Test
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+# cancel older, redundant runs of same workflow on same branch. Under workflow_call, github.workflow
+# names the caller, so the suffix keeps this group distinct from the caller's other jobs.
+concurrency:
+  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-backward-compatibility
+  cancel-in-progress: true
+
+env:
+  GOFLAGS: "-trimpath"
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: "us-east-2"
+  gh_ci_key: ${{ secrets.GH_CI_KEY }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+
+jobs:
+  fablab-compat-smoketest:
+    name: Fablab Compat Smoketest - ${{ matrix.side }}-${{ matrix.line }}
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each release line runs with the old routers on the client side (east) and, separately, on
+        # the hosting side (west), against the newest stable (promoted) release of that line.
+        line: [ "1.5", "1.1" ]
+        side: [ east, west ]
+
+    steps:
+      - name: Resolve Router Version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LINE: ${{ matrix.line }}
+          SIDE: ${{ matrix.side }}
+        shell: bash
+        run: |
+          releases=$(gh release list --repo openziti/ziti --exclude-drafts --exclude-pre-releases --limit 1000 --json tagName --jq '.[].tagName')
+          version=$(grep -E "^v${LINE//./\\.}\.[0-9]+$" <<< "$releases" | sort -V | tail -n 1 || true)
+          if [ -z "$version" ]; then
+            echo "no stable release found for line $LINE" >&2
+            exit 1
+          fi
+
+          case "$SIDE" in
+            east) labels="router_east_1_version=$version,router_east_2_version=$version" ;;
+            west) labels="router_west_version=$version" ;;
+            *) echo "unknown side $SIDE" >&2; exit 1 ;;
+          esac
+
+          echo "ROUTER_LABELS=$labels" >> "$GITHUB_ENV"
+          echo "Testing $SIDE routers on $version (labels: $labels)" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Git Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: ./.github/actions/setup-go
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~1.5
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd zititest && go mod tidy && go install ./... && popd
+          go install -tags=all,tests ./...
+
+      - name: Create Test Environment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${ROUTER_LABELS},environment=gh-fablab-compat-smoketest"
+          $(go env GOPATH)/bin/smoketest up
+
+      - name: Test Ziti Command
+        shell: bash
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
+          pushd zititest && go test -timeout 30m -v ./tests/... 2>&1 | tee test.out && popd
+
+      - name: Create Logs Archive
+        if: always()
+        run: |
+          $(go env GOPATH)/bin/smoketest get files '*' "./logs/{{ .Id }}/" ./logs
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: logs-compat-${{ matrix.side }}-${{ matrix.line }}-${{ github.run_id }}
+          path: logs/
+          compression-level: 7
+          retention-days: 5
+
+      - name: Test Report Generation
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          go install github.com/jstemmer/go-junit-report/v2@latest
+          $(go env GOPATH)/bin/go-junit-report -in zititest/test.out -out test-report.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        if: ${{ !cancelled() }}
+        with:
+          paths: |
+            test-report.xml
+          show: "fail, skip"
+
+      - name: Tear down Test Environment
+        timeout-minutes: 30
+        if: always()
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/smoketest dispose
