@@ -3,6 +3,11 @@ name: Backward Compatibility Test
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      labels:
+        description: 'Extra fablab labels for every job, comma separated, such as capability_oidc=on'
+        type: string
+        required: false
 
 # cancel older, redundant runs of same workflow on same branch. Under workflow_call, github.workflow
 # names the caller, so the suffix keeps this group distinct from the caller's other jobs.
@@ -86,10 +91,12 @@ jobs:
       - name: Create Test Environment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # inputs reach the script through the environment, never interpolated into it
+          EXTRA_LABELS: ${{ inputs.labels }}
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${ROUTER_LABELS},environment=gh-fablab-compat-smoketest"
+          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${ROUTER_LABELS},environment=gh-fablab-compat-smoketest${EXTRA_LABELS:+,$EXTRA_LABELS}"
           $(go env GOPATH)/bin/smoketest up
 
       - name: Test Ziti Command
