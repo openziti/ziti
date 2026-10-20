@@ -70,16 +70,24 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 		nameExtra = "-unencrypted"
 	}
 
+	downloadPath := "/tmp/ziti-" + uuid.NewString()
+	uploadPath := "/tmp/ziti-" + uuid.NewString()
+
 	tests := []struct {
 		direction string
 		cmd       string
+		path      string
+		onClient  bool
 	}{
 		{
 			direction: "<-",
-			cmd:       fmt.Sprintf("scp -o StrictHostKeyChecking=no scp://ssh-%s%s.ziti:2022/fablab/bin/ziti /tmp/ziti-%s", hostType, nameExtra, uuid.NewString()),
+			cmd:       fmt.Sprintf("scp -o StrictHostKeyChecking=no scp://ssh-%s%s.ziti:2022/fablab/bin/ziti %s", hostType, nameExtra, downloadPath),
+			path:      downloadPath,
+			onClient:  true,
 		}, {
 			direction: "->",
-			cmd:       fmt.Sprintf("scp -o StrictHostKeyChecking=no ./fablab/bin/ziti scp://ssh-%s%s.ziti:2022//tmp/ziti-%s", hostType, nameExtra, uuid.NewString()),
+			cmd:       fmt.Sprintf("scp -o StrictHostKeyChecking=no ./fablab/bin/ziti scp://ssh-%s%s.ziti:2022/%s", hostType, nameExtra, uploadPath),
+			path:      uploadPath,
 		},
 	}
 
@@ -91,10 +99,29 @@ func testScp(t *testing.T, hostSelector string, hostType string, encrypted bool)
 			host, err := model.GetModel().SelectHost("." + hostSelector + "-client")
 			req := require.New(t)
 			req.NoError(err)
+			t.Cleanup(func() { removeTransferred(t, host, hostType, test.path, test.onClient) })
 
 			o, err := host.ExecLoggedWithTimeout(50*time.Second, test.cmd)
 			t.Log(o)
 			req.NoError(err)
 		})
+	}
+}
+
+// removeTransferred deletes path from the host a transfer wrote it on: the client's host for a
+// download, or for an upload, the host serving hostType's ssh service. It logs rather than fails,
+// since the copy is the test's leftover, not its result.
+func removeTransferred(t *testing.T, client *model.Host, hostType, path string, onClient bool) {
+	host := client
+	if !onClient {
+		c, err := model.GetModel().SelectComponent("." + hostType + "-host")
+		if err != nil {
+			t.Logf("unable to find the %s host to remove %s: %v", hostType, path, err)
+			return
+		}
+		host = c.GetHost()
+	}
+	if _, err := host.ExecLogged("rm -f " + path); err != nil {
+		t.Logf("unable to remove %s from %s: %v", path, host.GetId(), err)
 	}
 }
