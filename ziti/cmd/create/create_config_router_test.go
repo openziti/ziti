@@ -80,10 +80,10 @@ type Sans struct {
 }
 
 type Transport struct {
-	Ws Ws `yaml:"ws"`
+	Wss Wss `yaml:"wss"`
 }
 
-type Ws struct {
+type Wss struct {
 	WriteTimeout      int    `yaml:"writeTimeout"`
 	ReadTimeout       int    `yaml:"readTimeout"`
 	IdleTimeout       int    `yaml:"idleTimeout"`
@@ -106,6 +106,22 @@ type Forwarder struct {
 }
 
 /* END Controller config template structure */
+
+func createRouterConfigRendered(args []string, routerOptions *CreateConfigRouterOptions, keys map[string]string) (RouterConfig, string) {
+	setEnvByMap(keys)
+	cmd := NewCmdCreateConfigRouter(routerOptions)
+	cmd.SetArgs(args)
+	output := captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	configStruct := RouterConfig{}
+	err := yaml.Unmarshal([]byte(output), &configStruct)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return configStruct, output
+}
 
 func createRouterConfig(args []string, routerOptions *CreateConfigRouterOptions, keys map[string]string) (RouterConfig, *ConfigTemplateValues) {
 	// Create and run the CLI command
