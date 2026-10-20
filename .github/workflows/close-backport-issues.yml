@@ -1,0 +1,57 @@
+name: Close Backport Issues
+
+# GitHub only acts on closing keywords in pull requests to the default branch, so this closes the
+# [Backport-x.y] issues that a pull request merged to a release branch references. It has to be present
+# on each release branch, since pull_request_target runs the workflow from the base branch.
+on:
+  pull_request_target:
+    types: [ closed ]
+    branches: [ 'release-v*' ]
+  workflow_dispatch:
+    inputs:
+      prs:
+        description: 'Space-separated numbers of merged release branch pull requests to process'
+        required: true
+      dry-run:
+        description: 'Report what would be closed without changing anything'
+        type: boolean
+        default: true
+
+permissions: {}
+
+jobs:
+  close-backport-issues:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: false
+
+      - name: Install Ziti CI
+        uses: openziti/ziti-ci@v1
+
+      - name: Close referenced backport issues
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRS: ${{ github.event_name == 'workflow_dispatch' && inputs.prs || github.event.pull_request.number }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+          COMMENT_ON_SKIPPED: ${{ github.event_name == 'pull_request_target' }}
+        run: |
+          args=()
+          if [[ "${DRY_RUN}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          if [[ "${COMMENT_ON_SKIPPED}" == "true" ]]; then
+            args+=(--comment-on-skipped)
+          fi
+          # PRS is split into one argument per pull request number.
+          # shellcheck disable=SC2086
+          ziti-ci close-backport-issues "${args[@]}" ${PRS}
