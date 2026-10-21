@@ -19,6 +19,8 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.21 -> v1.6.22](https://github.com/openziti/ziti/compare/v1.6.21...v1.6.22)
+    * [Issue #4587](https://github.com/openziti/ziti/issues/4587) - [Backport-1.6] Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
+    * [Issue #4600](https://github.com/openziti/ziti/issues/4600) - [Backport-1.6] ER/T terminator re-create reverts health check cost and precedence
     * [Issue #4463](https://github.com/openziti/ziti/issues/4463) - [Backport-1.6] Router gives up announcing its links to a controller after a reconnect, leaving the controller missing links
     * [Issue #4464](https://github.com/openziti/ziti/issues/4464) - [Backport-1.6] Checking whether a half-built split link is closed panics
     * [Issue #4465](https://github.com/openziti/ziti/issues/4465) - [Backport-1.6] A dialed link the router has no state for is left up and never reported
