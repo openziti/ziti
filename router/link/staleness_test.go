@@ -17,6 +17,7 @@
 package link
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -38,8 +39,9 @@ type stubXlink struct {
 	dialAddress  string
 	linkProtocol string
 	linkKey      xlink.LinkKey
-	closed       bool
-	destId       string
+	// closed is atomic: the registry loop closes a link while a test goroutine asserts on it.
+	closed atomic.Bool
+	destId string
 }
 
 func (*stubXlink) GetDestinationType() string                                            { return "link" }
@@ -54,14 +56,14 @@ func (s *stubXlink) DialAddress() string    { return s.dialAddress }
 func (s *stubXlink) LinkKey() xlink.LinkKey { return s.linkKey }
 func (s *stubXlink) LinkProtocol() string   { return s.linkProtocol }
 func (s *stubXlink) IsDialed() bool         { return s.dialed }
-func (s *stubXlink) IsClosed() bool         { return s.closed }
+func (s *stubXlink) IsClosed() bool         { return s.closed.Load() }
 
 // Required by the interface but not exercised by these tests.
 func (*stubXlink) Iteration() uint32           { return 0 }
 func (s *stubXlink) DestinationId() string     { return s.destId }
 func (*stubXlink) DestVersion() string         { return "" }
 func (*stubXlink) CloseOnce(func())            {}
-func (s *stubXlink) Close() error              { s.closed = true; return nil }
+func (s *stubXlink) Close() error              { s.closed.Store(true); return nil }
 func (*stubXlink) CloseNotified() error        { return nil }
 func (*stubXlink) AreFaultsSent() bool         { return false }
 func (*stubXlink) DuplicatesRejected() uint32  { return 0 }
