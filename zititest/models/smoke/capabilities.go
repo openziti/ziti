@@ -57,10 +57,38 @@ var (
 		MinVersion:  "v1.6.0",
 		Description: "handles the OIDC api sessions SDK clients get from a 2.x controller",
 	}
+
+	// The controller doesn't query an older router at all and reports its circuits as valid.
+	CapValidateCircuits = Capability{
+		Name:        "validate_circuits",
+		MinVersion:  "v1.6.6",
+		Description: "answers the controller's circuit validation",
+	}
+
+	CapValidateErtTerminators = Capability{
+		Name:        "validate_ert_terminators",
+		MinVersion:  "v1.4.0",
+		Description: "reports its ERT terminators for validation",
+	}
+
+	CapValidateRouterDataModel = Capability{
+		Name:        "validate_router_data_model",
+		MinVersion:  "v1.3.0",
+		Description: "validates its router data model for the controller",
+	}
+
+	CapValidateConnectionStatuses = Capability{
+		Name:        "validate_connection_statuses",
+		MinVersion:  "v1.2.0",
+		Description: "reports identity connection statuses for validation",
+	}
 )
 
 // Capabilities lists every capability the smoke model checks.
-var Capabilities = []Capability{CapManagedLinkConfig, CapSdkHosting, CapOidc}
+var Capabilities = []Capability{
+	CapManagedLinkConfig, CapSdkHosting, CapOidc,
+	CapValidateCircuits, CapValidateErtTerminators, CapValidateRouterDataModel, CapValidateConnectionStatuses,
+}
 
 func (capability Capability) variable() string {
 	return "capability_" + capability.Name

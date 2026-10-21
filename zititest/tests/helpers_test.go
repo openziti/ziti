@@ -60,6 +60,14 @@ func pathSupport(clientType, hostType string) smoke.Support {
 	return clientSupport(clientType).And(hostingSupport(hostType))
 }
 
+// skipUnlessRoutersSupport skips t when a router matching selector lacks one of capabilities.
+func skipUnlessRoutersSupport(t *testing.T, selector string, capabilities ...smoke.Capability) {
+	t.Helper()
+	if support := smoke.RoutersSupport(run.GetModel(), selector, capabilities...); !support.Supported {
+		t.Skip(support.Reason)
+	}
+}
+
 // hostedServices returns the encrypted and unencrypted kind services of each of hostTypes that the
 // hosting routers can carry.
 func hostedServices(kind string, hostTypes ...string) []string {
