@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -171,13 +172,20 @@ func validateServiceTerminatorsForCtrl(run model.Run, c *model.Component, deadli
 }
 
 func ValidateTerminators(run model.Run, timeout time.Duration, countOk func(int64) bool, validationType TerminatorValidationType) error {
+	return ValidateTerminatorsWithFilters(run, timeout, countOk, validationType, "limit none", "limit none")
+}
+
+// ValidateTerminatorsWithFilters is like ValidateTerminators but restricts the SDK and ERT terminator
+// validations to the routers matching sdkFilter and ertFilter, as ValidateTerminatorsForCtrlWithFilters
+// does for one controller.
+func ValidateTerminatorsWithFilters(run model.Run, timeout time.Duration, countOk func(int64) bool, validationType TerminatorValidationType, sdkFilter, ertFilter string) error {
 	ctrls := run.GetModel().SelectComponents(".ctrl")
 	errC := make(chan error, len(ctrls))
 	deadline := time.Now().Add(timeout)
 	for _, ctrl := range ctrls {
 		ctrlComponent := ctrl
 		go func() {
-			errC <- ValidateTerminatorsForCtrl(run, ctrlComponent, deadline, countOk, validationType)
+			errC <- ValidateTerminatorsForCtrlWithFilters(run, ctrlComponent, deadline, countOk, validationType, sdkFilter, ertFilter)
 		}()
 	}
 
@@ -547,4 +555,17 @@ func ValidateRouterErtTerminatorsWithFilter(id string, clients *zitirest.Clients
 		return invalid, nil
 	}
 	return invalid, fmt.Errorf("invalid ert terminators found")
+}
+
+// RouterNameFilter returns a router filter matching the routers named by components' ids, or no routers
+// when components is empty.
+func RouterNameFilter(components []*model.Component) string {
+	if len(components) == 0 {
+		return `name = "" limit none`
+	}
+	names := make([]string, 0, len(components))
+	for _, c := range components {
+		names = append(names, fmt.Sprintf("%q", c.Id))
+	}
+	return fmt.Sprintf("name in [%s] limit none", strings.Join(names, ","))
 }
