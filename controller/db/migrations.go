@@ -45,14 +45,26 @@ func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) e
 		return err
 	}
 
-	// l2 config types are needed in 2.0.x, but we don't want to increment the db version to add them,
-	// since doing so risks colliding with the db version range used by other branches. Since bumping
-	// the db version is what would normally trigger the migrator to invoke migrate() again, we instead
-	// ensure these config types exist on every startup, independent of the stored db version.
+	return migrations.syncConfigTypes(db)
+}
+
+// syncedConfigTypes are config types which are added or changed in 2.0.x. We don't want to increment
+// the db version to add or update them, since doing so risks colliding with the db version range used
+// by other branches. Since bumping the db version is what would normally trigger the migrator to invoke
+// migrate() again, we instead sync these config types on every startup, independent of the stored db
+// version.
+var syncedConfigTypes = []*ConfigType{
+	hostV1ConfigType,
+	hostV2ConfigType,
+	l2HostV1ConfigType,
+	l2InterceptV1ConfigType,
+}
+
+func (m *Migrations) syncConfigTypes(db boltz.Db) error {
 	return db.Update(nil, func(ctx boltz.MutateContext) error {
 		step := &boltz.MigrationStep{Component: "edge", Ctx: ctx}
-		for _, cfgType := range []*ConfigType{l2HostV1ConfigType, l2InterceptV1ConfigType} {
-			migrations.createConfigType(step, cfgType)
+		for _, cfgType := range syncedConfigTypes {
+			m.syncConfigType(step, cfgType)
 		}
 		return step.GetError()
 	})
