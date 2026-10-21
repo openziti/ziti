@@ -397,6 +397,15 @@ func (self *SessionManager) Query(query string) (*SessionListResult, error) {
 	return result, nil
 }
 
+// queryInTx is Query within the caller's read transaction.
+func (self *SessionManager) queryInTx(tx *bbolt.Tx, query string) (*SessionListResult, error) {
+	result := &SessionListResult{manager: self}
+	if err := self.ListWithTx(tx, query, result.collect); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (self *SessionManager) querySessions(query ast.Query) (*SessionListResult, error) {
 	result := &SessionListResult{manager: self}
 	err := self.PreparedListWithHandler(query, result.collect)
