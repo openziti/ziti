@@ -1002,14 +1002,14 @@ func Test_ApplyListenerChanges_ClosesOrphansOnlyOnPeerUpdate(t *testing.T) {
 	rescanDest, rescanXl := newDestWithEstablishedLink()
 	(&linkDestUpdate{id: "peer", healthy: true}).ApplyListenerChanges(reg, rescanDest, false, false)
 	req.NotContains(rescanDest.linkMap, "k", "orphan detached so it can't redial")
-	req.False(rescanXl.closed, "local rescan must not close the established link")
+	req.False(rescanXl.IsClosed(), "local rescan must not close the established link")
 
 	// Peer listener update (closeOrphans=true): detach and close, since the peer
 	// no longer advertises the listener.
 	peerDest, peerXl := newDestWithEstablishedLink()
 	(&linkDestUpdate{id: "peer", healthy: true}).ApplyListenerChanges(reg, peerDest, false, true)
 	req.NotContains(peerDest.linkMap, "k", "orphan detached")
-	req.True(peerXl.closed, "peer update closes the vanished listener's link")
+	req.True(peerXl.IsClosed(), "peer update closes the vanished listener's link")
 }
 
 // recordingDialer records whether Dial was invoked.
@@ -1391,4 +1391,142 @@ func (p destHealthyProbe) Handle(reg *linkRegistryImpl) {
 		return
 	}
 	p.out <- false
+}
+
+// Test_RemoveLinkDest_ClosesItsLinks: a destination removal is meant to close the links that pointed at it.
+// The call was there, behind a lookup that could never match: GetLink keys on the link key while the state
+// holds a link id, so the branch never ran and the links were left open with nothing to ever close them.
+func Test_RemoveLinkDest_ClosesItsLinks(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"default"}}})
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "going-away"
+
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
+	})
+	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
+
+	// Pair an established link with the state, which is what a successful dial leaves behind.
+	link := &stubXlink{id: "l1", dialed: true, destId: destId}
+	paired := make(chan struct{})
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		defer close(paired)
+		for _, state := range r.destinations[destId].linkMap {
+			state.linkId = link.Id()
+			state.link = link
+			state.updateStatus(StatusEstablished)
+			r.linkMapLocks.Lock()
+			r.linkByIdMap[link.Id()] = link
+			r.linkMap[state.linkKey] = link
+			r.linkMapLocks.Unlock()
+			return
+		}
+	}))
+	<-paired
+
+	reg.RemoveLinkDest(destId, 0)
+
+	req.Eventually(func() bool { return link.IsClosed() }, 2*time.Second, 25*time.Millisecond,
+		"removing a destination must close the links that pointed at it")
+}
+
+// blockingCloseXlink signals entry to Close and waits for release. Close may be called more than once, as a
+// real link's may.
+type blockingCloseXlink struct {
+	*stubXlink
+	startOnce sync.Once
+	started   chan struct{}
+	release   chan struct{}
+}
+
+func (s *blockingCloseXlink) Close() error {
+	s.startOnce.Do(func() { close(s.started) })
+	<-s.release
+	return s.stubXlink.Close()
+}
+
+// destDialFailed reports whether the destination's link state has had its dial fail.
+func destDialFailed(reg *linkRegistryImpl, destId string) bool {
+	result := make(chan bool, 1)
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		dest := r.destinations[destId]
+		if dest == nil {
+			result <- false
+			return
+		}
+		for _, state := range dest.linkMap {
+			result <- state.status == StatusDialFailed
+			return
+		}
+		result <- false
+	}))
+	return <-result
+}
+
+// Test_RemoveLinkDest_ClosesOffTheEventLoop checks that the registry handles events while Close waits.
+func Test_RemoveLinkDest_ClosesOffTheEventLoop(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"default"}}})
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "going-away"
+
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
+	})
+	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
+
+	// The registry dials the destination at once and the stub dialer fails. Paired before that failure is
+	// handled, the link is found under the key and closed again on the loop, which this test is not about.
+	req.Eventually(func() bool { return destDialFailed(reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	link := &blockingCloseXlink{
+		stubXlink: &stubXlink{id: "l1", dialed: true, destId: destId},
+		started:   make(chan struct{}),
+		release:   make(chan struct{}),
+	}
+	releaseClose := sync.OnceFunc(func() { close(link.release) })
+	defer releaseClose()
+
+	paired := make(chan struct{})
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		defer close(paired)
+		for _, state := range r.destinations[destId].linkMap {
+			state.linkId = link.Id()
+			state.link = link
+			state.updateStatus(StatusEstablished)
+			r.linkMapLocks.Lock()
+			r.linkByIdMap[link.Id()] = link
+			r.linkMap[state.linkKey] = link
+			r.linkMapLocks.Unlock()
+			return
+		}
+	}))
+	<-paired
+
+	reg.RemoveLinkDest(destId, 0)
+	select {
+	case <-link.started:
+	case <-time.After(2 * time.Second):
+		req.FailNow("link close did not start")
+	}
+
+	answered := make(chan struct{})
+	reg.queueEvent(funcEvent(func(*linkRegistryImpl) { close(answered) }))
+	select {
+	case <-answered:
+	case <-time.After(2 * time.Second):
+		req.FailNow("the registry's event loop is blocked on a link close")
+	}
+	req.False(link.IsClosed(), "the close is still held")
+
+	releaseClose()
+	req.Eventually(func() bool { return link.IsClosed() }, 2*time.Second, 25*time.Millisecond,
+		"and the link is still closed once it can be")
 }

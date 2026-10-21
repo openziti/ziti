@@ -56,14 +56,21 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 	if dest != nil {
 		for _, state := range dest.linkMap {
 			state.updateStatus(StatusDestRemoved)
-			if link, _ := registry.GetLink(state.linkId); link != nil {
-				if err := link.Close(); err != nil {
-					pfxlog.Logger().
-						WithField("linkKey", state.linkKey).
-						WithField("linkId", link.Id()).
-						WithError(err).
-						Error("error closing link")
-				}
+			// By id: GetLink keys on the link key, and this is a link id, so it never matched and the links
+			// a removed destination owns were left open.
+			if link, _ := registry.GetLinkById(state.linkId); link != nil {
+				// Off the loop: closing takes the link channel's lock, and a goroutine holding that lock can
+				// be blocked queueing a link event to this loop.
+				linkKey := state.linkKey
+				go func() {
+					if err := link.Close(); err != nil {
+						pfxlog.Logger().
+							WithField("linkKey", linkKey).
+							WithField("linkId", link.Id()).
+							WithError(err).
+							Error("error closing link")
+					}
+				}()
 			}
 		}
 	}

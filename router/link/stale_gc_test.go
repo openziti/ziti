@@ -205,7 +205,7 @@ func Test_RunStaleLinkGc_Changed_TolerantUnderOrphaned(t *testing.T) {
 
 func Test_RunStaleLinkGc_SkipsClosedLinks(t *testing.T) {
 	link := dialedXlink("transport", "tls", "destA", "lb1")
-	link.closed = true // mark as already closed
+	link.closed.Store(true) // mark as already closed
 	env := &gcStubEnv{
 		registry: &gcStubRegistry{links: []xlink.Xlink{link}},
 		dialers:  []xlink.Dialer{&stubXlinkDialer{binding: "ws"}}, // would be stale
