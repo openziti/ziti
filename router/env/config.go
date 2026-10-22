@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -33,6 +34,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
 	"github.com/openziti/ziti/v2/common/config"
+	"github.com/openziti/ziti/v2/common/diagnostics"
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/router/xgress_common"
@@ -140,7 +142,11 @@ type Config struct {
 			Path string
 		}
 	}
-	Ctrl struct {
+	// SlowHandlers configures opt-in slow control channel handler detection. Off unless configured on.
+	SlowHandlers            diagnostics.SlowHandlerConfig
+	slowHandlerDetectorOnce sync.Once
+	slowHandlerDetector     *diagnostics.SlowHandlerDetector
+	Ctrl                    struct {
 		InitialEndpoints      []*UpdatableAddress
 		LocalBinding          string
 		DefaultRequestTimeout time.Duration
@@ -172,6 +178,9 @@ type Config struct {
 		MessageQueueSize      int
 		EventQueueSize        int
 		EnableDataDelayMetric bool
+		HostMetrics           struct {
+			Enabled bool
+		}
 	}
 	HealthChecks struct {
 		CtrlPingCheck struct {
@@ -482,6 +491,9 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 	cfg.Ctrl.Options = channel.DefaultOptions()
 	cfg.Ctrl.Heartbeats = *NewDefaultHeartbeatOptions()
 	cfg.Ctrl.StartupTimeout = 30 * time.Second
+	if cfg.SlowHandlers, err = diagnostics.LoadConfig(cfgmap); err != nil {
+		return nil, err
+	}
 
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -754,6 +766,19 @@ func LoadConfigWithOptions(path string, loadIdentity bool) (*Config, error) {
 			}
 			if value, found := submap["enableDataDelayMetric"]; found {
 				cfg.Metrics.EnableDataDelayMetric = strings.EqualFold("true", fmt.Sprintf("%v", value))
+			}
+			if value, found := submap["hostMetrics"]; found {
+				if hostMap, ok := value.(map[interface{}]interface{}); ok {
+					if v, found := hostMap["enabled"]; found {
+						if enabled, ok := v.(bool); ok {
+							cfg.Metrics.HostMetrics.Enabled = enabled
+						} else {
+							return nil, errors.New("invalid value for metrics.hostMetrics.enabled, must be a boolean")
+						}
+					}
+				} else {
+					return nil, errors.New("invalid value for metrics.hostMetrics")
+				}
 			}
 		}
 	}
@@ -1220,4 +1245,14 @@ func loadCtrlListenerConfig(data map[interface{}]interface{}) (*CtrlListenerConf
 	}
 
 	return cfg, nil
+}
+
+// SlowHandlerDetector returns this process's slow handler detector, or nil when the diagnostic is
+// disabled. There is one per process rather than one per channel, because the dump interval and the
+// budget of distinct dumps are limits on the process, not on a connection.
+func (config *Config) SlowHandlerDetector() *diagnostics.SlowHandlerDetector {
+	config.slowHandlerDetectorOnce.Do(func() {
+		config.slowHandlerDetector = diagnostics.NewSlowHandlerDetector("router", config.SlowHandlers)
+	})
+	return config.slowHandlerDetector
 }
