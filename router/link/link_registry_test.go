@@ -1530,3 +1530,106 @@ func Test_RemoveLinkDest_ClosesOffTheEventLoop(t *testing.T) {
 	req.Eventually(func() bool { return link.IsClosed() }, 2*time.Second, 25*time.Millisecond,
 		"and the link is still closed once it can be")
 }
+
+// drainEvents handles every event queued so far, standing in for the registry's event loop.
+func drainEvents(reg *linkRegistryImpl) {
+	for {
+		select {
+		case evt := <-reg.events:
+			evt.Handle(reg)
+		default:
+			return
+		}
+	}
+}
+
+// Test_DuplicateLink_ReplacedLinksFaultIsRetried: the fault for a link replaced by a duplicate rides on that
+// link's state, so a controller that misses it is sent it again on a later pass rather than keeping the link
+// until this router next reconnects to it.
+func Test_DuplicateLink_ReplacedLinksFaultIsRetried(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+
+	destId := "dest"
+	replaced := &stubXlink{id: "l2", dialed: true, destId: destId}
+	dest := newLinkDest(destId)
+	state := &linkState{
+		linkKey:       replaced.Key(),
+		linkId:        replaced.Id(),
+		status:        StatusEstablished,
+		dest:          dest,
+		link:          replaced,
+		ctrlsNotified: true,
+	}
+	dest.linkMap[state.linkKey] = state
+	reg.destinations[destId] = dest
+	reg.linkMap[replaced.Key()] = replaced
+	reg.linkByIdMap[replaced.Id()] = replaced
+
+	// The same key from the other router, with the lower id, so it wins and the link this router dialed goes.
+	_, applied := reg.LinkAccepted(&stubXlink{id: "l1", destId: destId})
+	req.True(applied)
+	drainEvents(reg)
+
+	req.Equal([]linkFault{{linkId: replaced.Id(), iteration: replaced.Iteration()}}, state.linkFaults,
+		"the replaced link's fault is carried by its state")
+
+	ch := newFlakySendChannel(1)
+	withCtrl(reg, "ctrl1", ch)
+
+	pass := func() {
+		reg.sendLinkFaults([]stateAndFaults{{state: state, faults: append([]linkFault(nil), state.linkFaults...)}})
+		drainEvents(reg)
+	}
+
+	pass()
+	req.Len(state.linkFaults, 1, "a send the controller missed leaves the fault to be sent again")
+
+	pass()
+	req.Empty(state.linkFaults, "and a later pass delivers it")
+	req.Equal(int32(2), ch.sends.Load())
+}
+
+// Test_LinkAccepted_QueuesEventsAfterReleasingTheLock: queueing an event blocks while the event loop is
+// backlogged. Blocking with the registry lock held stalls every other link being applied, and everything else
+// that takes the lock, until the loop catches up.
+func Test_LinkAccepted_QueuesEventsAfterReleasingTheLock(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+	reg.events = make(chan event) // nothing receives, so a queued event waits
+
+	link := &stubXlink{id: "l1", destId: "dest"}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		reg.LinkAccepted(link)
+	}()
+
+	req.Eventually(func() bool {
+		applied, _ := reg.GetLink(link.Key())
+		return applied != nil
+	}, 2*time.Second, time.Millisecond)
+
+	req.Eventually(func() bool {
+		if reg.TryLock() {
+			reg.Unlock()
+			return true
+		}
+		return false
+	}, 2*time.Second, time.Millisecond, "the lock is free while the event waits to be queued")
+
+	select {
+	case <-done:
+		req.FailNow("returned without queueing its event")
+	default:
+	}
+
+	<-reg.events
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		req.FailNow("did not return once its event was taken")
+	}
+}

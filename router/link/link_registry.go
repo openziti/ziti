@@ -207,17 +207,30 @@ func (self *linkRegistryImpl) DebugForgetLink(linkId string) bool {
 
 func (self *linkRegistryImpl) LinkAccepted(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	// Queued once the lock is released: queueEvent blocks while the event loop is backlogged, and holding the
+	// lock through that stalls every other LinkAccepted and DialSucceeded behind it.
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
 func (self *linkRegistryImpl) DialSucceeded(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
-func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
+// applyLinkLocked applies the incoming link. The caller must hold self.Lock().
+// Returns any events that should be queued after the lock is released; the
+// caller is responsible for invoking queueEvent on each one.
+func (self *linkRegistryImpl) applyLinkLocked(link xlink.Xlink) (xlink.Xlink, bool, []event) {
 	log := logrus.WithField("dest", link.DestinationId()).
 		WithField("linkProtocol", link.LinkProtocol()).
 		WithField("newLinkId", link.Id()).
@@ -226,8 +239,10 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 
 	if link.IsClosed() {
 		log.Info("link being registered, but is already closed, skipping registration")
-		return nil, false
+		return nil, false, nil
 	}
+
+	var pending []event
 
 	if existing, _ := self.GetLink(link.Key()); existing != nil {
 		log = log.WithField("currentLinkId", existing.Id()).
@@ -236,7 +251,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		if existing == link {
 			log.Warn("link was re-applied, should not happen, not making any changes")
 			debugz.DumpLocalStack()
-			return nil, true
+			return nil, true, nil
 		}
 
 		// If the id is the same, we want to throw away the older one, since the new one is a replacement.
@@ -260,40 +275,28 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 					}
 				})
 			}
-			return existing, false
+			return existing, false, nil
 		}
 
-		// make sure we don't block the registry loop
-		go func() {
-			log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
+		log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
 
-			self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
-				// report link fault, then close link after allowing some time for circuits to be re-routed
-				fault := &ctrl_pb.Fault{
-					Id:        existing.Id(),
-					Subject:   ctrl_pb.FaultSubject_LinkDuplicate,
-					Iteration: existing.Iteration(),
-				}
+		// Carried by the link state rather than sent from here, so the notification cycle retries it until every
+		// controller has it. A replaced link this router accepted has no state here, and its dialer reports the
+		// fault instead.
+		pending = append(pending, &addLinkFaultForReplacedLink{link: existing})
 
-				if err := protobufs.MarshalTyped(fault).WithTimeout(time.Second).SendAndWaitForWire(ch); err != nil {
-					log.WithField("ctrlId", ctrlId).
-						WithError(err).
-						Error("failed to send router fault when duplicate link detected")
-				}
-			})
-
-			// if we're not the link dialer, wait longer to let the dialer close the link
-			closeTimeout := func() time.Duration {
-				if existing.IsDialed() {
-					return time.Minute
-				}
-				return 75 * time.Second
-			}()
-
-			time.AfterFunc(closeTimeout, func() {
-				_ = existing.Close()
-			})
+		// Closed later, giving circuits time to be rerouted. A router that did not dial the link waits longer,
+		// so its dialer closes it first.
+		closeTimeout := func() time.Duration {
+			if existing.IsDialed() {
+				return time.Minute
+			}
+			return 75 * time.Second
 		}()
+
+		time.AfterFunc(closeTimeout, func() {
+			_ = existing.Close()
+		})
 	}
 
 	self.linkMapLocks.Lock()
@@ -301,7 +304,10 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.linkByIdMap[link.Id()] = link
 	self.linkMapLocks.Unlock()
 
-	self.updateLinkStateEstablished(link)
+	pending = append(pending, &updateLinkStatusForLink{
+		link:   link,
+		status: StatusEstablished,
+	})
 
 	// A link samples its heartbeat settings while binding and only joins the
 	// registry afterwards, so a change pushed in between missed it. A no-op when the
@@ -310,7 +316,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 
 	log.Info("link registered")
 
-	return nil, true
+	return nil, true, pending
 }
 
 func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
