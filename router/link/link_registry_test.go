@@ -1767,3 +1767,229 @@ func Test_linkDestUpdate_UnhealthyReportDoesNotAffirm(t *testing.T) {
 	reg.evaluateDestinations()
 	req.NotContains(reg.destinations, "dest", "no connected controller says the destination is up")
 }
+
+// drainEvents handles every event queued so far, standing in for the registry's event loop.
+func drainEvents(reg *linkRegistryImpl) {
+	for {
+		select {
+		case evt := <-reg.events:
+			evt.Handle(reg)
+		default:
+			return
+		}
+	}
+}
+
+// Test_DuplicateLink_ReplacedLinksFaultIsRetried: the fault for a link replaced by a duplicate rides on that
+// link's state, so a controller that misses it is sent it again on a later pass rather than keeping the link
+// until this router next reconnects to it.
+func Test_DuplicateLink_ReplacedLinksFaultIsRetried(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+
+	destId := "dest"
+	replaced := &stubXlink{id: "l2", dialed: true, destId: destId}
+	dest := newLinkDest(destId)
+	state := &linkState{
+		linkKey:       replaced.Key(),
+		linkId:        replaced.Id(),
+		status:        StatusEstablished,
+		dest:          dest,
+		link:          replaced,
+		ctrlsNotified: true,
+	}
+	dest.linkMap[state.linkKey] = state
+	reg.destinations[destId] = dest
+	reg.linkMap[replaced.Key()] = replaced
+	reg.linkByIdMap[replaced.Id()] = replaced
+
+	// The same key from the other router, with the lower id, so it wins and the link this router dialed goes.
+	_, applied := reg.LinkAccepted(&stubXlink{id: "l1", destId: destId})
+	req.True(applied)
+	drainEvents(reg)
+
+	req.Equal([]linkFault{{linkId: replaced.Id(), iteration: replaced.Iteration()}}, state.linkFaults,
+		"the replaced link's fault is carried by its state")
+
+	ch := newFlakySendChannel(1)
+	withCtrl(reg, "ctrl1", ch)
+
+	pass := func() {
+		reg.sendLinkFaults([]stateAndFaults{{state: state, faults: append([]linkFault(nil), state.linkFaults...)}})
+		drainEvents(reg)
+	}
+
+	pass()
+	req.Len(state.linkFaults, 1, "a send the controller missed leaves the fault to be sent again")
+
+	pass()
+	req.Empty(state.linkFaults, "and a later pass delivers it")
+	req.Equal(int32(2), ch.sends.Load())
+}
+
+// Test_LinkAccepted_QueuesEventsAfterReleasingTheLock: queueing an event blocks while the event loop is
+// backlogged. Blocking with the registry lock held stalls every other link being applied, and everything else
+// that takes the lock, until the loop catches up.
+func Test_LinkAccepted_QueuesEventsAfterReleasingTheLock(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+	reg.events = make(chan event) // nothing receives, so a queued event waits
+
+	link := &stubXlink{id: "l1", destId: "dest"}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		reg.LinkAccepted(link)
+	}()
+
+	req.Eventually(func() bool {
+		applied, _ := reg.GetLink(link.Key())
+		return applied != nil
+	}, 2*time.Second, time.Millisecond)
+
+	req.Eventually(func() bool {
+		if reg.TryLock() {
+			reg.Unlock()
+			return true
+		}
+		return false
+	}, 2*time.Second, time.Millisecond, "the lock is free while the event waits to be queued")
+
+	select {
+	case <-done:
+		req.FailNow("returned without queueing its event")
+	default:
+	}
+
+	<-reg.events
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		req.FailNow("did not return once its event was taken")
+	}
+}
+
+// newStatusOrderTest returns a registry holding one link state for "dest", with no link registered.
+func newStatusOrderTest(t *testing.T) (*linkRegistryImpl, *linkState) {
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+
+	dest := newLinkDest("dest")
+	state := &linkState{linkKey: (&stubXlink{}).Key(), linkId: "s1", status: StatusDialing, dest: dest}
+	dest.linkMap[state.linkKey] = state
+	reg.destinations[dest.id] = dest
+	return reg, state
+}
+
+func handleEvents(reg *linkRegistryImpl, events []event) {
+	for _, evt := range events {
+		evt.Handle(reg)
+	}
+}
+
+// Test_updateLinkStatusForLink_IgnoresAReplacedLinksLateEvent: a link's status events are queued after the
+// registry lock is released, so a link that replaces another can have its events handled first. Taking the
+// replaced link's late event pins the state to a link that is going away: the live one is never marked
+// notified, so it is announced on every pass, and a peer listener change closes the wrong link.
+func Test_updateLinkStatusForLink_IgnoresAReplacedLinksLateEvent(t *testing.T) {
+	req := require.New(t)
+	reg, state := newStatusOrderTest(t)
+
+	replaced := &stubXlink{id: "l2", dialed: true, destId: "dest"}
+	_, applied, replacedEvents := reg.applyLinkLocked(replaced)
+	req.True(applied)
+
+	// The lower id wins, so this replaces the link just registered.
+	replacement := &stubXlink{id: "l1", destId: "dest"}
+	_, applied, replacementEvents := reg.applyLinkLocked(replacement)
+	req.True(applied)
+
+	handleEvents(reg, replacementEvents)
+	handleEvents(reg, replacedEvents)
+
+	req.Equal(StatusEstablished, state.status)
+	req.Same(replacement, state.link, "the state follows the link the registry holds")
+	req.Equal([]linkFault{{linkId: replaced.Id(), iteration: replaced.Iteration()}}, state.linkFaults)
+}
+
+// Test_updateLinkStatusForLink_IgnoresAnEarlierLinksLateFailure: a closed link's failure event is queued after
+// it leaves the registry, so a link registered in between can have its events handled first. Taking the late
+// failure fails the live link's state and redials it.
+func Test_updateLinkStatusForLink_IgnoresAnEarlierLinksLateFailure(t *testing.T) {
+	req := require.New(t)
+	reg, state := newStatusOrderTest(t)
+
+	closed := &stubXlink{id: "l1", dialed: true, destId: "dest"}
+	_, applied, events := reg.applyLinkLocked(closed)
+	req.True(applied)
+	handleEvents(reg, events)
+
+	_ = closed.Close()
+	reg.LinkClosed(closed)
+
+	next := &stubXlink{id: "l2", dialed: true, destId: "dest"}
+	_, applied, events = reg.applyLinkLocked(next)
+	req.True(applied)
+	handleEvents(reg, events)
+	drainEvents(reg)
+
+	req.Equal(StatusEstablished, state.status, "the link the registry holds is still up")
+	req.Same(next, state.link)
+	req.Equal([]linkFault{{linkId: closed.Id(), iteration: closed.Iteration()}}, state.linkFaults,
+		"the closed link's fault is still owed")
+}
+
+// closesWhileRegistering is a link that closes just after the registry first checks it is open, and has its
+// close handled from there, as the link close handler does.
+type closesWhileRegistering struct {
+	*stubXlink
+	reg          *linkRegistryImpl
+	checked      atomic.Bool
+	closeHandled chan struct{}
+}
+
+func (self *closesWhileRegistering) IsClosed() bool {
+	if !self.checked.CompareAndSwap(false, true) {
+		return self.stubXlink.IsClosed()
+	}
+	_ = self.Close()
+	go func() {
+		defer close(self.closeHandled)
+		self.reg.LinkClosed(self)
+	}()
+	// Long enough for the close to be handled here unless something holds it back.
+	select {
+	case <-self.closeHandled:
+	case <-time.After(100 * time.Millisecond):
+	}
+	return false
+}
+
+// Test_LinkClosed_WhileRegisteringIsNotLost: a link can close between the registry's check that it is open and
+// its insert. A close handled in that window finds nothing to remove, and the link is then registered after
+// its close: the state goes established on a dead link, the next notification pass drops the link's fault as
+// belonging to the established link, and the router goes on reporting a link that is gone.
+func Test_LinkClosed_WhileRegisteringIsNotLost(t *testing.T) {
+	req := require.New(t)
+	reg, state := newStatusOrderTest(t)
+	reg.linkStateQueue = &linkStateHeap{}
+	state.dialer = &stubDialer{}
+	state.listener = &ctrl_pb.Listener{Address: "tls:peer:6000", Protocol: "tls"}
+
+	link := &closesWhileRegistering{
+		stubXlink:    &stubXlink{id: "l1", dialed: true, destId: "dest"},
+		reg:          reg,
+		closeHandled: make(chan struct{}),
+	}
+	reg.DialSucceeded(link)
+	<-link.closeHandled
+	drainEvents(reg)
+
+	current, _ := reg.GetLink(link.Key())
+	req.Nil(current, "a link that closed while registering must not be left registered")
+	req.NotEqual(StatusEstablished, state.status, "nor its state established on it")
+	req.Equal([]linkFault{{linkId: link.Id(), iteration: link.Iteration()}}, state.linkFaults,
+		"the closed link's fault is owed")
+}

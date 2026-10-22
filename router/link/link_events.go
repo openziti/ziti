@@ -339,6 +339,17 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 		return
 	}
 
+	// A status event is queued after the link map change it reports, outside the lock that ordered that change,
+	// so events can be handled out of order. The state follows the link the map holds now.
+	current, _ := registry.GetLink(link.Key())
+	if self.status == StatusEstablished && current != link {
+		return
+	}
+	if self.status == StatusLinkFailed && current != nil && current != link {
+		state.addPendingLinkFault(link.Id(), link.Iteration())
+		return
+	}
+
 	state.updateStatus(self.status)
 	if state.status == StatusEstablished {
 		state.connectedCount++
