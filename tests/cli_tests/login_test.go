@@ -601,9 +601,15 @@ func (s *cliTestState) cliTestsOverZiti(t *testing.T, zitiPath string) {
 		util.ReloadConfig() //every iteration needs to call reload to flush/overwrite the cached client in global state
 		cfgDir := filepath.Join(s.homeDir, ".config/overlay")
 		_ = os.Setenv("ZITI_CONFIG_DIR", cfgDir)
-		_ = os.RemoveAll(cfgDir)
 		s.controllerUnderTest.ControllerAddress = "mgmt.ziti"
 		s.controllerUnderTest.ControllerPort = 443
+
+		// The controller was restarted for this phase. It serves HTTP and accepts logins before raft has
+		// elected it, and a model update made in that window fails with CLUSTER_NO_LEADER. The wait logs in,
+		// so the config dir is cleared after it rather than before.
+		require.NoError(t, s.controllerUnderTest.WaitForLeader(30*time.Second))
+		_ = os.RemoveAll(cfgDir)
+		util.ReloadConfig()
 		s.updateAdminIdFileForZiti(t, s.controllerUnderTest.ControllerHostPort())
 		s.cliTests(t)
 		s.testZitiThenNot(t)
