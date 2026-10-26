@@ -86,14 +86,6 @@ edge:
       uri:
         - "ziti://ziti-dev-router01/made/up/example"
 
-  # (optional) Configuration specific to the controller's API that is proxied through this process. If not defined
-  # the API Proxy will not run.
-  apiProxy:
-    # (required) The interface and port that the Edge API should be served on.
-    listener: 0.0.0.0:1080
-    # (required) The hostname and port combination to the ziti-controller hosted Edge API
-    upstream: 127.0.0.1:1280
-
 dialers:
   - binding: udp
   - binding: transport
