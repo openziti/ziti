@@ -44,7 +44,6 @@ const (
 
 type EdgeConfig struct {
 	Enabled                    bool
-	ApiProxy                   ApiProxy
 	EdgeListeners              []*edge_ctrl_pb.Listener
 	Csr                        *Csr
 	HeartbeatIntervalSeconds   int
@@ -67,12 +66,6 @@ type Csr struct {
 	Organization       string `yaml:"organization"`
 	OrganizationalUnit string `yaml:"organizationalUnit"`
 	Province           string `yaml:"province"`
-}
-
-type ApiProxy struct {
-	Enabled  bool
-	Listener string
-	Upstream string
 }
 
 type Memory struct {
@@ -185,8 +178,8 @@ func (config *EdgeConfig) LoadEdgeConfigFromMap(configMap map[interface{}]interf
 		return errors.Wrap(err, "invalid duration value for sessionValidateMaxInterval")
 	}
 
-	if err = config.loadApiProxy(edgeConfigMap); err != nil {
-		return err
+	if _, found := edgeConfigMap["apiProxy"]; found {
+		pfxlog.Logger().Warn("[edge.apiProxy] is no longer supported and will be ignored")
 	}
 
 	if err = config.loadEdgeListener(configMap); err != nil {
@@ -195,45 +188,6 @@ func (config *EdgeConfig) LoadEdgeConfigFromMap(configMap map[interface{}]interf
 
 	if err = config.loadTransportConfig(configMap); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (config *EdgeConfig) loadApiProxy(edgeConfigMap map[interface{}]interface{}) error {
-	config.ApiProxy = ApiProxy{}
-
-	if value, found := edgeConfigMap["apiProxy"]; found {
-		submap := value.(map[interface{}]interface{})
-
-		if submap == nil {
-			config.ApiProxy.Enabled = false
-			return nil
-		}
-
-		if value, found := submap["listener"]; found {
-			config.ApiProxy.Listener = value.(string)
-
-			if config.ApiProxy.Listener == "" {
-				return errors.New("required value [edge.apiProxy.listener] is expected to be a string")
-			}
-		} else {
-			return errors.New("required value [edge.apiProxy.listener] is missing")
-		}
-
-		if value, found := submap["upstream"]; found {
-			config.ApiProxy.Upstream = value.(string)
-
-			if config.ApiProxy.Upstream == "" {
-				return errors.New("required value [edge.apiProxy.upstream] is expected to be a string")
-			}
-		} else {
-			return errors.New("required value [edge.apiProxy.upstream] is missing")
-		}
-
-		config.ApiProxy.Enabled = true
-	} else {
-		config.ApiProxy.Enabled = false
 	}
 
 	return nil

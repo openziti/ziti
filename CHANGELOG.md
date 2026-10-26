@@ -3,10 +3,22 @@
 ## What's New
 
 * Bug fixes
+* Removal of the edge router API proxy (see Removed Features below)
+
+## Removed Features
+
+* **Edge router API proxy** - The `edge.apiProxy` router option, which served the
+  controller's Edge API from a router listener, has been removed. Certificate
+  authentication through the proxy did not work, and the proxy doesn't fit the
+  planned end-to-end encryption and certificate proof of possession work.
+  Routers log a warning and ignore the section if it is still present in config.
+  Clients that used the proxy should connect to the controller directly, or
+  through a load balancer that passes TLS through.
 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4647](https://github.com/openziti/ziti/issues/4647) - [Backport-2.0] Remove the edge router API proxy
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
 
 
