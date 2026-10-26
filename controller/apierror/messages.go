@@ -187,10 +187,6 @@ const (
 	MfaNotEnrolledMessage string = "The current identity is not enrolled in MFA"
 	MfaNotEnrolledStatus  int    = http.StatusConflict
 
-	CouldNotDecodeProxiedCertCode    string = "COULD_NOT_PARSE_PROXY_CERT"
-	CouldNotDecodeProxiedCertMessage string = "could not decode proxy client cert"
-	CouldNotDecodeProxiedCertStatus  int    = http.StatusInternalServerError
-
 	MissingCertClaimCode    string = "MISSING_CERT_CLAIM"
 	MissingCertClaimMessage string = "The certificate is expected to contain and externalId, which was not found"
 	MissingCertClaimStatus  int    = http.StatusBadRequest
