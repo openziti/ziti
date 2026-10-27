@@ -33,6 +33,7 @@
 
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4658](https://github.com/openziti/ziti/issues/4658) - [Backport-1.6] Router doesn't tell SDKs to stop sending on circuits it no longer has
     * [Issue #4695](https://github.com/openziti/ziti/issues/4695) - [Backport-1.6] Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
     * [Issue #4617](https://github.com/openziti/ziti/issues/4617) - [Backport-1.6] Router control-channel connect/disconnect race can leave a reconnected router de-registered
     * [Issue #4618](https://github.com/openziti/ziti/issues/4618) - [Backport-1.6] Router can drop controllers on a follower's stale controller list and never re-add them
