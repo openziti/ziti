@@ -887,6 +887,8 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4655](https://github.com/openziti/ziti/issues/4655) - Router doesn't tell SDKs to stop sending on circuits it no longer has
+    * [Issue #4763](https://github.com/openziti/ziti/issues/4763) - miniziti fails to install Traefik because chart v42.3.1 rejects service.type
     * [Issue #4552](https://github.com/openziti/ziti/issues/4552) - transport_udp and proxy_udp listeners can deadlock their own event loop
     * [Issue #4592](https://github.com/openziti/ziti/issues/4592) - CLI id-or-name resolution is duplicated, and the fabric version misreads names starting with 'id'
     * [Issue #4478](https://github.com/openziti/ziti/issues/4478) - Router never reconnects to a standalone controller after the heartbeat check closes the control channel
