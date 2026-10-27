@@ -34,7 +34,6 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/ctrl_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/router/env"
-	"github.com/openziti/ziti/v2/router/internal/apiproxy"
 	"github.com/openziti/ziti/v2/router/state"
 	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
@@ -128,8 +127,6 @@ func (factory *Factory) LoadConfig(_ map[interface{}]interface{}) error {
 
 	factory.edgeRouterConfig = factory.routerConfig.Edge
 	factory.env.MarkRouterDataModelRequired()
-
-	go apiproxy.Start(edgeConfig)
 
 	return nil
 }

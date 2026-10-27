@@ -728,6 +728,14 @@ in a future release. Plan to migrate off them.
   corresponding protobuf fields are now reserved, so no migration is required
   beyond optionally deleting the setting.
 
+* **Edge router API proxy** - The `edge.apiProxy` router option, which served the
+  controller's Edge API from a router listener, has been removed. Certificate
+  authentication through the proxy did not work, and the proxy doesn't fit the
+  planned end-to-end encryption and certificate proof of possession work.
+  Routers log a warning and ignore the section if it is still present in config.
+  Clients that used the proxy should connect to the controller directly, or
+  through a load balancer that passes TLS through.
+
 ## Contributors
 
 Thanks to the community members who contributed to this release.
@@ -801,6 +809,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4645](https://github.com/openziti/ziti/issues/4645) - Remove the edge router API proxy
     * [Issue #4611](https://github.com/openziti/ziti/issues/4611) - Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #3482](https://github.com/openziti/ziti/issues/3482) - Compilation fails on Illumos
     * [Issue #4543](https://github.com/openziti/ziti/issues/4543) - Router deadlocks syncing subscribers when a subscribed identity was deleted or disabled while out of sync
