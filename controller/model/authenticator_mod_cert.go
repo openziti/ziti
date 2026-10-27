@@ -18,11 +18,11 @@ package model
 
 import (
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/ziti/common/cert"
 	"github.com/openziti/ziti/controller/apierror"
@@ -30,14 +30,9 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/models"
-	"net/http"
-	"time"
 )
 
 const (
-	ClientCertHeader       = "X-Client-CertPem"
-	EdgeRouterProxyRequest = "X-Edge-Router-Proxy-Request"
-
 	ZitiAuthenticatorExtendRequested  = "ziti-authenticator-extend-requested"
 	ZitiAuthenticatorRollKeyRequested = "ziti-authenticator-extend-requested"
 
@@ -120,16 +115,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 
 	bundle := &AuthBundle{}
 
-	certs, err := module.getClientCerts(context)
-
-	if err != nil {
-		reason := fmt.Sprintf("error obtaining client certificates: %v", err)
-		failEvent := module.NewAuthEventFailure(context, bundle, reason)
-		module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
-
-		logger.WithError(err).Error("error obtaining client certificates")
-		return nil, err
-	}
+	certs := context.GetCerts()
 
 	if len(certs) == 0 {
 		reason := "no client certificates found"
@@ -331,40 +317,6 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}, nil
 }
 
-func (module *AuthModuleCert) isEdgeRouter(clientCert *x509.Certificate) bool {
-
-	fingerprint := module.env.GetFingerprintGenerator().FromCert(clientCert)
-
-	router, err := module.env.GetManagers().EdgeRouter.ReadOneByFingerprint(fingerprint)
-
-	if router != nil {
-		return true
-	}
-
-	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not read edge router by fingerprint %s", fingerprint)
-	}
-
-	return false
-}
-
-// getClientCerts will return the client certificates that should be used to verify the authentication
-// request. The client certificates may be directly provided by the TLS handshake or proxied from a trusted
-// source (i.e. edge routers)
-func (module *AuthModuleCert) getClientCerts(ctx AuthContext) ([]*x509.Certificate, error) {
-	peerCerts := ctx.GetCerts()
-
-	if len(peerCerts) == 0 {
-		return nil, nil
-	}
-
-	if proxyHeader := ctx.GetHeaders()[EdgeRouterProxyRequest]; proxyHeader != nil {
-		return module.getProxiedClientCerts(ctx)
-	}
-
-	return peerCerts, nil
-}
-
 // ensureAuthenticatorIsUpToDate ensures that a client's pem, public print, and root status is stored in `cert` authenticators.
 func (module *AuthModuleCert) ensureAuthenticatorIsUpToDate(authCert *AuthenticatorCert, clientCert *x509.Certificate, verifiedToRoot bool, ctx *change.Context) {
 	needsUpdate := false
@@ -428,53 +380,6 @@ func (module *AuthModuleCert) authenticatorExternalId(identityId string, clientC
 	}
 
 	return authenticator
-}
-
-func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Certificate, error) {
-	peerCerts := ctx.GetCerts()
-
-	if len(peerCerts) == 0 {
-		return nil, apierror.NewInvalidAuth()
-	}
-
-	proxyRaw64 := ""
-
-	if proxyRaw64Interface := ctx.GetHeaders()[ClientCertHeader]; proxyRaw64Interface != nil {
-		proxyRaw64 = proxyRaw64Interface.(string)
-	}
-
-	if proxyRaw64 == "" {
-		return nil, apierror.NewInvalidAuth()
-	}
-
-	if !module.isEdgeRouter(peerCerts[0]) {
-		return nil, apierror.NewInvalidAuth()
-	}
-
-	var proxiedRaw []byte
-	_, err := base64.StdEncoding.Decode(proxiedRaw, []byte(proxyRaw64))
-
-	if err != nil {
-		return nil, &errorz.ApiError{
-			AppCode: apierror.CouldNotDecodeProxiedCertCode,
-			Message: apierror.CouldNotDecodeProxiedCertMessage,
-			Cause:   err,
-			Status:  http.StatusBadRequest,
-		}
-	}
-
-	proxiedCerts, err := x509.ParseCertificates(proxiedRaw)
-
-	if err != nil {
-		return nil, &errorz.ApiError{
-			AppCode: apierror.CouldNotParseX509FromDerCode,
-			Message: apierror.CouldNotParseX509FromDerMessage,
-			Cause:   err,
-			Status:  http.StatusBadRequest,
-		}
-	}
-
-	return proxiedCerts, nil
 }
 
 func getCaByChain(activeCas map[string]*Ca, chains [][]*x509.Certificate, generator cert.FingerprintGenerator) *Ca {
