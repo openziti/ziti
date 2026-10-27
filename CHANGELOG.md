@@ -18,6 +18,7 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4658](https://github.com/openziti/ziti/issues/4658) - [Backport-1.6] Router doesn't tell SDKs to stop sending on circuits it no longer has
     * [Issue #4648](https://github.com/openziti/ziti/issues/4648) - [Backport-1.6] Remove the edge router API proxy
     * [Issue #4613](https://github.com/openziti/ziti/issues/4613) - [Backport-1.6] Controller deadlocks when posture data changes for an identity with legacy API sessions
 
