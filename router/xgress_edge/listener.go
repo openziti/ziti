@@ -1045,7 +1045,14 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 
 	edgeFwd, _ := self.xgCircuits.Get(payload.CircuitId)
 	if edgeFwd == nil {
-		pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Warn("no xgress edge forwarder for circuit")
+		if !payload.IsCircuitEndFlagSet() && !payload.IsFlagEOFSet() {
+			pfxlog.Logger().WithFields(payload.GetLoggerFields()).Debug("no xgress edge forwarder for circuit")
+		}
+		// a circuit is registered here before its SDK learns the circuit id, on both the dial and the
+		// hosting side, so the circuit is gone. An end of circuit means the SDK is already closing.
+		if !payload.IsCircuitEndFlagSet() && !payload.IsFlagWriteFailedSet() {
+			self.sendWriteFailed(msg, payload)
+		}
 		return
 	}
 
@@ -1061,6 +1068,27 @@ func (self *edgeClientConn) handleXgPayload(msg *channel.Message, ch channel.Cha
 		if !payload.IsRetransmitFlagSet() {
 			edgeFwd.metrics.Rx(edgeFwd, edgeFwd.originator, payload)
 		}
+	}
+}
+
+// sendWriteFailed answers an SDK payload, sent on msg for a circuit this router doesn't have, with a
+// write-failed payload, which makes the SDK's xgress close its send buffer and stop sending on the
+// circuit. It doesn't block, and drops the reply when the send queue is full; the SDK's next
+// retransmit brings another.
+func (self *edgeClientConn) sendWriteFailed(msg *channel.Message, payload *xgress.Payload) {
+	connId, _ := msg.GetUint32Header(sdkedge.ConnIdHeader)
+	reply := &xgress.Payload{
+		CircuitId: payload.CircuitId,
+		Flags:     xgress.SetOriginatorFlag(uint32(xgress.PayloadFlagWriteFailed), payload.GetOriginator().Invert()),
+	}
+	replyMsg := reply.Marshall()
+	replyMsg.PutUint32Header(sdkedge.ConnIdHeader, connId)
+
+	sent, err := self.ch.GetDefaultSender().TrySend(replyMsg)
+	if err != nil {
+		pfxlog.Logger().WithFields(payload.GetLoggerFields()).WithError(err).Debug("failed to send write failed for unknown circuit")
+	} else if !sent {
+		self.listener.droppedMsgMeter.Mark(1)
 	}
 }
 
@@ -1080,7 +1108,7 @@ func (self *edgeClientConn) handleXgAcknowledgement(req *channel.Message, ch cha
 
 	edgeFwd, _ := self.xgCircuits.Get(ack.CircuitId)
 	if edgeFwd == nil {
-		pfxlog.Logger().WithField("circuitId", ack.CircuitId).Error("no edge forwarder found for edge circuit")
+		pfxlog.Logger().WithField("circuitId", ack.CircuitId).Debug("no edge forwarder found for edge circuit")
 		return
 	}
 
