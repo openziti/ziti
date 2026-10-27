@@ -192,8 +192,8 @@ jobs:
 
   fablab-smoketest:
     name: Fablab Smoketest
-    # not applicable to forks. shouldn't run on release build
-    if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v') && !contains(github.actor, 'dependabot')
+    # not applicable to forks or PRs from forks (no secrets). shouldn't run on release build
+    if: github.repository_owner == 'openziti' && !github.event.pull_request.head.repo.fork && !startsWith(github.ref_name, 'release-v') && !contains(github.actor, 'dependabot')
     runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
@@ -317,8 +317,8 @@ jobs:
 
   fablab-ha-smoketest:
     name: Fablab HA Smoketest
-    # not applicable to forks. shouldn't run on release build
-    if: github.repository_owner == 'openziti' && !startsWith(github.ref_name, 'release-v') && !contains(github.actor, 'dependabot')
+    # not applicable to forks or PRs from forks (no secrets). shouldn't run on release build
+    if: github.repository_owner == 'openziti' && !github.event.pull_request.head.repo.fork && !startsWith(github.ref_name, 'release-v') && !contains(github.actor, 'dependabot')
     runs-on: ubuntu-24.04
     steps:
       - name: Git Checkout
@@ -418,7 +418,7 @@ jobs:
           terraform_version: ~1.5
 
       - name: Teardown Test Environment
-        if: needs.fablab-smoketest-ha.result != 'skipped'
+        if: needs.fablab-ha-smoketest.result != 'skipped'
         timeout-minutes: 30
         env:
           FABLAB_PASSPHRASE: ${{ secrets.FABLAB_PASSPHRASE }}
