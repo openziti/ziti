@@ -88,6 +88,20 @@ var Model = &model.Model{
 			}
 			return nil
 		}),
+		model.FactoryFunc(func(m *model.Model) error {
+			return m.ForEachComponent(".edge-router", 1, func(c *model.Component) error {
+				router, ok := c.Type.(*zitilab.RouterType)
+				if !ok {
+					return nil
+				}
+				varName := strings.ReplaceAll(c.Id, "-", "_") + "_version"
+				if version, found := m.GetStringVariable(varName); found {
+					router.Version = version
+				}
+				return nil
+			})
+		}),
+		model.FactoryFunc(applyCapabilities),
 	},
 
 	Factories: []model.Factory{
