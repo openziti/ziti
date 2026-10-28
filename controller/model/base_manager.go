@@ -188,7 +188,7 @@ func (self *baseEntityManager[ME, PE]) updateEntityBatch(modelEntity edgeEntity[
 		}
 
 		if err = self.ValidateNameOnUpdate(ctx, boltEntity, existing, checker); err != nil {
-			return nil
+			return err
 		}
 
 		if err := self.GetStore().Update(ctx, boltEntity, checker); err != nil {
@@ -215,7 +215,7 @@ func (self *baseEntityManager[ME, PE]) updateEntity(modelEntity ME, checker bolt
 		}
 
 		if err = self.ValidateNameOnUpdate(ctx, boltEntity, existing, checker); err != nil {
-			return nil
+			return err
 		}
 
 		if err := self.GetStore().Update(ctx, boltEntity, checker); err != nil {
