@@ -365,10 +365,20 @@ func NewManager(stateEnv env.RouterEnv) Manager {
 		certCache:                cmap.New[*x509.Certificate](),
 		env:                      stateEnv,
 		routerDataModelPool:      routerDataModelPool,
+		subscriberMetrics:        common.NewSubscriberMetrics(stateEnv.GetMetricsRegistry()),
 		endpointsChanged:         make(chan env.CtrlEvent, 10),
 		modelChanged:             make(chan struct{}, 1),
 	}
 	result.postureCache = posture.NewCache(result)
+
+	// Loads the model directly: RouterDataModel() sleeps while a replace is in progress, which would
+	// stall the metrics reporter.
+	stateEnv.GetMetricsRegistry().FuncGauge(common.MetricSubscriberEventQueueSize, func() int64 {
+		if model := result.routerDataModel.Load(); model != nil {
+			return int64(model.SubscriberEventQueueSize())
+		}
+		return 0
+	})
 
 	result.postureCache.AddUpdateListener(result.onPostureDataUpdate)
 	cfg := stateEnv.GetConfig()
@@ -573,6 +583,7 @@ type ManagerImpl struct {
 	ctrlRootCache       controllerRootCache
 	routerDataModel     atomic.Pointer[common.RouterDataModel]
 	routerDataModelPool goroutines.Pool
+	subscriberMetrics   *common.SubscriberMetrics
 
 	resyncRouterDataModel atomic.Bool
 	endpointsChanged      chan env.CtrlEvent
@@ -1081,6 +1092,8 @@ func (self *ManagerImpl) SetRouterDataModel(model *common.RouterDataModel, reset
 		existingIndex = existing.CurrentIndex()
 		logger = logger.WithField("existingIndex", existingIndex)
 	}
+
+	model.SetSubscriberMetrics(self.subscriberMetrics)
 
 	self.routerDataModel.Store(model)
 
