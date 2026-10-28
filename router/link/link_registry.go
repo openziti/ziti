@@ -18,6 +18,7 @@ package link
 
 import (
 	"container/heap"
+	"errors"
 	"math/rand"
 	"strings"
 	"sync"
@@ -1136,7 +1137,10 @@ func (self *linkRegistryImpl) sendNewLinks(links []stateAndLink) {
 				Version: pair.version,
 			})
 		}
-		if err := notifier.NotifyLinks(vlinks); err != nil {
+		if err := notifier.NotifyLinks(vlinks); errors.Is(err, env.ErrNoSubscriptionController) {
+			linkLog.Debug("holding new links until a subscription controller is connected",
+				"op", "link-notify", "links", len(vlinks))
+		} else if err != nil {
 			linkLog.Warn("failed to send new links via gossip, will retry",
 				"op", "link-notify", "error", err)
 		} else {
@@ -1200,17 +1204,24 @@ func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
 	notifier := self.env.GetLinkGossipNotifier()
 	useGossip := notifier != nil && self.ctrls.UsesGossip(capabilities.ControllerLinkGossip)
 
+	// Every unsent fault is retried on the next pass, and passes run several times a second while links
+	// churn, so gossip failures are logged once per pass rather than once per fault.
+	held, failed := 0, 0
+	var failedErr error
+
 	var successfullySent []stateAndFaults
 	for _, item := range list {
 		var sent []linkFault
 
 		for _, fault := range item.faults {
 			if useGossip {
-				if err := notifier.NotifyLinkFault(fault.linkId, fault.iteration); err != nil {
-					linkLog.Warn("failed to send link fault via gossip, will retry",
-						"op", "link-notify",
-						"linkId", fault.linkId,
-						"error", err)
+				if err := notifier.NotifyLinkFault(fault.linkId, fault.iteration); errors.Is(err, env.ErrNoSubscriptionController) {
+					held++
+				} else if err != nil {
+					failed++
+					failedErr = err
+					linkLog.Debug("failed to send link fault via gossip",
+						"op", "link-notify", "linkId", fault.linkId, "error", err)
 				} else {
 					sent = append(sent, fault)
 				}
@@ -1262,6 +1273,15 @@ func (self *linkRegistryImpl) sendLinkFaults(list []stateAndFaults) {
 				faults: sent,
 			})
 		}
+	}
+
+	if held > 0 {
+		linkLog.Debug("holding link faults until a subscription controller is connected",
+			"op", "link-notify", "faults", held)
+	}
+	if failed > 0 {
+		linkLog.Warn("failed to send link faults via gossip, will retry",
+			"op", "link-notify", "faults", failed, "error", failedErr)
 	}
 
 	if len(successfullySent) > 0 {

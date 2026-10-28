@@ -18,7 +18,6 @@ package router
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"hash/fnv"
 	"sort"
@@ -476,7 +475,7 @@ func (g *gossipClient) setStaleControllers(stale map[string]bool) {
 func (g *gossipClient) NotifyLinks(links []env.VersionedLink) error {
 	sub := g.ctrls.GetSubscriptionController()
 	if sub == nil || !sub.IsConnected() {
-		return errors.New("subscription controller unavailable")
+		return env.ErrNoSubscriptionController
 	}
 
 	s := g.linkStore()
@@ -552,7 +551,7 @@ func (g *gossipClient) NotifyLinks(links []env.VersionedLink) error {
 func (g *gossipClient) NotifyLinkFault(linkId string, iteration uint32) error {
 	sub := g.ctrls.GetSubscriptionController()
 	if sub == nil || !sub.IsConnected() {
-		return errors.New("subscription controller unavailable")
+		return env.ErrNoSubscriptionController
 	}
 
 	s := g.linkStore()

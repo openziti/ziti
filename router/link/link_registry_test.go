@@ -18,7 +18,9 @@ package link
 
 import (
 	"container/heap"
+	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -54,6 +56,8 @@ type testEnv struct {
 	dialers   []xlink.Dialer
 
 	listenerGeneration atomic.Uint64
+
+	gossipNotifier env.LinkGossipNotifier
 }
 
 func (self *testEnv) setDialers(d []xlink.Dialer) {
@@ -131,7 +135,7 @@ func (self *testEnv) GetMetricsRegistry() servermetrics.UsageRegistry {
 }
 
 func (self *testEnv) GetLinkGossipNotifier() env.LinkGossipNotifier {
-	return nil
+	return self.gossipNotifier
 }
 
 type testLink struct {
@@ -622,14 +626,15 @@ func newReconnectTestRegistry(t *testing.T) (*linkRegistryImpl, *testEnv) {
 // testCtrls is an env.NetworkControllers double exposing a fixed controller set.
 type testCtrls struct {
 	env.NetworkControllers
-	all map[string]env.NetworkController
+	all        map[string]env.NetworkController
+	usesGossip bool
 }
 
 func (self *testCtrls) GetAll() map[string]env.NetworkController { return self.all }
 
-// UsesGossip reports false: these tests exercise the control-channel announcement path, which is the
-// path a non-gossip cluster takes.
-func (self *testCtrls) UsesGossip(capabilities.ControllerCapability) bool { return false }
+// UsesGossip reports usesGossip, false unless a test sets it: most of these tests exercise the
+// control-channel announcement path, which is the path a non-gossip cluster takes.
+func (self *testCtrls) UsesGossip(capabilities.ControllerCapability) bool { return self.usesGossip }
 
 // testCtrl is an env.NetworkController double over a test channel.
 type testCtrl struct {
@@ -1790,5 +1795,88 @@ func Test_LinkAccepted_QueuesEventsAfterReleasingTheLock(t *testing.T) {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		req.FailNow("did not return once its event was taken")
+	}
+}
+
+// faultNotifier is an env.LinkGossipNotifier double whose link fault sends all fail with err.
+type faultNotifier struct {
+	env.LinkGossipNotifier
+	err   error
+	calls int
+}
+
+func (self *faultNotifier) NotifyLinkFault(string, uint32) error {
+	self.calls++
+	return self.err
+}
+
+// recordingHandler is a slog.Handler that keeps the level of every record it is given.
+type recordingHandler struct {
+	mu     sync.Mutex
+	levels []slog.Level
+}
+
+func (self *recordingHandler) Enabled(context.Context, slog.Level) bool { return true }
+func (self *recordingHandler) WithAttrs([]slog.Attr) slog.Handler       { return self }
+func (self *recordingHandler) WithGroup(string) slog.Handler            { return self }
+
+func (self *recordingHandler) Handle(_ context.Context, r slog.Record) error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	self.levels = append(self.levels, r.Level)
+	return nil
+}
+
+func (self *recordingHandler) count(level slog.Level) int {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	n := 0
+	for _, l := range self.levels {
+		if l == level {
+			n++
+		}
+	}
+	return n
+}
+
+// recordLinkLog routes linkLog to a recordingHandler for the rest of the test.
+func recordLinkLog(t *testing.T) *recordingHandler {
+	t.Helper()
+	handler := &recordingHandler{}
+	previous := linkLog
+	linkLog = slog.New(handler)
+	t.Cleanup(func() { linkLog = previous })
+	return handler
+}
+
+// Test_sendLinkFaults_GossipFailuresLoggedOncePerPass covers the gossip path's logging. Unsent faults are
+// retried on every pass, and passes run several times a second while links churn, so a warning per fault per
+// pass floods the log: with no subscription controller, every fault fails the same way.
+func Test_sendLinkFaults_GossipFailuresLoggedOncePerPass(t *testing.T) {
+	faults := []stateAndFaults{{state: &linkState{}, faults: []linkFault{
+		{linkId: "l1", iteration: 1}, {linkId: "l2", iteration: 1}, {linkId: "l3", iteration: 1},
+	}}}
+
+	for _, tc := range []struct {
+		name  string
+		err   error
+		warns int
+	}{
+		{name: "no subscription controller", err: env.ErrNoSubscriptionController, warns: 0},
+		{name: "send failure", err: errors.New("timed out"), warns: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reg, routerEnv := newReconnectTestRegistry(t)
+			notifier := &faultNotifier{err: tc.err}
+			routerEnv.gossipNotifier = notifier
+			reg.ctrls = &testCtrls{usesGossip: true}
+			logs := recordLinkLog(t)
+
+			reg.sendLinkFaults(faults)
+
+			require.Equal(t, 3, notifier.calls, "every fault is attempted")
+			require.Empty(t, reg.events, "unsent faults stay pending")
+			require.Equal(t, tc.warns, logs.count(slog.LevelWarn))
+		})
 	}
 }
