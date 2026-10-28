@@ -18,6 +18,7 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4491](https://github.com/openziti/ziti/issues/4491) - [Backport-1.6] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4506](https://github.com/openziti/ziti/issues/4506) - [Backport-1.6] Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4648](https://github.com/openziti/ziti/issues/4648) - [Backport-1.6] Remove the edge router API proxy
     * [Issue #4613](https://github.com/openziti/ziti/issues/4613) - [Backport-1.6] Controller deadlocks when posture data changes for an identity with legacy API sessions
