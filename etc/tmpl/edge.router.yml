@@ -25,7 +25,7 @@ identity:
 
 metrics:
   reportInterval: 20s
-  messageQueueSize: 20
+  messageQueueSize: 120
 
 #profile:
 #  memory:
