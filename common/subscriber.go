@@ -19,6 +19,7 @@ package common
 import (
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -541,6 +542,12 @@ type subscriberEvent interface {
 	process(rdm *RouterDataModel)
 }
 
+// queuedSubscriberEvent carries a subscriber event with the time it was queued.
+type queuedSubscriberEvent struct {
+	event    subscriberEvent
+	queuedAt time.Time
+}
+
 // identityDeletedEvent is queued when an identity is deleted to notify subscribers.
 type identityDeletedEvent struct {
 	identityId string
@@ -575,6 +582,9 @@ type syncAllSubscribersEvent struct {
 
 func (self syncAllSubscribersEvent) process(rdm *RouterDataModel) {
 	defer close(self.completeNotify)
+	if m := rdm.subscriberMetrics.Load(); m != nil {
+		defer m.FullSync.UpdateSince(time.Now())
+	}
 
 	pfxlog.Logger().WithField("subs", rdm.subscriptions.Count()).
 		WithField("updatedIdentities", rdm.updatedIdentities.Count()).

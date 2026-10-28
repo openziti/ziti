@@ -609,8 +609,12 @@ type RouterDataModel struct {
 	updatedIdentities        cmap.ConcurrentMap[string, byte]
 	subscriptionUpdateNotify chan struct{}
 
-	events         chan subscriberEvent
+	events         chan queuedSubscriberEvent
 	scanSubsNotify chan struct{}
+
+	// scanRequestedAt is when the oldest unserved scan request was made, in unix nanos, or zero.
+	scanRequestedAt   atomic.Int64
+	subscriberMetrics atomic.Pointer[SubscriberMetrics]
 
 	closeNotify <-chan struct{}
 	stopNotify  chan struct{}
@@ -680,7 +684,7 @@ func NewReceiverRouterDataModel(routerId string, closeNotify <-chan struct{}) *R
 		subscriptions:            cmap.New[*IdentitySubscription](),
 		updatedIdentities:        cmap.New[byte](),
 		subscriptionUpdateNotify: make(chan struct{}, 1),
-		events:                   make(chan subscriberEvent, 250),
+		events:                   make(chan queuedSubscriberEvent, 250),
 		scanSubsNotify:           make(chan struct{}, 1),
 		closeNotify:              closeNotify,
 		stopNotify:               make(chan struct{}),
@@ -708,7 +712,7 @@ func NewReceiverRouterDataModelFromDataState(routerId string, dataState *edge_ct
 		subscriptions:            cmap.New[*IdentitySubscription](),
 		updatedIdentities:        cmap.New[byte](),
 		subscriptionUpdateNotify: make(chan struct{}, 1),
-		events:                   make(chan subscriberEvent, 250),
+		events:                   make(chan queuedSubscriberEvent, 250),
 		scanSubsNotify:           make(chan struct{}, 1),
 		closeNotify:              closeNotify,
 		stopNotify:               make(chan struct{}),
@@ -753,7 +757,7 @@ func NewReceiverRouterDataModelFromExisting(routerId string, existing *RouterDat
 		subscriptions:            cmap.New[*IdentitySubscription](),
 		updatedIdentities:        cmap.New[byte](),
 		subscriptionUpdateNotify: make(chan struct{}, 1),
-		events:                   make(chan subscriberEvent, 250),
+		events:                   make(chan queuedSubscriberEvent, 250),
 		scanSubsNotify:           make(chan struct{}, 1),
 		closeNotify:              closeNotify,
 		stopNotify:               make(chan struct{}),
@@ -822,12 +826,26 @@ func (rdm *RouterDataModel) processSubscriberEvents() {
 			return
 		case <-rdm.stopNotify:
 			return
-		case evt := <-rdm.events:
-			evt.process(rdm)
+		case queued := <-rdm.events:
+			m := rdm.subscriberMetrics.Load()
+			if m == nil {
+				queued.event.process(rdm)
+				continue
+			}
+			m.EventQueueTime.UpdateSince(queued.queuedAt)
+			start := time.Now()
+			queued.event.process(rdm)
+			// A full sync records its own timer; counting it here would bury per-identity event cost
+			// under the rare sync of every subscription.
+			if _, fullSync := queued.event.(syncAllSubscribersEvent); !fullSync {
+				m.Event.UpdateSince(start)
+			}
 		case <-rdm.scanSubsNotify:
 			start := time.Now()
-			count := rdm.updatedIdentities.Count()
+			requestedAt := rdm.scanRequestedAt.Swap(0)
+			count := 0
 			for entry := range rdm.updatedIdentities.IterBuffered() {
+				count++
 				rdm.updatedIdentities.Remove(entry.Key) // do all checks, so we can just remove the flag entirely
 
 				if entry.Val&IdentityDeleted == IdentityDeleted {
@@ -843,12 +861,30 @@ func (rdm *RouterDataModel) processSubscriberEvents() {
 					rdm.syncSubscriptionIfRequired(entry.Key, false)
 				}
 			}
+			if m := rdm.subscriberMetrics.Load(); m != nil {
+				if requestedAt != 0 {
+					m.ScanQueueTime.Update(start.Sub(time.Unix(0, requestedAt)))
+				}
+				m.Scan.UpdateSince(start)
+				m.ScanIdentities.Update(int64(count))
+			}
 			pfxlog.Logger().
 				WithField("processed", count).
 				WithField("subs", rdm.subscriptions.Count()).
 				Debugf("sync all pending subscribers in %v", time.Since(start))
 		}
 	}
+}
+
+// SetSubscriberMetrics sets where subscriber processing records its cost. Nil stops recording.
+// Safe to call while the data model is in use.
+func (rdm *RouterDataModel) SetSubscriberMetrics(m *SubscriberMetrics) {
+	rdm.subscriberMetrics.Store(m)
+}
+
+// SubscriberEventQueueSize returns the number of subscriber events waiting to be processed.
+func (rdm *RouterDataModel) SubscriberEventQueueSize() int {
+	return len(rdm.events)
 }
 
 func (rdm *RouterDataModel) Stop() {
@@ -1023,7 +1059,26 @@ func (rdm *RouterDataModel) HandleRouterEvent(event *edge_ctrl_pb.DataState_Even
 
 func (rdm *RouterDataModel) queueEvent(event subscriberEvent) {
 	if rdm.events != nil {
-		rdm.events <- event
+		rdm.events <- queuedSubscriberEvent{event: event, queuedAt: time.Now()}
+	}
+}
+
+// tryQueueEvent queues event without blocking, and reports whether there was room.
+func (rdm *RouterDataModel) tryQueueEvent(event subscriberEvent) bool {
+	select {
+	case rdm.events <- queuedSubscriberEvent{event: event, queuedAt: time.Now()}:
+		return true
+	default:
+		return false
+	}
+}
+
+// requestScan asks for a scan of marked identities, keeping the time of the oldest unserved request.
+func (rdm *RouterDataModel) requestScan() {
+	rdm.scanRequestedAt.CompareAndSwap(0, time.Now().UnixNano())
+	select {
+	case rdm.scanSubsNotify <- struct{}{}:
+	default:
 	}
 }
 
@@ -2447,13 +2502,8 @@ func (rdm *RouterDataModel) GetTerminatorIdCache() cmap.ConcurrentMap[string, st
 func (rdm *RouterDataModel) queueSyncCheck(identityId string) {
 	if rdm.subscriptions.Has(identityId) {
 		rdm.markIdentityForCheck(identityId, IdentityUpdated)
-		select {
-		case rdm.events <- checkForIdentityChangesEvent{identityId: identityId}:
-		default:
-			select {
-			case rdm.scanSubsNotify <- struct{}{}:
-			default:
-			}
+		if !rdm.tryQueueEvent(checkForIdentityChangesEvent{identityId: identityId}) {
+			rdm.requestScan()
 		}
 	}
 }
@@ -2461,13 +2511,8 @@ func (rdm *RouterDataModel) queueSyncCheck(identityId string) {
 func (rdm *RouterDataModel) queueNewIdentitySubCheck(identityId string) {
 	if rdm.subscriptions.Has(identityId) {
 		rdm.markIdentityForCheck(identityId, IdentityAdded)
-		select {
-		case rdm.events <- identityCreatedEvent{identityId: identityId}:
-		default:
-			select {
-			case rdm.scanSubsNotify <- struct{}{}:
-			default:
-			}
+		if !rdm.tryQueueEvent(identityCreatedEvent{identityId: identityId}) {
+			rdm.requestScan()
 		}
 	}
 }
@@ -2475,13 +2520,8 @@ func (rdm *RouterDataModel) queueNewIdentitySubCheck(identityId string) {
 func (rdm *RouterDataModel) queueIdentityDeletedSubCheck(identityId string) {
 	if rdm.subscriptions.Has(identityId) {
 		rdm.markIdentityForCheck(identityId, IdentityDeleted)
-		select {
-		case rdm.events <- identityDeletedEvent{identityId: identityId}:
-		default:
-			select {
-			case rdm.scanSubsNotify <- struct{}{}:
-			default:
-			}
+		if !rdm.tryQueueEvent(identityDeletedEvent{identityId: identityId}) {
+			rdm.requestScan()
 		}
 	}
 }
