@@ -334,3 +334,38 @@ func TestEdgeRouterCsrFields(t *testing.T) {
 	assert.Equal(t, OU, config2.Edge.Csr.OrganizationalUnit)
 	assert.Contains(t, config2.Edge.Csr.Sans.Dns, extAddy)
 }
+
+// Regression test for https://github.com/openziti/ziti/issues/4510
+// The generated edge router config for a wss-enabled router must expose the
+// websocket listener tunables under `transport.wss`. The wss listener looks up
+// its configuration under the key "wss" (transport/v2/wss.Type), so settings
+// written under `transport.ws` were silently ignored and the listener kept its
+// compiled-in defaults.
+func TestEdgeRouterWssSettingsUseWssTransportKey(t *testing.T) {
+	routerOptions := clearEnvAndInitializeTestData()
+	routerName := "WssTest"
+
+	config, rendered := createRouterConfigRendered([]string{"edge", "--routerName", routerName, "--wss"}, routerOptions, nil)
+
+	// The typed config parses the template output, so it only picks up values
+	// that are actually nested under `transport.wss`.
+	assert.Equal(t, 10, config.Transport.Wss.WriteTimeout,
+		"wss writeTimeout should be read from transport.wss")
+	assert.Equal(t, 5, config.Transport.Wss.ReadTimeout,
+		"wss readTimeout should be read from transport.wss")
+	assert.Equal(t, 120, config.Transport.Wss.IdleTimeout,
+		"wss idleTimeout should be read from transport.wss")
+	assert.Equal(t, 4096, config.Transport.Wss.ReadBufferSize,
+		"wss readBufferSize should be read from transport.wss")
+	assert.Equal(t, 4096, config.Transport.Wss.WriteBufferSize,
+		"wss writeBufferSize should be read from transport.wss")
+	assert.Equal(t, "true", config.Transport.Wss.EnableCompression,
+		"wss enableCompression should be read from transport.wss")
+
+	// And the rendered config must not contain a `ws:` transport block, which the
+	// wss listener never reads.
+	assert.NotContains(t, rendered, "\n  ws:\n",
+		"generated wss router config must not emit a transport.ws block")
+	assert.Contains(t, rendered, "\n  wss:\n",
+		"generated wss router config must emit a transport.wss block")
+}
