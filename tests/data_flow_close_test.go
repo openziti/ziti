@@ -570,3 +570,96 @@ func Test_ClientConnCloseWritePropagation(t *testing.T) {
 	ctx.Req.Equal(0, n)
 	ctx.Req.Equal(err, io.EOF)
 }
+
+// Test_ClientConnCloseWritePropagationXgressInitiator covers the same half-close as
+// Test_ClientConnCloseWritePropagation across the mixed-mode circuit that
+// Test_ServerConnCloseWritePropagationXgressTerminator crosses in the other direction: the
+// client dials with SDK flow control, so its initiator is an xgress conn, while the host binds
+// without it, so its terminator is a legacy edge conn. The host's read must end at io.EOF after
+// the client's CloseWrite while its own write side stays open, which requires the router to
+// relay the initiator's xgress EOF to the host as an edge FIN.
+//
+// The host writes first and the client reads that before half-closing. That matches the
+// main-line version of this test, where the client's xgress only sends the native EOF after
+// the terminator's capabilities reply has arrived; the ordering is harmless here.
+func Test_ClientConnCloseWritePropagationXgressInitiator(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
+	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
+
+	_, context := ctx.AdminManagementSession.RequireCreateSdkContext()
+	defer context.Close()
+
+	listener, err := context.Listen(service.Name)
+	ctx.Req.NoError(err)
+	defer listener.Close()
+
+	errC := make(chan error, 1)
+
+	go func() {
+		defer func() {
+			val := recover()
+			if val != nil {
+				if err, ok := val.(error); ok {
+					errC <- err
+				} else {
+					errC <- fmt.Errorf("%v", val)
+				}
+			}
+			close(errC)
+		}()
+
+		conn := ctx.WrapNetConn(listener.AcceptEdge())
+		conn.WriteString("greetings", time.Second)
+		name := conn.ReadString(512, time.Second)
+		if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			errC <- err
+			return
+		}
+		n, err := conn.Read(make([]byte, 128))
+		if err != io.EOF {
+			errC <- fmt.Errorf("did not receive EOF err(%v) %d", err, n)
+			return
+		}
+		conn.WriteString("hello, "+name+"\nI got your FIN!", time.Second)
+		conn.RequireClose()
+	}()
+
+	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
+	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
+
+	clientContext, err := ziti.NewContext(clientConfig)
+	ctx.Req.NoError(err)
+
+	sdkFlowControl := true
+	dialOptions := &ziti.DialOptions{
+		ConnectTimeout: 5 * time.Second,
+		SdkFlowControl: &sdkFlowControl,
+	}
+
+	conn := ctx.WrapConn(clientContext.DialWithOptions(service.Name, dialOptions))
+	conn.ReadExpected("greetings", time.Second)
+
+	name := eid.New()
+	conn.WriteString(name, time.Second)
+	_ = conn.CloseWrite()
+
+	select {
+	case err := <-errC:
+		ctx.Req.NoError(err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out after 10 seconds")
+	}
+
+	conn.ReadExpected("hello, "+name+"\nI got your FIN!", time.Second)
+
+	ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(time.Second)))
+	n, err := conn.Read(make([]byte, 1024))
+	ctx.Req.Equal(0, n)
+	ctx.Req.Equal(err, io.EOF)
+}
