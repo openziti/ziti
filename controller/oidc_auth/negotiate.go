@@ -17,7 +17,6 @@
 package oidc_auth
 
 import (
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -79,14 +78,7 @@ func negotiateBodyContentType(r *http.Request) (string, *errorz.ApiError) {
 		return JsonContentType, nil
 	}
 
-	return "", &errorz.ApiError{
-
-		AppCode:     "UNSUPPORTED_MEDIA_TYPE",
-		Message:     fmt.Sprintf("the content type: %s, is not supported (supported: %s, %s)", contentType, FormContentType, JsonContentType),
-		Status:      http.StatusUnsupportedMediaType,
-		Cause:       nil,
-		AppendCause: false,
-	}
+	return "", newUnsupportedMediaTypeError(contentType)
 }
 
 // AcceptEntry represents a parsed Accept header entry
