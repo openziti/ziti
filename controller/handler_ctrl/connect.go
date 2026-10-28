@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/common/cert"
+	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/network"
 )
 
@@ -65,6 +66,20 @@ func (self *ConnectHandler) isSeparatelyValidated(hello *channel.Hello) bool {
 	return ok
 }
 
+// withinChurnLimit reports whether an established connection is too new to be displaced by a new one.
+//
+// This is admission policy, not the uniqueness guarantee. At most one connection per router is enforced
+// under the per-router lock in Network.ConnectRouter; this runs against the connected map with no lock
+// held, so it can only avoid paying for a bind that would be refused there anyway.
+//
+// Displacing an established connection costs a round trip: the occupant's teardown runs, the connect is
+// refused, and the router redials into the freed slot. A connection that has only just been established
+// is therefore protected for churnLimit, so a flapping router cannot thrash a working channel. A zero
+// limit disables the protection, making every new connection able to displace the current one.
+func withinChurnLimit(connected *model.Router, churnLimit time.Duration) bool {
+	return time.Since(connected.ConnectTime) < churnLimit
+}
+
 func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
 	// Connections whose channel type is handled by a separate, self-validating acceptor (e.g. the raft
 	// mesh) are validated there, so skip them. Everything else - unrecognized types and legacy (no type
@@ -94,7 +109,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	log.Debugf("peer leaf certificate fingerprint [%s], common name [%s]", fingerprint, leaf.Subject.CommonName)
 
 	if router := self.network.GetConnectedRouter(id); router != nil {
-		if time.Since(router.ConnectTime) < self.network.GetOptions().RouterConnectChurnLimit {
+		if withinChurnLimit(router, self.network.GetOptions().RouterConnectChurnLimit) {
 			log.WithField("routerName", router.Name).Error("router already connected and churn threshold not met")
 			return fmt.Errorf("router already connected id: %s, name: %s", id, router.Name)
 		}

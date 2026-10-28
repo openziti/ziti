@@ -17,6 +17,9 @@
 package model
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/versions"
@@ -25,8 +28,6 @@ import (
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/models"
 	"go.etcd.io/bbolt"
-	"sync/atomic"
-	"time"
 )
 
 type Listener interface {
@@ -43,6 +44,9 @@ type Router struct {
 	Control     channel.Channel
 	Connected   atomic.Bool
 	ConnectTime time.Time
+	// VersionInfo is reported in the router's hello and is not persisted, so it is only populated on the
+	// instance built for a control-channel connection. It is nil on an instance loaded from the database.
+	// Read it from GetConnected rather than from whatever instance is to hand.
 	VersionInfo *versions.VersionInfo
 	routerLinks RouterLinks
 	Cost        uint16

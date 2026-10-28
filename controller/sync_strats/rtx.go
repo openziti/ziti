@@ -279,8 +279,21 @@ type routerTxMap struct {
 	internalMap cmap.ConcurrentMap[string, *RouterSender] //id -> RouterSender
 }
 
+// Add installs routerMessageTxer as the sender for id, stopping any sender it replaces. The broker
+// dispatches a connection's RouterDisconnected asynchronously, so a reconnect can install its sender before
+// the old connection's cleanup runs; stopping the replaced sender here keeps its goroutine from leaking.
 func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {
-	m.internalMap.Set(id, routerMessageTxer)
+	var replaced *RouterSender
+	m.internalMap.Upsert(id, routerMessageTxer, func(exists bool, old *RouterSender, newValue *RouterSender) *RouterSender {
+		if exists && old != newValue {
+			replaced = old
+		}
+		return newValue
+	})
+
+	if replaced != nil {
+		replaced.Stop()
+	}
 }
 
 func (m *routerTxMap) Get(id string) *RouterSender {
