@@ -17,12 +17,14 @@
 package handler_edge_ctrl
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v4"
 	"github.com/openziti/channel/v4/protobufs"
 	"github.com/openziti/ziti/common"
 	"github.com/openziti/ziti/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/controller/change"
 	"github.com/openziti/ziti/controller/command"
 	"github.com/openziti/ziti/controller/db"
 	"github.com/openziti/ziti/controller/env"
@@ -32,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"maps"
 	"math"
 	"time"
 )
@@ -106,24 +109,8 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 
 	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil {
-		if ctx.err = ctx.validateExistingTerminator(terminator, logger); ctx.err != nil {
-			self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, ctx.err, logger)
+		if !self.updateExisting(ctx, terminator, logger) {
 			return
-		}
-
-		// if the precedence or cost has changed, update the terminator
-		if terminator.Precedence != ctx.req.GetXtPrecedence() || terminator.Cost != uint16(ctx.req.Cost) {
-			terminator.Precedence = ctx.req.GetXtPrecedence()
-			terminator.Cost = uint16(ctx.req.Cost)
-			err := self.appEnv.GetManagers().Terminator.Update(terminator, fields.UpdatedFieldsMap{
-				db.FieldTerminatorPrecedence: struct{}{},
-				db.FieldTerminatorCost:       struct{}{},
-			}, ctx.newChangeContext())
-
-			if err != nil {
-				self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
-				return
-			}
 		}
 	} else {
 		terminator = &model.Terminator{
@@ -154,8 +141,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		if err := self.appEnv.GetHostController().GetNetwork().Managers.Dispatcher.Dispatch(cmd); err != nil {
 			// terminator might have been created while we were trying to create.
 			if terminator, _ = self.getNetwork().Terminator.Read(ctx.req.Address); terminator != nil {
-				if validateError := ctx.validateExistingTerminator(terminator, logger); validateError != nil {
-					self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, validateError, logger)
+				if !self.updateExisting(ctx, terminator, logger) {
 					return
 				}
 			} else {
@@ -210,6 +196,46 @@ func (self *createTerminatorV2Handler) returnError(ctx *CreateTerminatorV2Reques
 type CreateTerminatorV2RequestContext struct {
 	baseSessionRequestContext
 	req *edge_ctrl_pb.CreateTerminatorV2Request
+}
+
+// updateExisting validates that terminator can be adopted by the request and applies the request to it
+// with applyToExisting. It reports whether the caller can reply with success; on false the error reply
+// has been sent.
+func (self *createTerminatorV2Handler) updateExisting(ctx *CreateTerminatorV2RequestContext, terminator *model.Terminator, logger *logrus.Entry) bool {
+	if ctx.err = ctx.validateExistingTerminator(terminator, logger); ctx.err != nil {
+		self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedIdConflict, ctx.err, logger)
+		return false
+	}
+
+	if err := ctx.applyToExisting(terminator, ctx.newChangeContext()); err != nil {
+		self.returnError(ctx, edge_ctrl_pb.CreateTerminatorResult_FailedOther, err, logger)
+		return false
+	}
+	return true
+}
+
+// applyToExisting persists the request's cost, precedence and peer data to terminator, skipping the
+// write when terminator already has them. The cost must already be validated.
+func (self *CreateTerminatorV2RequestContext) applyToExisting(terminator *model.Terminator, ctx *change.Context) error {
+	precedence := self.req.GetXtPrecedence()
+	cost := uint16(self.req.Cost)
+
+	// A follower's copy can trail the leader's, so a value the cluster has since replaced can match and
+	// skip the write. Peer data can't hit this: sdk keys are random, so a terminator never goes back to
+	// an earlier key.
+	if terminator.Precedence == precedence && terminator.Cost == cost &&
+		maps.EqualFunc(terminator.PeerData, self.req.PeerData, bytes.Equal) {
+		return nil
+	}
+
+	terminator.Precedence = precedence
+	terminator.Cost = cost
+	terminator.PeerData = self.req.PeerData
+	return self.handler.getNetwork().Terminator.Update(terminator, fields.UpdatedFieldsMap{
+		db.FieldTerminatorPrecedence: struct{}{},
+		db.FieldTerminatorCost:       struct{}{},
+		db.FieldServerPeerData:       struct{}{},
+	}, ctx)
 }
 
 func (self *CreateTerminatorV2RequestContext) GetSessionToken() string {
