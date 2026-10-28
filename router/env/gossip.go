@@ -17,10 +17,16 @@
 package env
 
 import (
+	"errors"
+
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/inspect"
 	"github.com/openziti/ziti/v2/router/xlink"
 )
+
+// ErrNoSubscriptionController is returned by a LinkGossipNotifier when no subscription controller is
+// connected, so nothing can be sent until one is.
+var ErrNoSubscriptionController = errors.New("subscription controller unavailable")
 
 // LinkGossipNotifier sends link state changes as gossip deltas to the
 // subscription controller. Used by the link registry when all controllers
