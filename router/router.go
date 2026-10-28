@@ -881,7 +881,7 @@ func (self *Router) startControlPlane() error {
 		self.ctrls.ConnectToInitialEndpoints(endpoints)
 	}
 
-	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
+	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls, self.config.Metrics.MessageQueueSize)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	if self.config.Ctrl.StartupTimeout > 0 {
