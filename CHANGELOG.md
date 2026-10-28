@@ -16,6 +16,7 @@
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
 * [Controller Read Throughput Under Load](#controller-read-throughput-under-load) - a bbolt upgrade lifts a ceiling on concurrent read transactions that could stall a busy controller
 * [Policy Evaluation Without Store Scans](#policy-evaluation-without-store-scans) - creating, updating or deleting a policy or a policy target no longer scans every entity or policy in the store
+* [Router Data Model Subscriber Metrics](#router-data-model-subscriber-metrics) - New router metrics for diagnosing router data model performance issues
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
@@ -666,6 +667,19 @@ posture checks changed, not when its services did, and their service-side entrie
 into the services' identity tables. The rebuild logs a `rebuilt posture check to service links`
 line. No configuration changes.
 
+## Router Data Model Subscriber Metrics
+
+Routers now report metrics for processing router data model subscriber updates, to help diagnose
+router data model performance issues.
+
+* `rdm.subscriber.event` - a timer of processing one queued subscriber event
+* `rdm.subscriber.event.queue_time` - a timer of how long a subscriber event waited in the queue
+* `rdm.subscriber.event.queue_size` - a gauge of the number of subscriber events waiting
+* `rdm.subscriber.scan` - a timer of a scan of identities marked for a check while the event queue was full
+* `rdm.subscriber.scan.queue_time` - a timer of how long a scan request waited
+* `rdm.subscriber.scan.identities` - a histogram of the number of identities each scan processed
+* `rdm.subscriber.full_sync` - a timer of a check of every subscription, as done after the router data model is replaced
+
 ## Logging Now Uses slog with an Async Handler
 
 The controller, router, and `ziti tunnel` now log through Go's standard
@@ -933,6 +947,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4663](https://github.com/openziti/ziti/issues/4663) - Add metrics for the router data model subscriber goroutine
     * [Issue #4693](https://github.com/openziti/ziti/issues/4693) - Router xgress Close can block indefinitely on a congested circuit
     * [Issue #4330](https://github.com/openziti/ziti/issues/4330) - ER/T does not close existing circuits when the router loses dial access to a service
     * [Issue #4753](https://github.com/openziti/ziti/issues/4753) - Routers drop controllers on a stale member list from a leader restarted after a snapshot install
