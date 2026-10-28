@@ -228,6 +228,8 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion < 49 {
 		m.createOrUpdateConfigType(step, l2HostV1ConfigType)
 		m.createOrUpdateConfigType(step, l2InterceptV1ConfigType)
+		m.createOrUpdateConfigType(step, hostV1ConfigType) // migration 49
+		m.createOrUpdateConfigType(step, hostV2ConfigType)
 	}
 
 	// current version
