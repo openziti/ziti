@@ -104,16 +104,6 @@ jobs:
       - name: Install Go
         uses: ./.github/actions/setup-go
 
-      - name: Go Caching
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
       - name: Build ziti executable
         shell: bash
         run: |
