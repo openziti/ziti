@@ -875,7 +875,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
 	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
 	if err != nil {
-		return fmt.Errorf("error connecting ctrl (%v)", err)
+		return fmt.Errorf("error connecting ctrl (%w)", err)
 	}
 	channelRef.Store(ch)
 
@@ -1002,6 +1002,10 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string) {
 
 func (self *Router) UpdateLeader(leaderId string) {
 	self.ctrls.UpdateLeader(leaderId)
+}
+
+func (self *Router) GetCtrlEndpoints() []string {
+	return self.ctrls.GetEndpoints()
 }
 
 type connectionToggle interface {
