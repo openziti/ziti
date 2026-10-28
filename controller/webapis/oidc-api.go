@@ -154,6 +154,7 @@ func NewOidcApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options 
 	oidcConfig.AccessTokenDuration = ae.GetConfig().Edge.Oidc.AccessTokenDuration
 	oidcConfig.RefreshTokenDuration = ae.GetConfig().Edge.Oidc.RefreshTokenDuration
 	oidcConfig.IdTokenDuration = ae.GetConfig().Edge.Oidc.IdTokenDuration
+	oidcConfig.AuthRequestDuration = ae.GetConfig().Edge.Oidc.AuthRequestDuration
 	oidcConfig.RevocationMinTokenLifetime = ae.GetConfig().Edge.Oidc.RevocationMinTokenLifetime
 	oidcConfig.RevocationBucketInterval = ae.GetConfig().Edge.Oidc.RevocationBucketInterval
 	oidcConfig.RevocationBucketMaxSize = ae.GetConfig().Edge.Oidc.RevocationBucketMaxSize
