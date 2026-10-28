@@ -48,9 +48,7 @@ func (self *waitForQueueEmptyEvent) process(rdm *RouterDataModel) {
 		close(self.c)
 	} else {
 		time.Sleep(time.Second * 10)
-		go func() {
-			rdm.events <- self
-		}()
+		go rdm.queueEvent(self)
 	}
 }
 
