@@ -51,6 +51,7 @@ const (
 	ClusterIdHeader        = 2004
 	PreferredLeaderHeader  = 2005
 	SigningCertChainHeader = 2006 // full signing cert chain, leaf first, as concatenated DER
+	ProbeHeader            = 2007 // marks a connection opened only to read the peer's hello
 
 	// Legacy header IDs, used as fallback when reading from older peers
 	LegacyPeerAddrHeader     = 11
@@ -304,6 +305,9 @@ type Env interface {
 	// GetPeerAddresses returns the raft addresses of all other members of the cluster.
 	GetPeerAddresses() []string
 
+	// GetMemberId returns the id of the cluster member stored at the given raft address.
+	GetMemberId(address raft.ServerAddress) (raft.ServerID, bool)
+
 	// GetNonMemberGrace returns how long a leader allows a TLS-valid but
 	// non-member controller to stay connected before dropping it.
 	GetNonMemberGrace() time.Duration
@@ -321,6 +325,12 @@ type Mesh interface {
 	IsReadOnly() bool
 
 	GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error)
+
+	// ProbePeer dials address and returns the id and advertise address the peer presents,
+	// ignoring any peer already connected at that address. The connection is closed by both
+	// sides without registering a peer.
+	ProbePeer(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error)
+
 	GetAdvertiseAddr() raft.ServerAddress
 	GetPeers() map[string]*Peer
 
@@ -456,10 +466,13 @@ func (self *impl) Dial(address raft.ServerAddress, timeout time.Duration) (net.C
 
 	log := pfxlog.Logger().WithField("address", address)
 	log.Info("dialing raft peer channel")
-	peer, err := self.WaitForPeer(string(address), timeout)
-	if err != nil {
-		log.WithError(err).Error("unable to get or connect raft peer channel")
-		return nil, err
+	peer := self.getMemberPeer(address)
+	if peer == nil {
+		var err error
+		if peer, err = self.WaitForPeer(string(address), timeout); err != nil {
+			log.WithError(err).Error("unable to get or connect raft peer channel")
+			return nil, err
+		}
 	}
 
 	log.WithField("peerId", peer.Id).Info("invoking raft connect on established peer channel")
@@ -489,6 +502,29 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	return self.DialPeer(address, timeout, false)
+}
+
+// getMemberPeer returns the peer connected at address or, failing that, a connected peer with the
+// id of the member stored at address. The fallback reaches a member that is connected under a
+// different address than the one stored for it. Returns nil if neither is connected.
+func (self *impl) getMemberPeer(address raft.ServerAddress) *Peer {
+	if peer := self.GetPeer(address); peer != nil {
+		return peer
+	}
+
+	id, found := self.env.GetMemberId(address)
+	if !found {
+		return nil
+	}
+
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+	for _, peer := range self.Peers {
+		if peer.Id == id {
+			return peer
+		}
+	}
+	return nil
 }
 
 // WaitForPeer blocks until a peer at the given address is connected or the timeout expires.
@@ -749,6 +785,10 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 	}
 	self.lock.RUnlock()
 
+	return self.ProbePeer(address, timeout)
+}
+
+func (self *impl) ProbePeer(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
 	log := pfxlog.Logger().WithField("address", address)
 	addr, err := transport.ParseAddress(address)
 	if err != nil {
@@ -763,6 +803,7 @@ func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.Serve
 		LegacyPeerAddrHeader:       []byte(self.raftAddr),
 		ClusterIdHeader:            []byte(self.env.GetClusterId()),
 		LegacyClusterIdHeader:      []byte(self.env.GetClusterId()),
+		ProbeHeader:                {1},
 	}
 
 	for _, headerProvider := range self.helloHeaderProviders {
@@ -1066,6 +1107,12 @@ func (self *impl) updateClusterState() {
 }
 
 func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
+	// A probe has what it needs from our hello response. Registering it as a peer could displace
+	// an established channel to the same node via the duplicate-connection tie-break.
+	if _, isProbe := underlay.Headers()[ProbeHeader]; isProbe {
+		return underlay.Close()
+	}
+
 	log := pfxlog.Logger()
 	log.Info("started")
 	defer log.Warn("exited")

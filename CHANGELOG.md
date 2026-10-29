@@ -8,6 +8,7 @@
 * [Cluster Quorum Recovery](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
 * [Quickstart Cluster](#quickstart-cluster) - `ziti run quickstart cluster` brings up a multi-node HA cluster in a single command for testing and development and learning
 * [Fully Connected Controller Mesh](#fully-connected-controller-mesh) - Controllers now proactively keep the cluster mesh fully connected
+* [Controller Advertise Address Updates](#controller-advertise-address-updates) - Changing an HA controller's `advertiseAddress` and restarting now updates the address the cluster and routers use
 * [Wildcard OIDC Issuers](#wildcard-oidc-issuers) - Controllers with a wildcard server-certificate SAN can serve OIDC for explicitly allow-listed hostnames
 * [Controller Managed Router Configuration](#controller-managed-router-configuration) - (beta) Routers can take configuration from the controller and apply it at runtime, starting with link listeners, dialers and heartbeats, with automatic collection of links the new config leaves stale
 * [Multiple LAN Interfaces for tproxy](#multiple-lan-interfaces-for-tproxy) - `lanIf` now accepts a single interface or a list of interfaces
@@ -250,6 +251,31 @@ A related `cluster.nonMemberGrace` setting (default `1m`) controls how long a le
 let a TLS-valid but non-member controller stay connected to the mesh before dropping it.
 This gives a controller that is being added to the cluster time to be accepted as a member
 before its connection is reaped.
+
+## Controller Advertise Address Updates
+
+In an HA cluster, a controller's `ctrl.options.advertiseAddress` was only read when the cluster was
+initialized or the node joined. After that the address lived in the raft configuration, so changing it in
+the config file did nothing: other controllers kept dialing the old address, and routers and new enrollment
+JWTs kept getting it. The usual way into this is putting a proxy in front of the ctrl listener, on a
+different port, after the cluster already exists. A single-node cluster had no way out short of
+re-bootstrapping.
+
+The config file is now the source of truth. On startup, if a controller's configured advertise address
+differs from the one stored in the cluster, it asks the leader to update it, retrying until the change
+lands. The member keeps its voter or non-voter status, and connected routers get the new address through
+the usual cluster membership update.
+
+The leader refuses the change if another member already has the address, or if a different controller
+answers there. If the leader can't reach the new address at all, it makes the change anyway and logs a
+warning, since some controllers only dial out.
+
+Running `ziti agent cluster add` or `ziti fabric cluster add` for an existing member at a new address also
+updates its address in place, instead of removing and re-adding it.
+
+The leader must be running this version for the update to happen. An older leader ignores the request and
+the stored address stays as it is. The requesting controller logs a warning and keeps retrying, so the
+change goes through once the leader is upgraded.
 
 ## Controller Managed Router Configuration
 
@@ -816,6 +842,7 @@ Thanks to the community members who contributed to this release.
     * [Issue #3482](https://github.com/openziti/ziti/issues/3482) - Compilation fails on Illumos
     * [Issue #4543](https://github.com/openziti/ziti/issues/4543) - Router deadlocks syncing subscribers when a subscribed identity was deleted or disabled while out of sync
     * [Issue #4542](https://github.com/openziti/ziti/issues/4542) - Disabling a connected router deadlocks the controller
+    * [Issue #3588](https://github.com/openziti/ziti/issues/3588) - Sync a controller's raft advertise address with its config on startup
     * [Issue #4442](https://github.com/openziti/ziti/issues/4442) - Controller panics on tunnel v2 dial to an unknown service and on the default admin check when the db is not open
     * [Issue #4524](https://github.com/openziti/ziti/issues/4524) - Allow case-insensitive terminator addressing via host.v1
     * [Issue #4378](https://github.com/openziti/ziti/issues/4378) - Api session enforcer delete meter only marks when the batch delete fails

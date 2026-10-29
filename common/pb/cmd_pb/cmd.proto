@@ -14,6 +14,7 @@ enum ContentType {
   AddPeerRequestType = 2053;
   RemovePeerRequestType = 2054;
   TransferLeadershipRequestType = 2055;
+  UpdatePeerAddressRequestType = 2056;
 }
 
 enum CommandType {
@@ -39,6 +40,14 @@ message AddPeerRequest {
   bool isVoter = 3;
 
   ChangeContext ctx = 4;
+}
+
+// UpdatePeerAddressRequest asks the leader to move an existing member to a new raft address,
+// keeping its suffrage. It is refused if the member's stored address is neither fromAddr nor addr.
+message UpdatePeerAddressRequest {
+  string id = 1;
+  string fromAddr = 2;
+  string addr = 3;
 }
 
 message RemovePeerRequest {

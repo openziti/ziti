@@ -18,6 +18,10 @@ func (request *TransferLeadershipRequest) GetContentType() int32 {
 	return int32(ContentType_TransferLeadershipRequestType)
 }
 
+func (request *UpdatePeerAddressRequest) GetContentType() int32 {
+	return int32(ContentType_UpdatePeerAddressRequestType)
+}
+
 // TypedMessage instances are protobuf messages which know their command type
 type TypedMessage interface {
 	proto.Message
