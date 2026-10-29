@@ -77,6 +77,8 @@ type Config interface {
 	GetVersionProvider() versions.VersionProvider
 	GetEventDispatcher() event.Dispatcher
 	GetCloseNotify() <-chan struct{}
+	IsRaftEnabled() bool
+	IsRaftLeader() bool
 }
 
 type InspectTarget func(string) (bool, *string, error)
@@ -179,10 +181,31 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 	servermetrics.RegisterHostStats(network.metricsRegistry, servermetrics.HostStatsConfig{
 		Enabled: config.GetOptions().HostMetrics.Enabled,
 	})
+
+	// ctrl.is_leader is 1 on the raft leader, 0 otherwise (always 1 in non-HA).
+	// Lets the metrics timeseries correlate per-controller load with leadership,
+	// which matters under chaos/partitions that shuffle leadership. The closure
+	// reads IsLeader() dynamically, so it tracks leadership set later by HA init.
+	network.metricsRegistry.FuncGauge("ctrl.is_leader", func() int64 {
+		if network.IsLeader() {
+			return 1
+		}
+		return 0
+	})
 	network.AddRouterPresenceHandler(network.RouterMessaging)
 	go network.RouterMessaging.run()
 
 	return network, nil
+}
+
+// IsLeader reports whether this controller speaks for the cluster: always true where raft is not
+// enabled, the raft leader where it is. For picking a single controller to do work that must not be
+// done by several, and for reporting which one is currently in that position.
+func (network *Network) IsLeader() bool {
+	if !network.config.IsRaftEnabled() {
+		return true
+	}
+	return network.config.IsRaftLeader()
 }
 
 func (self *Network) HandleRouterDelete(id string) {
