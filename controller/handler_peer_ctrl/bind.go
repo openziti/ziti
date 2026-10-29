@@ -35,6 +35,7 @@ func NewBindHandler(n *network.Network, raftCtrl *raft.Controller, heartbeatOpti
 		binding.AddTypedReceiveHandler(newCommandHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newAddPeerHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newRemovePeerHandler(raftCtrl))
+		binding.AddTypedReceiveHandler(newUpdatePeerAddressHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newTransferLeadershipHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newInspectHandler(n))
 

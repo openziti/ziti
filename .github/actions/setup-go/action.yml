@@ -1,5 +1,10 @@
 name: 'Setup Go'
 description: 'setup go using the current selected version'
+inputs:
+  module-dirs:
+    description: 'Space-separated module directories whose dependencies are downloaded, with retries, before the job builds. Empty skips the download.'
+    required: false
+    default: '.'
 outputs:
   go-version:
     description: "The version of Go installed"
@@ -13,3 +18,29 @@ runs:
         with:
           go-version: '1.27.x'
 
+      - name: Download Go modules
+        shell: bash
+        env:
+          MODULE_DIRS: ${{ inputs.module-dirs }}
+        run: |
+          set -o errexit -o nounset -o pipefail
+
+          # Go moves past a ','-separated proxy only on 404/410, but past a '|'-separated one on any error.
+          if [ "$(go env GOPROXY)" = "https://proxy.golang.org,direct" ]; then
+            export GOPROXY='https://proxy.golang.org|direct'
+            echo "GOPROXY=${GOPROXY}" >> "${GITHUB_ENV}"
+          fi
+
+          for dir in ${MODULE_DIRS}; do
+            for attempt in 1 2 3; do
+              if (cd "${dir}" && go mod download); then
+                break
+              fi
+              if [ "${attempt}" -eq 3 ]; then
+                echo "::error::go mod download failed in ${dir} after ${attempt} attempts"
+                exit 1
+              fi
+              echo "::warning::go mod download failed in ${dir} (attempt ${attempt}), retrying"
+              sleep $((attempt * 20))
+            done
+          done
