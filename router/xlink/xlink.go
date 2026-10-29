@@ -51,9 +51,6 @@ type Registry interface {
 	// Shutdown frees any resources owned by the registry
 	Shutdown()
 
-	// SendRouterLinkMessage will notify the given controllers about the existing link
-	SendRouterLinkMessage(link Xlink, channels ...channel.Channel)
-
 	// LinkListenersChanged notifies the registry that the router's link listener set changed, so it is
 	// republished to every controller
 	LinkListenersChanged()
