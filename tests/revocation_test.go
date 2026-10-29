@@ -20,6 +20,7 @@ package tests
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
@@ -63,6 +64,24 @@ func Test_Revocation(t *testing.T) {
 				ctx.Req.NotNil(detail.ExpiresAt)
 				ctx.Req.False((*detail.ExpiresAt).IsZero())
 			})
+
+			t.Run("repeat create for the same id succeeds", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				before, err := adminClient.GetRevocation(jti)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(before.ExpiresAt)
+
+				loc, err := adminClient.CreateRevocation(jti, rest_model.RevocationTypeEnumJTI)
+
+				ctx.Req.NoError(err, "second revocation of the same JTI must not fail")
+				ctx.Req.NotNil(loc)
+				ctx.Req.Equal(jti, loc.ID)
+				after, err := adminClient.GetRevocation(jti)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(after.ExpiresAt)
+				ctx.Req.False(time.Time(*after.ExpiresAt).Before(time.Time(*before.ExpiresAt)), "repeat revocation must not shorten expiresAt")
+			})
 		})
 
 		t.Run("IDENTITY type", func(t *testing.T) {
@@ -86,6 +105,24 @@ func Test_Revocation(t *testing.T) {
 				ctx.Req.NotNil(detail.Type)
 				ctx.Req.Equal(rest_model.RevocationTypeEnumIDENTITY, *detail.Type)
 			})
+
+			t.Run("repeat create for the same id succeeds", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				before, err := adminClient.GetRevocation(identityLoc.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(before.ExpiresAt)
+
+				loc, err := adminClient.CreateRevocation(identityLoc.ID, rest_model.RevocationTypeEnumIDENTITY)
+
+				ctx.Req.NoError(err, "second revocation of the same identity must not fail")
+				ctx.Req.NotNil(loc)
+				ctx.Req.Equal(identityLoc.ID, loc.ID)
+				after, err := adminClient.GetRevocation(identityLoc.ID)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(after.ExpiresAt)
+				ctx.Req.False(time.Time(*after.ExpiresAt).Before(time.Time(*before.ExpiresAt)), "repeat revocation must not shorten expiresAt")
+			})
 		})
 
 		t.Run("API_SESSION type", func(t *testing.T) {
@@ -105,6 +142,24 @@ func Test_Revocation(t *testing.T) {
 				ctx.Req.NotNil(detail)
 				ctx.Req.NotNil(detail.Type)
 				ctx.Req.Equal(rest_model.RevocationTypeEnumAPISESSION, *detail.Type)
+			})
+
+			t.Run("repeat create for the same id succeeds", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				before, err := adminClient.GetRevocation(apiSessionId)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(before.ExpiresAt)
+
+				loc, err := adminClient.CreateRevocation(apiSessionId, rest_model.RevocationTypeEnumAPISESSION)
+
+				ctx.Req.NoError(err, "second revocation of the same api-session must not fail")
+				ctx.Req.NotNil(loc)
+				ctx.Req.Equal(apiSessionId, loc.ID)
+				after, err := adminClient.GetRevocation(apiSessionId)
+				ctx.Req.NoError(err)
+				ctx.Req.NotNil(after.ExpiresAt)
+				ctx.Req.False(time.Time(*after.ExpiresAt).Before(time.Time(*before.ExpiresAt)), "repeat revocation must not shorten expiresAt")
 			})
 		})
 
