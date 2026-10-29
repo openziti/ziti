@@ -84,6 +84,11 @@ type Forwarder interface {
 	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
 	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
 	ReportForwardingFault(circuitId string, ctrlId string)
+
+	// ReportCircuitEndpointFault reports that a circuit's ingress or egress endpoint on this
+	// router has gone away, so the controller can remove the circuit. It does not block and does
+	// not wait for the controller.
+	ReportCircuitEndpointFault(circuitId string, ctrlId string, subject ctrl_pb.FaultSubject)
 	RegisterDestination(circuitId string, address xgress.Address, destination Destination)
 	EndCircuit(circuitId string)
 }
