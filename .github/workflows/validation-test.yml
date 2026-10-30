@@ -80,6 +80,14 @@ jobs:
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/${TEST_TYPE} exec-loop ${TEST_DURATION} testIteration
 
+      - name: Stop Fablab
+        # a cancelled step leaves fablab and terraform running, and teardown needs terraform's final state
+        if: always()
+        timeout-minutes: 15
+        uses: ./.github/actions/stop-fablab
+        with:
+          model: ${{ env.TEST_TYPE }}
+
       - name: Create Logs Archive
         if: always()
         run: |
