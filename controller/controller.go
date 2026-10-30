@@ -329,12 +329,18 @@ func NewController(cfg *config.Config, versionProvider versions.VersionProvider)
 	c.eventDispatcher.InitializeNetworkEvents(c.network)
 
 	if cfg.Ctrl.Options.NewListener != nil {
-		c.network.AddRouterPresenceHandler(&OnConnectSettingsHandler{
-			config: cfg,
-			settings: map[int32][]byte{
-				int32(ctrl_pb.SettingTypes_NewCtrlAddress): []byte((*cfg.Ctrl.Options.NewListener).String()),
-			},
-		})
+		if c.raftController != nil {
+			// A cluster sends routers its members' addresses with every controller list, which would undo the
+			// setting; a member's address changes through its advertise address instead.
+			log.Warn("'ctrl.options.newListener' is set but this controller is clustered; the setting is ignored, change 'ctrl.options.advertiseAddress' instead")
+		} else {
+			c.network.AddRouterPresenceHandler(&OnConnectSettingsHandler{
+				config: cfg,
+				settings: map[int32][]byte{
+					int32(ctrl_pb.SettingTypes_NewCtrlAddress): []byte((*cfg.Ctrl.Options.NewListener).String()),
+				},
+			})
+		}
 	}
 
 	if c.raftController != nil {
@@ -779,19 +785,25 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 
 func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 	if evt.EventType == event.ClusterLeadershipGained {
-		req := &ctrl_pb.UpdateClusterLeader{
-			Index: evt.Index,
-		}
+		if term, isLeader := c.raftController.LeadershipTerm(); !isLeader {
+			pfxlog.Logger().WithField("term", term).Info("leadership lost before it was announced to routers, not announcing")
+		} else {
+			req := &ctrl_pb.UpdateClusterLeader{
+				Index: evt.Index,
+				Term:  term,
+			}
 
-		for _, r := range c.network.AllConnectedRouters() {
-			log := pfxlog.Logger().WithFields(map[string]interface{}{
-				"index": evt.Index,
-			})
+			for _, r := range c.network.AllConnectedRouters() {
+				log := pfxlog.Logger().WithFields(map[string]interface{}{
+					"index": evt.Index,
+					"term":  term,
+				})
 
-			if err := protobufs.MarshalTyped(req).Send(r.Control.GetDefaultSender()); err != nil {
-				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update cluster leader on router")
-			} else {
-				log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with info on new leader")
+				if err := protobufs.MarshalTyped(req).Send(r.Control.GetDefaultSender()); err != nil {
+					pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update cluster leader on router")
+				} else {
+					log.WithField("routerId", r.Id).WithField("routerName", r.Name).Info("router updated with info on new leader")
+				}
 			}
 		}
 	}
@@ -807,9 +819,11 @@ func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
 			})
 		}
 
+		term, isLeader := c.raftController.LeadershipTerm()
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
 			Addresses:   endpoints,
-			IsLeader:    c.raftController.IsLeader(),
+			IsLeader:    isLeader,
+			Term:        term,
 			Index:       evt.Index,
 			Controllers: controllers,
 		}
