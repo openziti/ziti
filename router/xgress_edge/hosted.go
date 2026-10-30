@@ -18,6 +18,7 @@ package xgress_edge
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -81,6 +82,7 @@ type hostedServiceRegistry struct {
 	postCreateInspectSet map[string]*pendingPostCreateInspect
 	pendingRemoves       map[string]*pendingRemoveBatch
 	triggerEvalC         chan struct{}
+	takeoverLock         sync.Mutex
 }
 
 // pendingRemoveBatch tracks a batch of terminators whose asynchronous RemoveTerminatorsV2Request has
@@ -972,6 +974,30 @@ func (self *hostedServiceRegistry) Get(terminatorId string) (*edgeTerminator, bo
 	return self.terminators.Get(terminatorId)
 }
 
+// takeOver registers replacement under existing's terminator id and reports true, unless existing
+// is unusable (see edgeTerminator.checkUsable), in which case it changes nothing and reports false.
+// Callers must not mark existing Deleting until it returns.
+func (self *hostedServiceRegistry) takeOver(replacement, existing *edgeTerminator) bool {
+	self.takeoverLock.Lock()
+	defer self.takeoverLock.Unlock()
+
+	if existing.checkUsable() != nil {
+		return false
+	}
+	replacement.replace(existing)
+	self.Put(replacement)
+	return true
+}
+
+// getAfterTakeover is Get, but waits for a takeOver that is between its usability check and its
+// registration. A caller that saw the terminator under terminatorId unusable gets either its
+// replacement or a terminator that can no longer be taken over.
+func (self *hostedServiceRegistry) getAfterTakeover(terminatorId string) (*edgeTerminator, bool) {
+	self.takeoverLock.Lock()
+	defer self.takeoverLock.Unlock()
+	return self.terminators.Get(terminatorId)
+}
+
 func (self *hostedServiceRegistry) Delete(terminatorId string) {
 	self.terminators.Remove(terminatorId)
 }
@@ -1484,8 +1510,10 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 				return
 			}
 
-			self.terminator.replace(existing)
-			registry.Put(self.terminator)
+			// existing must only be marked Deleting below, after takeOver; dialer.lookupHost relies on that order.
+			if !registry.takeOver(self.terminator, existing) {
+				continue
+			}
 
 			// sometimes things happen close together. we need to try to notify replaced terminators
 			// that they're being closed in case they're the newer, still open connection
@@ -1511,8 +1539,8 @@ func (self *findMatchingEvent) handle(registry *hostedServiceRegistry) {
 		}
 	}
 
-	// can't reuse terminator ID, if the existing terminator is being deleted
-	log.Info("existing terminator being deleted, need to establish new terminator")
+	// can't reuse terminator ID, if the existing terminator is being deleted or its channel has closed
+	log.Info("existing terminator unusable, need to establish new terminator")
 	registry.Put(self.terminator)
 	self.resultC <- listenerIdCheckResult{
 		terminator:      self.terminator,
