@@ -27,7 +27,8 @@ import (
 //
 // Controller lists are judged against the recorded version, the index of the last leader's list applied:
 //
-//   - A leader's list at a newer index replaces the controller set and becomes the recorded version.
+//   - A leader's list at a newer index replaces the controller set and becomes the recorded version. It
+//     is the only update applied as authoritative, so a controller it omits is refused when it connects.
 //   - A leader's list at the recorded version, or a follower's list at or above it, only adds controllers
 //     the router doesn't have. A follower that hasn't caught up can omit current members, and the router
 //     may have lost controllers the leader still names.
@@ -280,13 +281,13 @@ func (handler *updateCtrlAddressesHandler) applyLeaderList(upd *ctrl_pb.UpdateCt
 	switch {
 	case handler.currentVersion == 0 || handler.currentVersion < upd.Index:
 		log.Info("updating to newer controller endpoints")
-		handler.env.UpdateCtrlEndpointDetails(upd.Controllers)
+		handler.env.UpdateCtrlEndpointDetails(upd.Controllers, true)
 		handler.currentVersion = upd.Index
 
 	case handler.currentVersion == upd.Index:
 		if merged, changed, _ := mergeControllers(handler.env.GetNetworkControllers(), upd.Controllers); changed {
 			log.Info("adding controllers from controller endpoint list")
-			handler.env.UpdateCtrlEndpointDetails(merged)
+			handler.env.UpdateCtrlEndpointDetails(merged, false)
 		}
 
 	default:
@@ -325,7 +326,7 @@ func (handler *updateCtrlAddressesHandler) applyFollowerList(upd *ctrl_pb.Update
 	}
 	if changed {
 		log.Info("adding controllers from controller endpoint list")
-		handler.env.UpdateCtrlEndpointDetails(merged)
+		handler.env.UpdateCtrlEndpointDetails(merged, false)
 	}
 }
 
@@ -420,7 +421,7 @@ func (handler *updateCtrlAddressesHandler) applyNewCtrlAddress(ctrlId string, ad
 	addConnectedControllers(ctrls, details)
 
 	pfxlog.ContextLogger(label).WithField("ctrlId", ctrlId).WithField("address", address).Info("updating controller address")
-	handler.env.UpdateCtrlEndpointDetails(sortedDetails(details))
+	handler.env.UpdateCtrlEndpointDetails(sortedDetails(details), false)
 }
 
 // requestLeaderList starts asking every connected controller for its controller list, every 30 seconds
