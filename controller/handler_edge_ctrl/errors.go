@@ -16,7 +16,11 @@
 
 package handler_edge_ctrl
 
-import "github.com/openziti/sdk-golang/ziti/edge"
+import (
+	"fmt"
+
+	"github.com/openziti/sdk-golang/ziti/edge"
+)
 
 type controllerError interface {
 	error
@@ -123,6 +127,13 @@ func encryptionDataMissing(msg string) controllerError {
 	return &genericControllerError{
 		msg:       msg,
 		errorCode: uint32(edge.ErrorCodeEncryptionDataMissing),
+	}
+}
+
+func identityDisabled(identityId string) controllerError {
+	return &genericControllerError{
+		msg:       fmt.Sprintf("identity %s is disabled", identityId),
+		errorCode: uint32(edge.ErrorCodeAccessDenied),
 	}
 }
 
