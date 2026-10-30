@@ -867,6 +867,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4693](https://github.com/openziti/ziti/issues/4693) - Router xgress Close can block indefinitely on a congested circuit
     * [Issue #4330](https://github.com/openziti/ziti/issues/4330) - ER/T does not close existing circuits when the router loses dial access to a service
     * [Issue #4489](https://github.com/openziti/ziti/issues/4489) - Router panics sending a link state update to a controller it has unregistered
     * [Issue #4503](https://github.com/openziti/ziti/issues/4503) - Router pins a CPU core reporting metrics while no controller is registered
