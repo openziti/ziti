@@ -48,8 +48,13 @@ type TunnelFabricProvider interface {
 	// CloseAllDialCircuits closes every dial circuit this provider established.
 	CloseAllDialCircuits(reason string)
 	// RevalidateAllDialCircuits re-checks dial access for every circuit this provider established
-	// and closes those no longer granted.
+	// and closes those no longer granted. It reads the router data model, so it must not be called
+	// with a data model identity lock held.
 	RevalidateAllDialCircuits()
+	// RevalidateDialCircuits re-checks dial access to serviceId and, if it is no longer granted, closes
+	// the circuits this provider established for it. The same locking constraint as
+	// RevalidateAllDialCircuits applies.
+	RevalidateDialCircuits(serviceId string)
 }
 
 type tunneler struct {
@@ -175,11 +180,8 @@ func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType
 			self.NotifyServiceChange(state, nil, svc, common.ServiceAccessGainedEvent)
 		}
 	} else if eventType == common.IdentityPostureChecksUpdatedEvent {
-		// A posture check added to a dial policy that grants this router (or a check definition
-		// edited) does not change service membership, so it arrives here rather than as a service
-		// change. Routers cannot pass posture checks, so re-evaluate and close any dial circuit the
-		// policy no longer grants. This event is dispatched outside the data model's identity lock,
-		// unlike ServiceDialPoliciesChanged, so the access check here cannot re-enter that lock.
+		// Routers cannot pass posture checks, so a check added to a granting dial policy, or a check
+		// definition edited, can revoke access without changing service membership.
 		self.fabricProvider.RevalidateAllDialCircuits()
 	}
 }
@@ -195,6 +197,10 @@ func (self *tunneler) NotifyServiceChange(state *common.IdentityState, previousS
 		if previousService != nil && previousService.IsDialAllowed() && !service.IsDialAllowed() {
 			self.fabricProvider.CloseDialCircuits(service.GetId(), "dial access lost")
 		}
+	case common.ServiceDialPoliciesChanged:
+		// A posture check the identity already had through another policy produces no posture
+		// checks event when added to a dial policy, so this is the only notice of it.
+		self.fabricProvider.RevalidateDialCircuits(service.GetId())
 	case common.ServiceAccessLostEvent:
 		self.serviceListener.HandleServicesChange(ziti.ServiceRemoved, tunSvc)
 		self.fabricProvider.CloseDialCircuits(service.GetId(), "service access lost")

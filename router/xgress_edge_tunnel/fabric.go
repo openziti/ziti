@@ -90,6 +90,10 @@ func (self *fabricProvider) RevalidateAllDialCircuits() {
 	self.dialCircuits.RevalidateAll(self.checkDialAccess)
 }
 
+func (self *fabricProvider) RevalidateDialCircuits(serviceId string) {
+	self.dialCircuits.RevalidateService(serviceId, self.checkDialAccess)
+}
+
 // checkDialAccess reports whether this router currently has dial access to serviceId. Routers
 // submit no posture data, so a policy carrying posture checks denies.
 func (self *fabricProvider) checkDialAccess(serviceId string) error {

@@ -219,6 +219,31 @@ func Test_TunnelerCircuitCloseOnPostureCheckAdded(t *testing.T) {
 	f.requireService1Revoked()
 }
 
+// Test_TunnelerCircuitCloseOnPostureCheckAddedAlreadyApplied is Test_TunnelerCircuitCloseOnPostureCheckAdded
+// with the check already applied to the router identity through a bind policy, so adding it to the
+// dial policy leaves the identity's set of posture checks unchanged.
+func Test_TunnelerCircuitCloseOnPostureCheckAddedAlreadyApplied(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	postureRole := eid.New()
+	ctx.AdminManagementSession.requireNewPostureCheckDomain(s("example.com"), s(postureRole))
+
+	unusedSvcRole := eid.New()
+	unusedService := ctx.newService(s(unusedSvcRole), nil)
+	unusedService.Id = ctx.AdminManagementSession.requireCreateEntity(unusedService)
+	ctx.AdminManagementSession.requireNewServicePolicy("Bind", s("#"+unusedSvcRole), s("#all"), s("#"+postureRole))
+
+	f := newTunnelerDialFixture(ctx, false)
+
+	f.dialPolicy1.postureCheckRoles = s("#" + postureRole)
+	ctx.AdminManagementSession.requirePatchEntity(f.dialPolicy1, "postureCheckRoles")
+
+	f.requireService1Revoked()
+}
+
 // Test_TunnelerCircuitCloseOnIdentityDisabled verifies that disabling the router's identity closes
 // every dial circuit and refuses new dials, even though the policies still list the identity.
 func Test_TunnelerCircuitCloseOnIdentityDisabled(t *testing.T) {
