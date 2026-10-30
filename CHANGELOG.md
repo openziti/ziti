@@ -82,6 +82,7 @@ identity.
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4487](https://github.com/openziti/ziti/issues/4487) - [Backport-2.0] Sync a controller's raft advertise address with its config on startup
     * [Issue #4332](https://github.com/openziti/ziti/issues/4332) - [Backport-2.0] ER/T does not close existing circuits when the router loses dial access to a service
+    * [Issue #4698](https://github.com/openziti/ziti/issues/4698) - [Backport-2.0] Router xgress Close can block indefinitely on a congested circuit
 
 
 # Release 2.0.8
