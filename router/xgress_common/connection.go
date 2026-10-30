@@ -79,6 +79,8 @@ type outOfBand struct {
 	headers map[uint8][]byte
 }
 
+var _ xgress.SignalConnection = (*XgressConn)(nil)
+
 type XgressConn struct {
 	net.Conn
 
@@ -87,7 +89,6 @@ type XgressConn struct {
 	receiver    secretstream.Decryptor
 	sender      secretstream.Encryptor
 
-	writeDone  chan struct{}
 	flags      concurrenz.AtomicBitSet
 	bufferSize int
 }
@@ -96,7 +97,6 @@ func NewXgressConn(conn net.Conn, halfClose bool, connType ConnType) *XgressConn
 	result := &XgressConn{
 		Conn:        conn,
 		outOfBandTx: make(chan *outOfBand, 1),
-		writeDone:   make(chan struct{}),
 		bufferSize:  DefaultBufferSize,
 	}
 
@@ -186,10 +186,6 @@ func (self *XgressConn) IsClosed() bool {
 	return self.flags.IsSet(closedFlag)
 }
 
-func (self *XgressConn) IsWriteClosed() bool {
-	return self.flags.IsSet(sentFinFlag)
-}
-
 func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	// First thing we need to do is send the encryption header, if one exists
 
@@ -274,16 +270,7 @@ func (self *XgressConn) WritePayload(p []byte, headers map[uint8][]byte) (int, e
 
 	if flags, found := headers[PayloadFlagsHeader]; found {
 		if flags[0]&byte(edge.FIN) != 0 {
-			defer func() {
-				conn, ok := self.Conn.(edge.CloseWriter)
-				// if connection does not support half-close just let xgress tear it down
-				if ok {
-					_ = conn.CloseWrite()
-				} else {
-					_ = self.Conn.Close()
-				}
-				self.notifyWriteDone()
-			}()
+			defer self.closeWrite()
 		}
 	}
 
@@ -318,16 +305,32 @@ func (self *XgressConn) WritePayload(p []byte, headers map[uint8][]byte) (int, e
 	return 0, nil
 }
 
-func (self *XgressConn) notifyWriteDone() {
-	if self.flags.CompareAndSet(writeClosedFlag, false, true) {
-		self.flags.Set(recvFinFlag, true)
-		close(self.writeDone)
+// FlowFromFabricToXgressClosed implements xgress.SignalConnection. It half-closes the
+// underlying conn so the local reader sees EOF while the other direction stays open; an
+// underlying conn that cannot half-close is closed via Close instead. It is idempotent and a
+// no-op after Close.
+func (self *XgressConn) FlowFromFabricToXgressClosed() {
+	self.closeWrite()
+}
+
+// closeWrite ends the write side once, whether triggered by a FIN header or by the
+// xgress tx loop ending.
+func (self *XgressConn) closeWrite() {
+	if !self.flags.CompareAndSet(writeClosedFlag, false, true) {
+		return
 	}
+	if conn, ok := self.Conn.(edge.CloseWriter); ok {
+		_ = conn.CloseWrite()
+	} else {
+		_ = self.Close()
+	}
+	self.flags.Set(recvFinFlag, true)
 }
 
 func (self *XgressConn) Close() error {
 	if self.flags.CompareAndSet(closedFlag, false, true) {
-		self.notifyWriteDone()
+		self.flags.Set(writeClosedFlag, true)
+		self.flags.Set(recvFinFlag, true)
 		return self.Conn.Close()
 	}
 	return nil

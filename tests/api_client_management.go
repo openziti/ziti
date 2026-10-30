@@ -16,12 +16,17 @@ import (
 	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_client/current_api_session"
 	managementCurrentIdentity "github.com/openziti/edge-api/rest_management_api_client/current_identity"
 	managementEdgeRouter "github.com/openziti/edge-api/rest_management_api_client/edge_router"
+	managementEdgeRouterPolicy "github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	managementEnrollment "github.com/openziti/edge-api/rest_management_api_client/enrollment"
 	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	managementIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	managementInformational "github.com/openziti/edge-api/rest_management_api_client/informational"
 	managementPostureChecks "github.com/openziti/edge-api/rest_management_api_client/posture_checks"
 	managementRevocation "github.com/openziti/edge-api/rest_management_api_client/revocation"
+	managementService "github.com/openziti/edge-api/rest_management_api_client/service"
+	managementServiceEdgeRouterPolicy "github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
+	managementServicePolicy "github.com/openziti/edge-api/rest_management_api_client/service_policy"
+	managementTerminator "github.com/openziti/edge-api/rest_management_api_client/terminator"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	edgeApis "github.com/openziti/sdk-golang/v2/edge-apis"
@@ -152,6 +157,109 @@ func (helper *ManagementHelperClient) CreateConfig(configTypeId string, data int
 	}
 
 	resp, err := helper.API.Config.CreateConfig(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateService creates a service with the given name and config ids. encryptionRequired sets
+// whether circuits for the service must be end-to-end encrypted.
+func (helper *ManagementHelperClient) CreateService(name string, encryptionRequired bool, configs []string) (*rest_model.CreateLocation, error) {
+	params := &managementService.CreateServiceParams{
+		Service: &rest_model.ServiceCreate{
+			Name:               &name,
+			EncryptionRequired: &encryptionRequired,
+			Configs:            configs,
+		},
+	}
+
+	resp, err := helper.API.Service.CreateService(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateServicePolicy creates an AllOf service policy of the given type with a generated name.
+func (helper *ManagementHelperClient) CreateServicePolicy(policyType rest_model.DialBind, serviceRoles, identityRoles, postureCheckRoles []string) (*rest_model.CreateLocation, error) {
+	params := &managementServicePolicy.CreateServicePolicyParams{
+		Policy: &rest_model.ServicePolicyCreate{
+			Name:              ToPtr(eid.New()),
+			Type:              &policyType,
+			Semantic:          ToPtr(rest_model.SemanticAllOf),
+			ServiceRoles:      serviceRoles,
+			IdentityRoles:     identityRoles,
+			PostureCheckRoles: postureCheckRoles,
+		},
+	}
+
+	resp, err := helper.API.ServicePolicy.CreateServicePolicy(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateEdgeRouterPolicy creates an AllOf edge router policy with a generated name.
+func (helper *ManagementHelperClient) CreateEdgeRouterPolicy(edgeRouterRoles, identityRoles []string) (*rest_model.CreateLocation, error) {
+	params := &managementEdgeRouterPolicy.CreateEdgeRouterPolicyParams{
+		Policy: &rest_model.EdgeRouterPolicyCreate{
+			Name:            ToPtr(eid.New()),
+			Semantic:        ToPtr(rest_model.SemanticAllOf),
+			EdgeRouterRoles: edgeRouterRoles,
+			IdentityRoles:   identityRoles,
+		},
+	}
+
+	resp, err := helper.API.EdgeRouterPolicy.CreateEdgeRouterPolicy(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateServiceEdgeRouterPolicy creates an AllOf service edge router policy with a generated name.
+func (helper *ManagementHelperClient) CreateServiceEdgeRouterPolicy(edgeRouterRoles, serviceRoles []string) (*rest_model.CreateLocation, error) {
+	params := &managementServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicyParams{
+		Policy: &rest_model.ServiceEdgeRouterPolicyCreate{
+			Name:            ToPtr(eid.New()),
+			Semantic:        ToPtr(rest_model.SemanticAllOf),
+			EdgeRouterRoles: edgeRouterRoles,
+			ServiceRoles:    serviceRoles,
+		},
+	}
+
+	resp, err := helper.API.ServiceEdgeRouterPolicy.CreateServiceEdgeRouterPolicy(params, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
+// CreateTerminator creates a terminator for the service on the router, which dials address with
+// the given xgress binding when a circuit is created.
+func (helper *ManagementHelperClient) CreateTerminator(serviceId, routerId, binding, address string) (*rest_model.CreateLocation, error) {
+	params := &managementTerminator.CreateTerminatorParams{
+		Terminator: &rest_model.TerminatorCreate{
+			Service: &serviceId,
+			Router:  &routerId,
+			Binding: &binding,
+			Address: &address,
+		},
+	}
+
+	resp, err := helper.API.Terminator.CreateTerminator(params, nil)
 
 	if err != nil {
 		return nil, rest_util.WrapErr(err)
