@@ -17,6 +17,8 @@
 package xgress_common
 
 import (
+	"sync/atomic"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/v2/xgress"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -27,7 +29,8 @@ import (
 // so they can be closed when the router's identity loses dial access to a service.
 // Safe for concurrent use.
 type DialCircuitRegistry struct {
-	circuits cmap.ConcurrentMap[string, *dialCircuit]
+	circuits            cmap.ConcurrentMap[string, *dialCircuit]
+	revalidateRequested atomic.Bool
 }
 
 type dialCircuit struct {
@@ -36,7 +39,8 @@ type dialCircuit struct {
 }
 
 // NewDialCircuitRegistry returns an empty registry. Register a dial circuit with PrepareTrack
-// followed by Publish, and close tracked circuits with CloseForService, CloseAll, or RevalidateAll.
+// followed by Publish, and close tracked circuits with CloseForService, CloseAll, RevalidateAll, or
+// RequestRevalidation followed by RevalidateIfRequested.
 func NewDialCircuitRegistry() *DialCircuitRegistry {
 	return &DialCircuitRegistry{
 		circuits: cmap.New[*dialCircuit](),
@@ -101,8 +105,23 @@ func (self *DialCircuitRegistry) RevalidateAll(check func(serviceId string) erro
 	})
 }
 
+// RequestRevalidation marks the tracked circuits for re-checking by the next RevalidateIfRequested.
+// It does no checking itself, so it is safe to call while holding locks the check needs.
+func (self *DialCircuitRegistry) RequestRevalidation() {
+	self.revalidateRequested.Store(true)
+}
+
+// RevalidateIfRequested runs RevalidateAll with check if RequestRevalidation has been called since
+// the last run, and otherwise does nothing.
+func (self *DialCircuitRegistry) RevalidateIfRequested(check func(serviceId string) error) {
+	if self.revalidateRequested.CompareAndSwap(true, false) {
+		self.RevalidateAll(check)
+	}
+}
+
 // closeMatching closes every circuit for which decide returns true, using the returned reason.
-// decide runs under the registry's iteration and must not call back into the registry.
+// decide runs under the registry's iteration and must not call back into the registry. Closes run
+// asynchronously, so a circuit may still be open, and tracked, when closeMatching returns.
 func (self *DialCircuitRegistry) closeMatching(decide func(*dialCircuit) (bool, string)) {
 	type closing struct {
 		circuit *dialCircuit
@@ -122,6 +141,8 @@ func (self *DialCircuitRegistry) closeMatching(decide func(*dialCircuit) (bool, 
 			WithField("serviceId", entry.circuit.serviceId).
 			WithField("reason", entry.reason).
 			Info("closing dial circuit")
-		entry.circuit.x.Close()
+		// Close waits on the next hop and the controller for up to several seconds, so closing in turn
+		// would hold the caller for each congested circuit.
+		go entry.circuit.x.Close()
 	}
 }

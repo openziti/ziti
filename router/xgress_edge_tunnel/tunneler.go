@@ -47,9 +47,13 @@ type TunnelFabricProvider interface {
 	CloseDialCircuits(serviceId string, reason string)
 	// CloseAllDialCircuits closes every dial circuit this provider established.
 	CloseAllDialCircuits(reason string)
-	// RevalidateAllDialCircuits re-checks dial access for every circuit this provider established
-	// and closes those no longer granted.
-	RevalidateAllDialCircuits()
+	// RequestDialCircuitRevalidation marks this provider's dial circuits for re-checking by the next
+	// RevalidateDialCircuitsIfRequested. It does no checking itself.
+	RequestDialCircuitRevalidation()
+	// RevalidateDialCircuitsIfRequested, if revalidation was requested since its last run, re-checks
+	// dial access for every circuit this provider established and closes those no longer granted.
+	// It reads the router data model, so it must not be called with a data model identity lock held.
+	RevalidateDialCircuitsIfRequested()
 }
 
 type tunneler struct {
@@ -170,16 +174,15 @@ func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType
 			self.NotifyServiceChange(state, nil, svc, common.ServiceAccessGainedEvent)
 		}
 	} else if eventType == common.IdentityPostureChecksUpdatedEvent {
-		// A posture check added to a dial policy that grants this router (or a check definition
-		// edited) does not change service membership, so it arrives here rather than as a service
-		// change. Routers cannot pass posture checks, so re-evaluate and close any dial circuit the
-		// policy no longer grants. This event is dispatched outside the data model's identity lock,
-		// unlike ServiceDialPoliciesChanged, so the access check here cannot re-enter that lock.
-		self.fabricProvider.RevalidateAllDialCircuits()
+		// Routers cannot pass posture checks, so a check added to a granting dial policy, or a check
+		// definition edited, can revoke access without changing service membership.
+		self.fabricProvider.RequestDialCircuitRevalidation()
 	}
 }
 
-func (self *tunneler) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {}
+func (self *tunneler) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {
+	self.fabricProvider.RevalidateDialCircuitsIfRequested()
+}
 
 func (self *tunneler) NotifyServiceChange(state *common.IdentityState, previousService, service *common.IdentityService, eventType common.ServiceEventType) {
 	pfxlog.Logger().Infof("service changed for %s. service %s was %s", state.Identity.Name, service.Service.Name, eventType)
@@ -192,6 +195,11 @@ func (self *tunneler) NotifyServiceChange(state *common.IdentityState, previousS
 		if previousService != nil && previousService.IsDialAllowed() && !service.IsDialAllowed() {
 			self.fabricProvider.CloseDialCircuits(service.GetId(), "dial access lost")
 		}
+	case common.ServiceDialPoliciesChanged:
+		// A posture check the identity already had through another policy produces no posture
+		// checks event when added to a dial policy, so this is the only notice of it. The event is
+		// dispatched under the data model's identity lock, so the check waits for NotifyBatchComplete.
+		self.fabricProvider.RequestDialCircuitRevalidation()
 	case common.ServiceAccessLostEvent:
 		self.serviceListener.HandleServicesChange(ziti.ServiceRemoved, tunSvc)
 		self.fabricProvider.CloseDialCircuits(service.GetId(), "service access lost")

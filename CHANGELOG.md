@@ -726,12 +726,16 @@ intercepts were stopped, and existing connections kept flowing until the applica
 ended them. The same applies to circuits created through the router-embedded SDK. See
 [#4330](https://github.com/openziti/ziti/issues/4330).
 
-Two related gaps are closed at the same time:
+Three related gaps are closed at the same time:
 
 * The router's pre-dial policy check for tunneler circuits was miswritten and never denied a dial.
 * The controller did not verify the dial service policy when a router requested a tunneler circuit;
   it verified only edge router and service edge router policy. It now rejects the request when no dial
   policy grants the router's identity access to the service.
+* Adding a posture check to a service policy did not re-check existing circuits or hosted terminators
+  when the identity already had that check through another policy. This affected SDK clients using
+  OIDC sessions, whose posture the router enforces directly. The router now re-checks them whenever
+  a policy granting the service changes.
 
 ### Warning: posture checks and edge router tunnelers
 
