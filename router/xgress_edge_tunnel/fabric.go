@@ -86,8 +86,12 @@ func (self *fabricProvider) CloseAllDialCircuits(reason string) {
 	self.dialCircuits.CloseAll(reason)
 }
 
-func (self *fabricProvider) RevalidateAllDialCircuits() {
-	self.dialCircuits.RevalidateAll(self.checkDialAccess)
+func (self *fabricProvider) RequestDialCircuitRevalidation() {
+	self.dialCircuits.RequestRevalidation()
+}
+
+func (self *fabricProvider) RevalidateDialCircuitsIfRequested() {
+	self.dialCircuits.RevalidateIfRequested(self.checkDialAccess)
 }
 
 // checkDialAccess reports whether this router currently has dial access to serviceId. Routers

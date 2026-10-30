@@ -75,10 +75,9 @@ func (self *fabricImpl) NotifyIdentityEvent(state *common.IdentityState, eventTy
 	if eventType == common.IdentityDeletedEvent || state.Identity.Disabled {
 		self.dialCircuits.CloseAll("identity deleted or disabled")
 	} else if eventType == common.IdentityPostureChecksUpdatedEvent {
-		// Posture checks added to a granting dial policy arrive here rather than as a service change;
-		// routers cannot pass them, so re-evaluate and close circuits no longer granted. Dispatched
-		// outside the data model's identity lock, so the access check cannot re-enter it.
-		self.dialCircuits.RevalidateAll(self.checkDialAccess)
+		// Routers cannot pass posture checks, so a check added to a granting dial policy, or a check
+		// definition edited, can revoke access without changing service membership.
+		self.dialCircuits.RequestRevalidation()
 	} else if eventType == common.IdentityFullState {
 		for _, service := range state.Services {
 			pfxlog.Logger().Infof("identity %s gained access to %s", state.Identity.Name, service.GetName())
@@ -86,7 +85,9 @@ func (self *fabricImpl) NotifyIdentityEvent(state *common.IdentityState, eventTy
 	}
 }
 
-func (self *fabricImpl) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {}
+func (self *fabricImpl) NotifyBatchComplete(_ *common.RouterDataModel, _ uint64) {
+	self.dialCircuits.RevalidateIfRequested(self.checkDialAccess)
+}
 
 func (self *fabricImpl) NotifyServiceChange(state *common.IdentityState, oldService, newService *common.IdentityService, eventType common.ServiceEventType) {
 	self.updateIdentityState(state)
@@ -98,6 +99,11 @@ func (self *fabricImpl) NotifyServiceChange(state *common.IdentityState, oldServ
 		self.dialCircuits.CloseForService(oldService.GetId(), "service access lost")
 	} else if eventType == common.ServiceUpdatedEvent && oldService != nil && oldService.IsDialAllowed() && !newService.IsDialAllowed() {
 		self.dialCircuits.CloseForService(newService.GetId(), "dial access lost")
+	} else if eventType == common.ServiceDialPoliciesChanged {
+		// A posture check the identity already had through another policy produces no posture
+		// checks event when added to a dial policy, so this is the only notice of it. The event is
+		// dispatched under the data model's identity lock, so the check waits for NotifyBatchComplete.
+		self.dialCircuits.RequestRevalidation()
 	}
 }
 
