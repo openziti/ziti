@@ -431,16 +431,19 @@ func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eve
 		// removed from a service policy, or a check definition edited). The
 		// service-membership diff does not surface this, so re-evaluate this
 		// connection's active circuits and terminators against current posture.
-		self.revalidatePostureAccess()
+		self.revalidatePostureAccess(func(string, edge_ctrl_pb.PolicyType) bool { return true })
 	}
 }
 
 // revalidatePostureAccess re-evaluates dial and bind access for this
 // connection's active circuits and hosted terminators against the identity's
-// current posture, closing any that no longer have access. It runs on the
-// identity-subscription worker, which dedups (via the data model's dirty-set
-// marker) and retries (via the scan fallback), so it inherits that resilience.
-func (self *edgeClientConn) revalidatePostureAccess() {
+// current posture, closing any that no longer have access. Only circuits and
+// terminators for which include returns true, given their service and the policy
+// type governing them, are checked. It runs on the identity-subscription worker,
+// which dedups (via the data model's dirty-set marker) and retries (via the scan
+// fallback), so it inherits that resilience. The access checks take data model
+// identity locks, so it must not be called while one is held.
+func (self *edgeClientConn) revalidatePostureAccess(include func(serviceId string, policyType edge_ctrl_pb.PolicyType) bool) {
 	stateManager := self.listener.factory.stateManager
 	apiSession := self.apiSessionToken
 	// Only OIDC sessions are enforced router-side against the RDM. Legacy
@@ -458,7 +461,7 @@ func (self *edgeClientConn) revalidatePostureAccess() {
 	self.IterateCircuits(func(c edgeCircuit) {
 		// Host-side circuits are governed by bind access, handled via the
 		// terminator re-evaluation below; only dial circuits are checked here.
-		if c.IsHostSide() {
+		if c.IsHostSide() || !include(c.GetServiceId(), edge_ctrl_pb.PolicyType_DialPolicy) {
 			return
 		}
 		if policy, err := stateManager.HasAccess(apiSession.IdentityId, apiSession.Id, c.GetServiceId(), edge_ctrl_pb.PolicyType_DialPolicy); err != nil || policy == nil {
@@ -480,6 +483,9 @@ func (self *edgeClientConn) revalidatePostureAccess() {
 	// Hosted bind terminators on this connection (getTerminatorsForConn returns a
 	// snapshot, so closing while ranging it is safe).
 	for _, terminator := range self.GetHostedServicesRegistry().getTerminatorsForConn(self) {
+		if !include(terminator.GetServiceId(), edge_ctrl_pb.PolicyType_BindPolicy) {
+			continue
+		}
 		if policy, err := stateManager.HasAccess(apiSession.IdentityId, apiSession.Id, terminator.GetServiceId(), edge_ctrl_pb.PolicyType_BindPolicy); err != nil || policy == nil {
 			pfxlog.Logger().WithError(err).
 				WithField("identityId", apiSession.IdentityId).
@@ -501,6 +507,16 @@ func (self *edgeClientConn) NotifyServiceChange(_ *common.IdentityState, previou
 	} else if eventType == common.ServiceUpdatedEvent {
 		dialLost = previousService.IsDialAllowed() && !service.IsDialAllowed()
 		bindLost = previousService.IsBindAllowed() && !service.IsBindAllowed()
+	} else if eventType == common.ServiceDialPoliciesChanged || eventType == common.ServiceBindPoliciesChanged {
+		// A posture check the identity already had through another policy produces no posture
+		// checks event when added to this service's policy, so this is the only notice of it.
+		policyType := edge_ctrl_pb.PolicyType_DialPolicy
+		if eventType == common.ServiceBindPoliciesChanged {
+			policyType = edge_ctrl_pb.PolicyType_BindPolicy
+		}
+		self.revalidatePostureAccess(func(serviceId string, t edge_ctrl_pb.PolicyType) bool {
+			return serviceId == service.GetId() && t == policyType
+		})
 	}
 
 	if bindLost {

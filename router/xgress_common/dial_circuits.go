@@ -36,7 +36,8 @@ type dialCircuit struct {
 }
 
 // NewDialCircuitRegistry returns an empty registry. Register a dial circuit with PrepareTrack
-// followed by Publish, and close tracked circuits with CloseForService, CloseAll, or RevalidateAll.
+// followed by Publish, and close tracked circuits with CloseForService, CloseAll, RevalidateAll, or
+// RevalidateService.
 func NewDialCircuitRegistry() *DialCircuitRegistry {
 	return &DialCircuitRegistry{
 		circuits: cmap.New[*dialCircuit](),
@@ -101,8 +102,30 @@ func (self *DialCircuitRegistry) RevalidateAll(check func(serviceId string) erro
 	})
 }
 
+// RevalidateService closes every tracked dial circuit for serviceId if check returns an error for
+// serviceId. check is called at most once, and only if a circuit for serviceId is tracked. check must
+// not call back into the registry.
+func (self *DialCircuitRegistry) RevalidateService(serviceId string, check func(serviceId string) error) {
+	var err error
+	checked := false
+	self.closeMatching(func(c *dialCircuit) (bool, string) {
+		if c.serviceId != serviceId {
+			return false, ""
+		}
+		if !checked {
+			err = check(serviceId)
+			checked = true
+		}
+		if err != nil {
+			return true, err.Error()
+		}
+		return false, ""
+	})
+}
+
 // closeMatching closes every circuit for which decide returns true, using the returned reason.
-// decide runs under the registry's iteration and must not call back into the registry.
+// decide runs under the registry's iteration and must not call back into the registry. Closes run
+// asynchronously, so a circuit may still be open, and tracked, when closeMatching returns.
 func (self *DialCircuitRegistry) closeMatching(decide func(*dialCircuit) (bool, string)) {
 	type closing struct {
 		circuit *dialCircuit
@@ -122,6 +145,8 @@ func (self *DialCircuitRegistry) closeMatching(decide func(*dialCircuit) (bool, 
 			WithField("serviceId", entry.circuit.serviceId).
 			WithField("reason", entry.reason).
 			Info("closing dial circuit")
-		entry.circuit.x.Close()
+		// Close waits on the next hop and the controller for up to several seconds, so closing in turn
+		// would hold the caller for each congested circuit.
+		go entry.circuit.x.Close()
 	}
 }
