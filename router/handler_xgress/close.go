@@ -67,7 +67,7 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 		log.WithField("ctrlId", x.CtrlId()).Error("control channel not available")
 	} else {
 		log.Debug("notifying controller of fault")
-		if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
+		if err := protobufs.MarshalTyped(fault).WithTimeout(txc.ctrls.DefaultRequestTimeout()).Send(ch); err != nil {
 			log.WithError(err).Error("error sending fault")
 		}
 	}

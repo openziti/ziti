@@ -25,6 +25,7 @@
     * [Issue #4648](https://github.com/openziti/ziti/issues/4648) - [Backport-1.6] Remove the edge router API proxy
     * [Issue #4613](https://github.com/openziti/ziti/issues/4613) - [Backport-1.6] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4336](https://github.com/openziti/ziti/issues/4336) - [Backport-1.6] ER/T does not close existing circuits when the router loses dial access to a service
+    * [Issue #4699](https://github.com/openziti/ziti/issues/4699) - [Backport-1.6] Router xgress Close can block indefinitely on a congested circuit
 
 
 # Release 1.6.22
