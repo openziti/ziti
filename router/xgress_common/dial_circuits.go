@@ -82,7 +82,8 @@ func (self *DialCircuitRegistry) CloseAll(reason string) {
 	self.closeMatching(func(*dialCircuit) bool { return true }, reason)
 }
 
-// closeMatching closes every circuit for which matches returns true, using reason.
+// closeMatching closes every circuit for which matches returns true, using reason. Closes run
+// asynchronously, so a circuit may still be open, and tracked, when closeMatching returns.
 func (self *DialCircuitRegistry) closeMatching(matches func(*dialCircuit) bool, reason string) {
 	// collect first: closing removes entries from the map being iterated
 	var toClose []*dialCircuit
@@ -97,6 +98,8 @@ func (self *DialCircuitRegistry) closeMatching(matches func(*dialCircuit) bool, 
 			WithField("serviceId", c.serviceId).
 			WithField("reason", reason).
 			Info("closing dial circuit")
-		c.x.Close()
+		// Close waits on the next hop and the controller for up to several seconds, so closing in turn
+		// would hold the caller for each congested circuit.
+		go c.x.Close()
 	}
 }
