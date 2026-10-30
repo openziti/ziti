@@ -5,6 +5,20 @@
 * Bug fixes
 * [Controller Advertise Address Updates](#controller-advertise-address-updates) - Changing an HA controller's `advertiseAddress` and restarting now updates the address the cluster and routers use
 * Removal of the edge router API proxy (see Removed Features below)
+* [Router Data Model Subscriber Metrics](#router-data-model-subscriber-metrics) - New router metrics for diagnosing router data model performance issues
+
+## Router Data Model Subscriber Metrics
+
+Routers now report metrics for processing router data model subscriber updates, to help diagnose
+router data model performance issues.
+
+* `rdm.subscriber.event` - a timer of processing one queued subscriber event
+* `rdm.subscriber.event.queue_time` - a timer of how long a subscriber event waited in the queue
+* `rdm.subscriber.event.queue_size` - a gauge of the number of subscriber events waiting
+* `rdm.subscriber.scan` - a timer of a scan of identities marked for a check while the event queue was full
+* `rdm.subscriber.scan.queue_time` - a timer of how long a scan request waited
+* `rdm.subscriber.scan.identities` - a histogram of the number of identities each scan processed
+* `rdm.subscriber.full_sync` - a timer of a check of every subscription, as done after the router data model is replaced
 
 ## Controller Advertise Address Updates
 
@@ -44,6 +58,7 @@ change goes through once the leader is upgraded.
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4664](https://github.com/openziti/ziti/issues/4664) - [Backport-2.0] Add metrics for the router data model subscriber goroutine
     * [Issue #4490](https://github.com/openziti/ziti/issues/4490) - [Backport-2.0] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4505](https://github.com/openziti/ziti/issues/4505) - [Backport-2.0] Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4647](https://github.com/openziti/ziti/issues/4647) - [Backport-2.0] Remove the edge router API proxy
