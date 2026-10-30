@@ -929,6 +929,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4693](https://github.com/openziti/ziti/issues/4693) - Router xgress Close can block indefinitely on a congested circuit
     * [Issue #4330](https://github.com/openziti/ziti/issues/4330) - ER/T does not close existing circuits when the router loses dial access to a service
     * [Issue #4753](https://github.com/openziti/ziti/issues/4753) - Routers drop controllers on a stale member list from a leader restarted after a snapshot install
     * [Issue #4705](https://github.com/openziti/ziti/issues/4705) - Version built-in config types independently of the database version
