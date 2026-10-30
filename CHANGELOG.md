@@ -49,6 +49,7 @@ change goes through once the leader is upgraded.
     * [Issue #4647](https://github.com/openziti/ziti/issues/4647) - [Backport-2.0] Remove the edge router API proxy
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4487](https://github.com/openziti/ziti/issues/4487) - [Backport-2.0] Sync a controller's raft advertise address with its config on startup
+    * [Issue #4694](https://github.com/openziti/ziti/issues/4694) - [Backport-2.0] Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
 
 
 # Release 2.0.8
