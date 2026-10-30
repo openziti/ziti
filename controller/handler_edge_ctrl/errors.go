@@ -18,6 +18,7 @@ package handler_edge_ctrl
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/openziti/sdk-golang/v2/ziti/edge"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
@@ -184,6 +185,14 @@ func (self TunnelingNotEnabledError) ErrorCode() uint32 {
 
 func (TunnelingNotEnabledError) GetRetryHint() edge.RetryHint {
 	return edge.RetryNotRetriable
+}
+
+func identityDisabled(identityId string) controllerError {
+	return &genericControllerError{
+		Message:   fmt.Sprintf("identity %s is disabled", identityId),
+		Code:      edge.ErrorCodeAccessDenied,
+		RetryHint: edge.RetryNotRetriable,
+	}
 }
 
 func invalidTerminator(msg string) controllerError {
