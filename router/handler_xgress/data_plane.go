@@ -49,12 +49,20 @@ func NewXgressDataPlaneAdapter(cfg DataPlaneAdapterConfig) xgress.DataPlaneAdapt
 	}
 }
 
+// ForwardPayload implements xgress.DataPlaneAdapter. A send that times out is retried, holding the caller
+// as backpressure, until it succeeds, fails some other way, or x is closed; a closed xgress gets one
+// attempt. A failure other than a timeout is reported as a forwarding fault. ctx is not used.
 func (adapter *dataPlaneAdapter) ForwardPayload(payload *xgress.Payload, x *xgress.Xgress, _ context.Context) {
 	for {
 		if err := adapter.forwarder.ForwardPayload(x.Address(), payload, time.Second); err != nil {
 			if !channel.IsTimeout(err) {
 				pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
 				adapter.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
+				return
+			}
+			// Xgress.Close forwards end of circuit before its close handler ends the circuit, and ending
+			// the circuit is what stops the timeouts, so retrying here would hold Close indefinitely.
+			if x.Closed() {
 				return
 			}
 		} else {
