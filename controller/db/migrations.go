@@ -34,6 +34,9 @@ type Migrations struct {
 	signingCert *x509.Certificate
 }
 
+// RunMigrations brings the edge datastore up to CurrentDbVersion, then syncs the system config types.
+// It runs on every startup and writes only what is out of date. Before changing an existing datastore,
+// it saves a copy alongside the db file.
 func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) error {
 	migrations := &Migrations{
 		stores:      stores,
@@ -41,9 +44,22 @@ func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) e
 	}
 
 	mm := boltz.NewMigratorManager(db)
-	return mm.Migrate("edge", CurrentDbVersion, migrations.migrate)
+	version, err := mm.GetComponentVersion("edge")
+	if err != nil {
+		return err
+	}
+
+	if err = mm.Migrate("edge", CurrentDbVersion, migrations.migrate); err != nil {
+		return err
+	}
+
+	// Migrate snapshots only when it moves an existing version, so when the version was already
+	// current, the sync takes the snapshot. A new datastore (version 0) needs none.
+	return migrations.syncSystemConfigTypes(db, version == CurrentDbVersion)
 }
 
+// migrate applies the db version migrations. Config type definitions are not migrated here: a change
+// to one bumps its SystemVersion instead (see syncSystemConfigTypes).
 func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion == 0 {
 		return m.initialize(step)
@@ -57,15 +73,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion < 13 {
 		step.SetError(errors.Errorf("Unsupported edge datastore version: %v", step.CurrentVersion))
 		return step.CurrentVersion
-	}
-
-	if step.CurrentVersion < 14 {
-		m.createInterceptV1ConfigType(step)
-		m.createHostV1ConfigType(step)
-	}
-
-	if step.CurrentVersion < 15 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, serverConfigTypeV1, nil))
 	}
 
 	if step.CurrentVersion < 16 {
@@ -84,23 +91,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.updateIdentityTypes(step)
 	}
 
-	if step.CurrentVersion < 20 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, serverConfigTypeV1, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Create(step.Ctx, hostV2ConfigType))
-	}
-
-	if step.CurrentVersion < 21 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 22 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
 	if step.CurrentVersion < 23 {
 		m.addProcessMultiPostureCheck(step)
 	}
@@ -109,23 +99,8 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.addIdentityIdToSessions(step)
 	}
 
-	if step.CurrentVersion < 25 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 26 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
 	if step.CurrentVersion < 27 {
 		m.addSystemAuthPolicies(step)
-	}
-
-	if step.CurrentVersion < 28 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
 	if step.CurrentVersion < 29 {
@@ -144,29 +119,8 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.dropEntity(step, EntityTypeApiSessionCertificates)
 	}
 
-	if step.CurrentVersion < 31 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 32 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-	}
-
 	if step.CurrentVersion < 33 {
 		m.migrateIdentityTypesToDefault(step)
-	}
-
-	if step.CurrentVersion < 34 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 35 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
 	if step.CurrentVersion < 36 {
@@ -177,15 +131,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	if step.CurrentVersion < 37 {
 		m.setAuthenticatorIsIssuedByNetwork(step)
-	}
-
-	if step.CurrentVersion < 38 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 39 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
 	if step.CurrentVersion < 41 {
@@ -199,12 +144,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		}))
 	}
 
-	if step.CurrentVersion < 43 {
-		m.createOrUpdateConfigType(step, interfacesConfigTypeV1)
-		m.createOrUpdateConfigType(step, hostInterfacesConfigTypeV1)
-		m.createOrUpdateConfigType(step, proxyConfigTypeV1)
-	}
-
 	if step.CurrentVersion < 44 {
 		m.dropEntity(step, EntityTypeSessions)
 	}
@@ -213,23 +152,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.setConfigTypeTargets(step)               // migration 45
 		m.backfillPolicyRoleAttributeIndexes(step) // migration 46
 		m.collapseEdgeServices(step)               // migration 47
-		m.createOrUpdateConfigType(step, routerLinkV1ConfigType)
-	}
-
-	if step.CurrentVersion < 48 {
-		// Refresh router.link.v1: its channelOptions minimums were relaxed so a
-		// managed config can express an unbuffered queue, matching what a local
-		// YAML config and the channel loader already accept. Controllers created
-		// at version 47 stored the stricter schema and are not covered by the
-		// block above, so they need their own refresh.
-		m.createOrUpdateConfigType(step, routerLinkV1ConfigType) // migration 48
-	}
-
-	if step.CurrentVersion < 49 {
-		m.createOrUpdateConfigType(step, l2HostV1ConfigType)
-		m.createOrUpdateConfigType(step, l2InterceptV1ConfigType)
-		m.createOrUpdateConfigType(step, hostV1ConfigType) // migration 49
-		m.createOrUpdateConfigType(step, hostV2ConfigType)
 	}
 
 	if step.CurrentVersion < 50 {

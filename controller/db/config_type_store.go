@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	FieldConfigTypeSchema = "schema"
-	FieldConfigTypeTarget = "target"
+	FieldConfigTypeSchema        = "schema"
+	FieldConfigTypeTarget        = "target"
+	FieldConfigTypeSystemVersion = "systemVersion"
 
 	// ConfigTypeTargetService indicates a config type used for service configuration.
 	ConfigTypeTargetService = "service"
@@ -60,6 +61,11 @@ type ConfigType struct {
 	Name   string                 `json:"name"`
 	Schema map[string]interface{} `json:"schema"`
 	Target string                 `json:"target"`
+
+	// SystemVersion is the revision of a controller-provided config type definition: each value names
+	// one schema, the same on every release line. It is 0 for user-defined types and for types not yet
+	// synced. Only writes with a nil field checker, or one naming FieldConfigTypeSystemVersion, persist it.
+	SystemVersion int32 `json:"-"`
 }
 
 func (entity *ConfigType) GetName() string {
@@ -121,6 +127,7 @@ func (store *configTypeStoreImpl) FillEntity(entity *ConfigType, bucket *boltz.T
 		bucket.SetError(json.Unmarshal([]byte(*marshalledSchema), &entity.Schema))
 	}
 	entity.Target = bucket.GetStringOrError(FieldConfigTypeTarget)
+	entity.SystemVersion = bucket.GetInt32WithDefault(FieldConfigTypeSystemVersion, 0)
 }
 
 func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.PersistContext) {
@@ -157,6 +164,8 @@ func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.P
 		}
 		ctx.SetString(FieldConfigTypeTarget, entity.Target)
 	}
+
+	ctx.SetInt32(FieldConfigTypeSystemVersion, entity.SystemVersion)
 }
 
 func (store *configTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error) {
