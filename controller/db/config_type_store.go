@@ -19,15 +19,16 @@ package db
 import (
 	"encoding/json"
 
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
 const (
-	FieldConfigTypeSchema = "schema"
+	FieldConfigTypeSchema        = "schema"
+	FieldConfigTypeSystemVersion = "systemVersion"
 )
 
 func newConfigType(name string) *ConfigType {
@@ -41,6 +42,11 @@ type ConfigType struct {
 	boltz.BaseExtEntity
 	Name   string                 `json:"name"`
 	Schema map[string]interface{} `json:"schema"`
+
+	// SystemVersion is the revision of a controller-provided config type definition: each value names
+	// one schema, the same on every release line. It is 0 for user-defined types and for types not yet
+	// synced. Only writes with a nil field checker, or one naming FieldConfigTypeSystemVersion, persist it.
+	SystemVersion int32 `json:"-"`
 }
 
 func (entity *ConfigType) GetName() string {
@@ -100,6 +106,7 @@ func (store *configTypeStoreImpl) FillEntity(entity *ConfigType, bucket *boltz.T
 		entity.Schema = map[string]interface{}{}
 		bucket.SetError(json.Unmarshal([]byte(*marshalledSchema), &entity.Schema))
 	}
+	entity.SystemVersion = bucket.GetInt32WithDefault(FieldConfigTypeSystemVersion, 0)
 }
 
 func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.PersistContext) {
@@ -118,6 +125,8 @@ func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.P
 			ctx.SetStringP(FieldConfigTypeSchema, nil)
 		}
 	}
+
+	ctx.SetInt32(FieldConfigTypeSystemVersion, entity.SystemVersion)
 }
 
 func (store *configTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error) {

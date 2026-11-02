@@ -17,13 +17,10 @@
 package db
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"math"
 	"time"
 
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
@@ -38,17 +35,9 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	}
 
 	m.createIdentityTypesV1(step)
-	m.createInitialTunnelerConfigTypes(step)
 	m.addPostureCheckTypes(step)
-	m.createInterceptV1ConfigType(step)
-	m.createHostV1ConfigType(step)
 	m.addProcessMultiPostureCheck(step)
-	m.createConfigType(step, hostV2ConfigType)
 	m.addSystemAuthPolicies(step)
-	m.createConfigType(step, interfacesConfigTypeV1)
-	m.createConfigType(step, proxyConfigTypeV1)
-	m.createConfigType(step, l2HostV1ConfigType)
-	m.createConfigType(step, l2InterceptV1ConfigType)
 
 	return CurrentDbVersion
 }
@@ -70,9 +59,35 @@ func (m *Migrations) createIdentityTypesV1(step *boltz.MigrationStep) {
 var clientConfigV1TypeId = "f2dd2df0-9c04-4b84-a91e-71437ac229f1"
 var serverConfigV1TypeId = "cea49285-6c07-42cf-9f52-09a9b115c783"
 
+var clientConfigTypeV1 = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
+	Name:          "ziti-tunneler-client.v1",
+	SystemVersion: 1,
+	Schema: map[string]interface{}{
+		"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-client.v1.config.json",
+		"type":                 "object",
+		"additionalProperties": false,
+		"required": []interface{}{
+			"hostname",
+			"port",
+		},
+		"properties": map[string]interface{}{
+			"hostname": map[string]interface{}{
+				"type": "string",
+			},
+			"port": map[string]interface{}{
+				"type":    "integer",
+				"minimum": float64(0),
+				"maximum": float64(math.MaxUint16),
+			},
+		},
+	},
+}
+
 var serverConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: serverConfigV1TypeId},
 	Name:          "ziti-tunneler-server.v1",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
 		"type":                 "object",
@@ -514,6 +529,7 @@ var hostV1ConfigTypeId = "NH5p4FpGR"
 var hostV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: hostV1ConfigTypeId},
 	Name:          "host.v1",
+	SystemVersion: 1,
 	Schema: combine(
 		map[string]interface{}{
 			"$id":         "http://ziti-edge.netfoundry.io/schemas/host.v1.schema.json",
@@ -526,6 +542,7 @@ var hostV2ConfigTypeId = "host.v2"
 var hostV2ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: hostV2ConfigTypeId},
 	Name:          "host.v2",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id": "http://ziti-edge.netfoundry.io/schemas/host.v2.schema.json",
 		"definitions": combine(
@@ -557,6 +574,7 @@ var hostV2ConfigType = &ConfigType{
 var interceptV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: "g7cIWbcGg"},
 	Name:          "intercept.v1",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "http://edge.openziti.org/schemas/intercept.v1.config.json",
 		"type":                 "object",
@@ -604,10 +622,14 @@ var interceptV1ConfigType = &ConfigType{
 var l2HostV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: "l2.host.v1"},
 	Name:          "l2.host.v1",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
-		"$id":         "https://ziti-edge.netfoundry.io/schemas/l2.host.v1.schema.json",
-		"definitions": combine(healthCheckSchema["definitions"].(map[string]interface{}), tunnelDefinitions),
-		"type":        "object",
+		"$id": "https://ziti-edge.netfoundry.io/schemas/l2.host.v1.schema.json",
+		// health checks don't apply to l2 services. listenOptions only needs "duration" from the health check definitions
+		"definitions": combine(tunnelDefinitions, map[string]interface{}{
+			"duration": healthCheckSchema["definitions"].(map[string]interface{})["duration"],
+		}),
+		"type": "object",
 		"properties": combine(listenOptions, map[string]interface{}{
 			"bridgeIfs": map[string]interface{}{
 				"allOf": []interface{}{
@@ -624,6 +646,7 @@ var l2HostV1ConfigType = &ConfigType{
 var l2InterceptV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: "l2.intercept.v1"},
 	Name:          "l2.intercept.v1",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id": "https://ziti-edge.netfoundry.io/schemas/l2.intercept.v1.schema.json",
 		"definitions": combine(tunnelDefinitions, map[string]interface{}{
@@ -655,7 +678,8 @@ var interfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: InterfacesV1TypeId,
 	},
-	Name: InterfacesV1TypeId,
+	Name:          InterfacesV1TypeId,
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/interfaces.v1.config.json",
 		"type":                 "object",
@@ -683,7 +707,8 @@ var hostInterfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: HostInterfacesV1TypeId,
 	},
-	Name: HostInterfacesV1TypeId,
+	Name:          HostInterfacesV1TypeId,
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/host-interfaces.v1.config.json",
 		"type":                 "object",
@@ -711,7 +736,8 @@ var proxyConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: ProxyV1TypeId,
 	},
-	Name: ProxyV1TypeId,
+	Name:          ProxyV1TypeId,
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/proxy.v1.config.json",
 		"type":                 "object",
@@ -749,34 +775,6 @@ var proxyConfigTypeV1 = &ConfigType{
 			},
 		},
 	},
-}
-
-func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep) {
-	clientConfigTypeV1 := &ConfigType{
-		BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
-		Name:          "ziti-tunneler-client.v1",
-		Schema: map[string]interface{}{
-			"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-client.v1.config.json",
-			"type":                 "object",
-			"additionalProperties": false,
-			"required": []interface{}{
-				"hostname",
-				"port",
-			},
-			"properties": map[string]interface{}{
-				"hostname": map[string]interface{}{
-					"type": "string",
-				},
-				"port": map[string]interface{}{
-					"type":    "integer",
-					"minimum": float64(0),
-					"maximum": float64(math.MaxUint16),
-				},
-			},
-		},
-	}
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, clientConfigTypeV1))
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, serverConfigTypeV1))
 }
 
 func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
@@ -888,73 +886,4 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 		}
 	}
 
-}
-
-func (m *Migrations) createConfigType(step *boltz.MigrationStep, configType *ConfigType) {
-	cfg, err := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
-	if step.SetError(err) {
-		return
-	}
-	if cfg == nil {
-		step.SetError(m.stores.ConfigType.Create(step.Ctx, configType))
-		return
-	}
-	if cfg.Id != configType.Id {
-		step.SetError(fmt.Errorf("config type '%s' already exists with id '%s', but this controller expects id '%s'", configType.Name, cfg.Id, configType.Id))
-		return
-	}
-	pfxlog.Logger().Debugf("'%s' config type already exists. not creating.", configType.Name)
-}
-
-func (m *Migrations) createOrUpdateConfigType(step *boltz.MigrationStep, configType *ConfigType) {
-	cfg, err := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
-	if step.SetError(err) {
-		return
-	}
-	if cfg == nil {
-		step.SetError(m.stores.ConfigType.Create(step.Ctx, configType))
-		return
-	}
-	if cfg.Id != configType.Id {
-		step.SetError(fmt.Errorf("config type '%s' already exists with id '%s', but this controller expects id '%s'", configType.Name, cfg.Id, configType.Id))
-		return
-	}
-	step.SetError(m.stores.ConfigType.Update(step.Ctx, configType, nil))
-}
-
-// syncConfigType creates the given config type if it doesn't exist, or updates the stored schema if it
-// differs from the given schema. Unlike createOrUpdateConfigType, nothing is written if the schema is
-// unchanged, so this is safe to run on every startup.
-func (m *Migrations) syncConfigType(step *boltz.MigrationStep, configType *ConfigType) {
-	cfg, err := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), configType.Name)
-	if step.SetError(err) {
-		return
-	}
-	if cfg == nil {
-		step.SetError(m.stores.ConfigType.Create(step.Ctx, configType))
-		return
-	}
-	if cfg.Id != configType.Id {
-		step.SetError(fmt.Errorf("config type '%s' already exists with id '%s', but this controller expects id '%s'", configType.Name, cfg.Id, configType.Id))
-		return
-	}
-
-	// json.Marshal sorts map keys, so this comparison is stable regardless of map iteration order
-	// or of the concrete types used in the in-code schema vs the unmarshalled stored schema
-	current, err := json.Marshal(cfg.Schema)
-	if step.SetError(err) {
-		return
-	}
-	expected, err := json.Marshal(configType.Schema)
-	if step.SetError(err) {
-		return
-	}
-	if bytes.Equal(current, expected) {
-		pfxlog.Logger().Debugf("'%s' config type schema is up to date", configType.Name)
-		return
-	}
-
-	pfxlog.Logger().Infof("updating schema of '%s' config type", configType.Name)
-	cfg.Schema = configType.Schema
-	step.SetError(m.stores.ConfigType.Update(step.Ctx, cfg, boltz.MapFieldChecker{FieldConfigTypeSchema: struct{}{}}))
 }
