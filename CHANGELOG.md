@@ -33,6 +33,7 @@
 
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4708](https://github.com/openziti/ziti/issues/4708) - [Backport-1.6] Version built-in config types independently of the database version
     * [Issue #4716](https://github.com/openziti/ziti/issues/4716) - [Backport-1.6] Identity PUT re-enables a disabled identity
     * [Issue #4718](https://github.com/openziti/ziti/issues/4718) - [Backport-1.6] Terminator PUT clears hostId, peerData and sourceCtrl
     * [Issue #4720](https://github.com/openziti/ziti/issues/4720) - [Backport-1.6] Fabric router PUT crashes the controller

@@ -18,10 +18,10 @@ package db
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
 	"math"
 	"time"
+
+	"github.com/openziti/storage/boltz"
 )
 
 func (m *Migrations) initialize(step *boltz.MigrationStep) int {
@@ -35,14 +35,9 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	}
 
 	m.createIdentityTypesV1(step)
-	m.createInitialTunnelerConfigTypes(step)
 	m.addPostureCheckTypes(step)
-	m.createInterceptV1ConfigType(step)
-	m.createHostV1ConfigType(step)
 	m.addProcessMultiPostureCheck(step)
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, hostV2ConfigType))
 	m.addSystemAuthPolicies(step)
-	m.createInterfacesV1ConfigType(step)
 
 	return CurrentDbVersion
 }
@@ -64,9 +59,35 @@ func (m *Migrations) createIdentityTypesV1(step *boltz.MigrationStep) {
 var clientConfigV1TypeId = "f2dd2df0-9c04-4b84-a91e-71437ac229f1"
 var serverConfigV1TypeId = "cea49285-6c07-42cf-9f52-09a9b115c783"
 
+var clientConfigTypeV1 = &ConfigType{
+	BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
+	Name:          "ziti-tunneler-client.v1",
+	SystemVersion: 1,
+	Schema: map[string]interface{}{
+		"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-client.v1.config.json",
+		"type":                 "object",
+		"additionalProperties": false,
+		"required": []interface{}{
+			"hostname",
+			"port",
+		},
+		"properties": map[string]interface{}{
+			"hostname": map[string]interface{}{
+				"type": "string",
+			},
+			"port": map[string]interface{}{
+				"type":    "integer",
+				"minimum": float64(0),
+				"maximum": float64(math.MaxUint16),
+			},
+		},
+	},
+}
+
 var serverConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: serverConfigV1TypeId},
 	Name:          "ziti-tunneler-server.v1",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-server.v1.config.json",
 		"type":                 "object",
@@ -319,6 +340,70 @@ var tunnelDefinitions = map[string]interface{}{
 	},
 }
 
+var listenOptions = map[string]interface{}{
+	"listenOptions": map[string]interface{}{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]interface{}{
+			"connectTimeoutSeconds": map[string]interface{}{
+				"$ref":        "#/definitions/timeoutSeconds",
+				"description": "Timeout when making outbound connections. Defaults to 5. If both connectTimeoutSeconds and connectTimeout are specified, connectTimeout will be used.",
+				"deprecated":  true,
+			},
+			"connectTimeout": map[string]interface{}{
+				"$ref":        "#/definitions/duration",
+				"description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimeoutSeconds and connectTimeout are specified, connectTimeout will be used.",
+			},
+			"maxConnections": map[string]interface{}{
+				"type":        "integer",
+				"minimum":     1,
+				"description": "defaults to 3",
+			},
+			"identity": map[string]interface{}{
+				"type":        "string",
+				"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+			},
+			"listenIdentityType": map[string]interface{}{
+				"type":        "string",
+				"enum":        []interface{}{"dns"},
+				"description": "Specifies how the hosting tunneler transforms the value of 'identity' before binding. 'dns' lowercases the effective listen identity, so dialing tunnelers that obtained the identity from a DNS query can find the terminator regardless of case.",
+			},
+			"bindUsingEdgeIdentity": map[string]interface{}{
+				"type":        "boolean",
+				"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+			},
+			"cost": map[string]interface{}{
+				"type":        "integer",
+				"minimum":     0,
+				"maximum":     65535,
+				"description": "defaults to 0",
+			},
+			"precedence": map[string]interface{}{
+				"type":        "string",
+				"enum":        []interface{}{"default", "required", "failed"},
+				"description": "defaults to 'default'",
+			},
+		},
+	},
+}
+
+var dialOptions = map[string]interface{}{
+	"dialOptions": map[string]interface{}{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]interface{}{
+			"identity": map[string]interface{}{
+				"type":        "string",
+				"description": "Dial a terminator with the specified identity. '$dst_protocol', '$dst_ip', '$dst_port are resolved to the corresponding value of the destination address.",
+			},
+			"connectTimeoutSeconds": map[string]interface{}{
+				"$ref":        "#/definitions/timeoutSeconds",
+				"description": "defaults to 5 seconds if no dialOptions are defined. defaults to 15 if dialOptions are defined but connectTimeoutSeconds is not specified.",
+			},
+		},
+	},
+}
+
 // hostV1 schema with ["$id"] and ["definitions"] excluded
 var hostV1SchemaSansDefs = map[string]interface{}{
 	"type": "object",
@@ -386,50 +471,12 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 				},
 				"description": "hosting tunnelers establish local routes for the specified source addresses so binding will succeed",
 			},
-			"listenOptions": map[string]interface{}{
-				"type":                 "object",
-				"additionalProperties": false,
-				"properties": map[string]interface{}{
-					"connectTimeoutSeconds": map[string]interface{}{
-						"$ref":        "#/definitions/timeoutSeconds",
-						"description": "Timeout when making outbound connections. Defaults to 5. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
-						"deprecated":  true,
-					},
-					"connectTimeout": map[string]interface{}{
-						"$ref":        "#/definitions/duration",
-						"description": "Timeout when making outbound connections. Defaults to '5s'. If both connectTimoutSeconds and connectTimeout are specified, connectTimeout will be used.",
-					},
-					"maxConnections": map[string]interface{}{
-						"type":        "integer",
-						"minimum":     1,
-						"description": "defaults to 3",
-					},
-					"identity": map[string]interface{}{
-						"type":        "string",
-						"description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
-					},
-					"bindUsingEdgeIdentity": map[string]interface{}{
-						"type":        "boolean",
-						"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
-					},
-					"cost": map[string]interface{}{
-						"type":        "integer",
-						"minimum":     0,
-						"maximum":     65535,
-						"description": "defaults to 0",
-					},
-					"precedence": map[string]interface{}{
-						"type":        "string",
-						"enum":        []interface{}{"default", "required", "failed"},
-						"description": "defaults to 'default'",
-					},
-				},
-			},
 			"proxy": map[string]interface{}{
 				"$ref":        "#/definitions/proxyConfiguration",
 				"description": "If defined, outgoing connections will be send through this proxy server",
 			},
 		},
+		listenOptions,
 	),
 	"additionalProperties": false,
 	"allOf": []interface{}{
@@ -482,6 +529,7 @@ var hostV1ConfigTypeId = "NH5p4FpGR"
 var hostV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: hostV1ConfigTypeId},
 	Name:          "host.v1",
+	SystemVersion: 1,
 	Schema: combine(
 		map[string]interface{}{
 			"$id":         "http://ziti-edge.netfoundry.io/schemas/host.v1.schema.json",
@@ -494,6 +542,7 @@ var hostV2ConfigTypeId = "host.v2"
 var hostV2ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: hostV2ConfigTypeId},
 	Name:          "host.v2",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id": "http://ziti-edge.netfoundry.io/schemas/host.v2.schema.json",
 		"definitions": combine(
@@ -525,12 +574,13 @@ var hostV2ConfigType = &ConfigType{
 var interceptV1ConfigType = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{Id: "g7cIWbcGg"},
 	Name:          "intercept.v1",
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "http://edge.openziti.org/schemas/intercept.v1.config.json",
 		"type":                 "object",
 		"additionalProperties": false,
 		"definitions":          tunnelDefinitions,
-		"properties": map[string]interface{}{
+		"properties": combine(dialOptions, map[string]interface{}{
 			"protocols": map[string]interface{}{
 				"allOf": []interface{}{
 					map[string]interface{}{"$ref": "#/definitions/inhabitedSet"},
@@ -549,20 +599,6 @@ var interceptV1ConfigType = &ConfigType{
 					map[string]interface{}{"items": map[string]interface{}{"$ref": "#/definitions/portRange"}},
 				},
 			},
-			"dialOptions": map[string]interface{}{
-				"type":                 "object",
-				"additionalProperties": false,
-				"properties": map[string]interface{}{
-					"identity": map[string]interface{}{
-						"type":        "string",
-						"description": "Dial a terminator with the specified identity. '$dst_protocol', '$dst_ip', '$dst_port are resolved to the corresponding value of the destination address.",
-					},
-					"connectTimeoutSeconds": map[string]interface{}{
-						"$ref":        "#/definitions/timeoutSeconds",
-						"description": "defaults to 5 seconds if no dialOptions are defined. defaults to 15 if dialOptions are defined but connectTimeoutSeconds is not specified.",
-					},
-				},
-			},
 			"sourceIp": map[string]interface{}{
 				"type":        "string",
 				"description": "The source IP (and optional :port) to spoof when the connection is egressed from the hosting tunneler. '$tunneler_id.name' resolves to the name of the client tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the client tunneler's identity. '$src_ip' and '$src_port' resolve to the source IP / port of the originating client. '$dst_port' resolves to the port that the client is trying to connect.",
@@ -574,7 +610,7 @@ var interceptV1ConfigType = &ConfigType{
 				},
 				"description": "white list of source ips/cidrs that can be intercepted. all ips can be intercepted if this is not set.",
 			},
-		},
+		}),
 		"required": []interface{}{
 			"protocols",
 			"addresses",
@@ -589,7 +625,8 @@ var interfacesConfigTypeV1 = &ConfigType{
 	BaseExtEntity: boltz.BaseExtEntity{
 		Id: InterfacesV1TypeId,
 	},
-	Name: "ziti-tunneler-server.v1",
+	Name:          InterfacesV1TypeId,
+	SystemVersion: 1,
 	Schema: map[string]interface{}{
 		"$id":                  "https://netfoundry.io/schemas/interfaces.v1.config.json",
 		"type":                 "object",
@@ -609,34 +646,6 @@ var interfacesConfigTypeV1 = &ConfigType{
 			},
 		),
 	},
-}
-
-func (m *Migrations) createInitialTunnelerConfigTypes(step *boltz.MigrationStep) {
-	clientConfigTypeV1 := &ConfigType{
-		BaseExtEntity: boltz.BaseExtEntity{Id: clientConfigV1TypeId},
-		Name:          "ziti-tunneler-client.v1",
-		Schema: map[string]interface{}{
-			"$id":                  "http://edge.openziti.org/schemas/ziti-tunneler-client.v1.config.json",
-			"type":                 "object",
-			"additionalProperties": false,
-			"required": []interface{}{
-				"hostname",
-				"port",
-			},
-			"properties": map[string]interface{}{
-				"hostname": map[string]interface{}{
-					"type": "string",
-				},
-				"port": map[string]interface{}{
-					"type":    "integer",
-					"minimum": float64(0),
-					"maximum": float64(math.MaxUint16),
-				},
-			},
-		},
-	}
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, clientConfigTypeV1))
-	step.SetError(m.stores.ConfigType.Create(step.Ctx, serverConfigTypeV1))
 }
 
 func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
@@ -748,13 +757,4 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 		}
 	}
 
-}
-
-func (m *Migrations) createInterfacesV1ConfigType(step *boltz.MigrationStep) {
-	cfg, _ := m.stores.ConfigType.LoadOneByName(step.Ctx.Tx(), interfacesConfigTypeV1.Name)
-	if cfg == nil {
-		step.SetError(m.stores.ConfigType.Create(step.Ctx, interfacesConfigTypeV1))
-	} else {
-		pfxlog.Logger().Debugf("'%s' config type already exists. not creating.", interfacesConfigTypeV1.Name)
-	}
 }
