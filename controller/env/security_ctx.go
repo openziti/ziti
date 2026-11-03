@@ -559,12 +559,14 @@ func (ctx *SecurityCtx) resolvePermissions() {
 			if ctx.resolvedIdentity.IsAdmin || ctx.resolvedIdentity.IsDefaultAdmin {
 				ctx.resolvedPermissions[permissions.AdminPermission] = struct{}{}
 			}
+
+			// granted here and not above: a session with MFA pending holds nothing but the
+			// partial authentication permission, whatever its identity has been granted
+			for _, permission := range ctx.resolvedIdentity.Permissions {
+				ctx.resolvedPermissions[permission] = struct{}{}
+			}
 		} else if ctx.isPartiallyAuthed() {
 			ctx.resolvedPermissions[permissions.PartiallyAuthenticatePermission] = struct{}{}
-		}
-
-		for _, permission := range ctx.resolvedIdentity.Permissions {
-			ctx.resolvedPermissions[permission] = struct{}{}
 		}
 	})
 }

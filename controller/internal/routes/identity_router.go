@@ -30,8 +30,6 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
@@ -40,6 +38,8 @@ import (
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 )
 
@@ -255,25 +255,6 @@ func (r *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext, par
 }
 
 func (r *IdentityRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	if !rc.HasPermission(permissions.AdminPermission) {
-		id, err := rc.GetEntityId()
-
-		if err != nil {
-			log := pfxlog.Logger()
-			log.Error(err)
-			rc.RespondWithError(err)
-			return
-		}
-
-		if entity, _ := ae.Managers.Identity.Read(id); entity != nil {
-			if entity.IsAdmin {
-				unauthorizedErr := nonAdminNotAllowedError(errors.New("non-admin may not delete admin identities"))
-				rc.RespondWithError(unauthorizedErr)
-				return
-			}
-		}
-	}
-
 	DeleteWithHandler(rc, ae.Managers.Identity)
 }
 
@@ -291,12 +272,6 @@ func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, para
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		fields = fields.FilterMaps(boltz.FieldTags, db.FieldIdentityAppData, db.FieldIdentityServiceHostingCosts, db.FieldIdentityServiceHostingPrecedences)
 		if !rc.HasPermission(permissions.AdminPermission) {
-			if entity, _ := ae.Managers.Identity.Read(id); entity != nil {
-				if entity.IsAdmin {
-					return nonAdminNotAllowedError(errors.New("non-admins may not modify admin identities"))
-				}
-			}
-
 			for _, field := range []string{db.FieldIdentityPermissions, db.FieldIdentityIsAdmin, db.FieldIdentityIsDefaultAdmin} {
 				if fields.IsUpdated(field) {
 					return nonAdminNotAllowedError(fmt.Errorf("non-admins may not modify the identity field '%s'", field))
