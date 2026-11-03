@@ -22,6 +22,7 @@
     * [Issue #4506](https://github.com/openziti/ziti/issues/4506) - [Backport-1.6] Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4648](https://github.com/openziti/ziti/issues/4648) - [Backport-1.6] Remove the edge router API proxy
     * [Issue #4613](https://github.com/openziti/ziti/issues/4613) - [Backport-1.6] Controller deadlocks when posture data changes for an identity with legacy API sessions
+    * [Issue #4606](https://github.com/openziti/ziti/issues/4606) - [Backport-1.6] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
 
 
 # Release 1.6.22
