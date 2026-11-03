@@ -59,6 +59,7 @@ var Model = &model.Model{
 	Id: "smoketest",
 	Scope: model.Scope{
 		Defaults: model.Variables{
+			"oidc":        true,
 			"environment": "smoketest" + getUniqueId(),
 			"credentials": model.Variables{
 				"aws": model.Variables{

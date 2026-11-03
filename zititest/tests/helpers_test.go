@@ -20,14 +20,22 @@ import (
 	"github.com/openziti/ziti/zititest/models/smoke"
 )
 
+// sdkCapabilities returns capabilities plus CapOidc when SDK clients authenticate through OIDC.
+func sdkCapabilities(capabilities ...smoke.Capability) []smoke.Capability {
+	if smoke.OidcEnabled(run.GetModel()) {
+		return append(capabilities, smoke.CapOidc)
+	}
+	return capabilities
+}
+
 // sdkClientSupport reports whether the client routers can carry SDK clients' connections.
 func sdkClientSupport() smoke.Support {
-	return smoke.RoutersSupport(run.GetModel(), ".client", smoke.CapOidc)
+	return smoke.RoutersSupport(run.GetModel(), ".client", sdkCapabilities()...)
 }
 
 // sdkHostingSupport reports whether the hosting routers can carry SDK-hosted services.
 func sdkHostingSupport() smoke.Support {
-	return smoke.RoutersSupport(run.GetModel(), ".host", smoke.CapOidc)
+	return smoke.RoutersSupport(run.GetModel(), ".host", sdkCapabilities()...)
 }
 
 // clientSupport reports whether the client routers can carry connections from clients of clientType.

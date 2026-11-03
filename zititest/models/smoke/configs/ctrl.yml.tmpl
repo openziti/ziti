@@ -203,4 +203,6 @@ web:
       - binding: fabric
       - binding: edge-management
       - binding: edge-client
+{{if or (.Component.GetFlag "oidc") (.Component.GetFlag "ha") }}
       - binding: edge-oidc
+{{end}}
