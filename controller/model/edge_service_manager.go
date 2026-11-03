@@ -133,13 +133,17 @@ func (self *EdgeServiceManager) ReadByName(name string) (*EdgeService, error) {
 	return entity, nil
 }
 
-func (self *EdgeServiceManager) Delete(id string, ctx *change.Context) error {
-	if err := self.GetDb().View(func(tx *bbolt.Tx) error {
-		return self.notFoundIfFabricOnly(tx, id)
-	}); err != nil {
-		return err
-	}
-	return self.baseEntityManager.Delete(id, ctx)
+// ApplyDelete treats a fabric-only service as absent: not found, or nil when cmd.IfExists.
+func (self *EdgeServiceManager) ApplyDelete(cmd *command.DeleteEntityCommand, ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		if err := self.notFoundIfFabricOnly(ctx.Tx(), cmd.Id); err != nil {
+			if cmd.IfExists() {
+				return nil
+			}
+			return err
+		}
+		return self.baseEntityManager.ApplyDelete(cmd, ctx)
+	})
 }
 
 // PreparedListAssociatedWithHandler guards the edge service association routes (e.g.

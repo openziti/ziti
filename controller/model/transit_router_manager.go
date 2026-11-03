@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
 	"github.com/openziti/ziti/v2/common/pb/edge_cmd_pb"
@@ -30,6 +29,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
@@ -144,6 +144,20 @@ func (self *TransitRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*
 		}
 	}
 	return self.updateEntity(cmd.Entity, checker, ctx)
+}
+
+// ApplyDelete treats an edge router as absent: not found, or nil when cmd.IfExists. A router with
+// no transit router record is a base router and is deleted.
+func (self *TransitRouterManager) ApplyDelete(cmd *command.DeleteEntityCommand, ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		if self.env.GetStores().EdgeRouter.IsEntityPresent(ctx.Tx(), cmd.Id) {
+			if cmd.IfExists() {
+				return nil
+			}
+			return boltz.NewNotFoundError(self.Store.GetSingularEntityType(), "id", cmd.Id)
+		}
+		return self.baseEntityManager.ApplyDelete(cmd, ctx)
+	})
 }
 
 func (self *TransitRouterManager) ReadOneByFingerprint(fingerprint string) (*TransitRouter, error) {

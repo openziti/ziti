@@ -279,7 +279,7 @@ func (self *IdentityManager) ApplyDelete(cmd *command.DeleteEntityCommand, ctx b
 		if err := self.requireAuthorMayAffect(ctx, cmd.Id); err != nil {
 			return err
 		}
-		return self.Store.DeleteById(ctx, cmd.Id)
+		return self.baseEntityManager.ApplyDelete(cmd, ctx)
 	})
 }
 

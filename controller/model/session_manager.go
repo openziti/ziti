@@ -377,6 +377,10 @@ func (self *SessionManager) Delete(id string, ctx *change.Context) error {
 	return self.deleteEntity(id, ctx)
 }
 
+func (self *SessionManager) DeleteIfExists(id string, ctx *change.Context) error {
+	return self.deleteEntityIfExists(id, ctx)
+}
+
 func (self *SessionManager) PublicQueryForIdentity(sessionIdentity *Identity, query ast.Query) (*SessionListResult, error) {
 	if sessionIdentity.IsAdmin {
 		return self.querySessions(query)
