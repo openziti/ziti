@@ -44,12 +44,23 @@ change goes through once the leader is upgraded.
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4597](https://github.com/openziti/ziti/issues/4597) - [Backport-2.0] Compilation fails on Illumos
+    * [Issue #4605](https://github.com/openziti/ziti/issues/4605) - [Backport-2.0] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
+    * [Issue #4563](https://github.com/openziti/ziti/issues/4563) - [Backport-2.0] Identity admin protection is decided from the serving controller's view before dispatch
+    * [Issue #4564](https://github.com/openziti/ziti/issues/4564) - [Backport-2.0] Granular permissions are granted to a session before MFA completes
+    * [Issue #4565](https://github.com/openziti/ziti/issues/4565) - [Backport-2.0] The default admin's isAdmin flag can be cleared
+    * [Issue #4487](https://github.com/openziti/ziti/issues/4487) - [Backport-2.0] Sync a controller's raft advertise address with its config on startup
+    * [Issue #4533](https://github.com/openziti/ziti/issues/4533) - [Backport-2.0] Validate commands on the raft leader before they enter the log, and halt on an entry a member cannot decode
+    * [Issue #4540](https://github.com/openziti/ziti/issues/4540) - [Backport-2.0] Forwarded API errors lose their structured cause, and duplicate-name or referenced-delete errors return 500 from a follower
+    * [Issue #4550](https://github.com/openziti/ziti/issues/4550) - [Backport-2.0] Identity creation with authenticators and entity renames swallow their errors
     * [Issue #4490](https://github.com/openziti/ziti/issues/4490) - [Backport-2.0] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4505](https://github.com/openziti/ziti/issues/4505) - [Backport-2.0] Router pins a CPU core reporting metrics while no controller is registered
+    * [Issue #4525](https://github.com/openziti/ziti/issues/4525) - [Backport-2.0] Allow case-insensitive terminator addressing via host.v1
     * [Issue #4647](https://github.com/openziti/ziti/issues/4647) - [Backport-2.0] Remove the edge router API proxy
+    * [Issue #4407](https://github.com/openziti/ziti/issues/4407) - [Backport-2.0] Router data model root CA public keys carry different intermediates on each controller
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
-    * [Issue #4487](https://github.com/openziti/ziti/issues/4487) - [Backport-2.0] Sync a controller's raft advertise address with its config on startup
-    * [Issue #4605](https://github.com/openziti/ziti/issues/4605) - [Backport-2.0] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
+    * [Issue #4416](https://github.com/openziti/ziti/issues/4416) - Set clientAuth and serverAuth extended key usages on identity client certificates
+    * [Issue #4375](https://github.com/openziti/ziti/issues/4375) - router on release-v2.0.x never seeds MFA posture from the api session token <!-- keep -->
 
 
 # Release 2.0.8
