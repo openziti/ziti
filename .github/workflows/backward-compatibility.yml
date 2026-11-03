@@ -160,6 +160,11 @@ jobs:
           $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${VERSION_LABELS},environment=gh-fablab-compat-smoketest${EXTRA_LABELS:+,$EXTRA_LABELS}"
           $(go env GOPATH)/bin/smoketest up
 
+      - name: Validate Links
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/smoketest exec validateLinks
+
       - name: Test Ziti Command
         shell: bash
         run: |
