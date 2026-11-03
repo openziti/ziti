@@ -101,6 +101,10 @@ edge:
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
     address: {{ .Host.PublicIp }}:1280
+{{- if not (or (.Component.GetFlag "oidc") (.Component.GetFlag "ha")) }}
+    # without this, the controller binds edge-oidc itself when the web section leaves it out
+    disableOidcAutoBinding: true
+{{- end}}
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
