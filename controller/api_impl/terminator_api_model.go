@@ -18,9 +18,13 @@ package api_impl
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/controller/api"
+	"github.com/openziti/ziti/controller/db"
+	"github.com/openziti/ziti/controller/fields"
 	"github.com/openziti/ziti/controller/model"
 	"github.com/openziti/ziti/controller/models"
 	"github.com/openziti/ziti/controller/network"
@@ -73,6 +77,20 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 	}
 
 	return ret
+}
+
+// terminatorUpdateFields returns the stored fields a fabric API terminator PUT replaces. The
+// terminator's other fields, such as peerData, keep their stored values.
+func terminatorUpdateFields() fields.UpdatedFieldsMap {
+	return fields.UpdatedFieldsMap{
+		db.FieldTerminatorRouter:     struct{}{},
+		db.FieldTerminatorBinding:    struct{}{},
+		db.FieldTerminatorAddress:    struct{}{},
+		db.FieldTerminatorCost:       struct{}{},
+		db.FieldTerminatorPrecedence: struct{}{},
+		db.FieldTerminatorHostId:     struct{}{},
+		boltz.FieldTags:              struct{}{},
+	}
 }
 
 func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch) *model.Terminator {

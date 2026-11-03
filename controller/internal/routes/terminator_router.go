@@ -93,7 +93,7 @@ func (r *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil, rc.NewChangeContext())
+		return ae.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), terminatorUpdateFields(), rc.NewChangeContext())
 	})
 }
 

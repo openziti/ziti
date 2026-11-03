@@ -18,6 +18,9 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4716](https://github.com/openziti/ziti/issues/4716) - [Backport-1.6] Identity PUT re-enables a disabled identity
+    * [Issue #4718](https://github.com/openziti/ziti/issues/4718) - [Backport-1.6] Terminator PUT clears hostId, peerData and sourceCtrl
+    * [Issue #4720](https://github.com/openziti/ziti/issues/4720) - [Backport-1.6] Fabric router PUT crashes the controller
     * [Issue #4491](https://github.com/openziti/ziti/issues/4491) - [Backport-1.6] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4506](https://github.com/openziti/ziti/issues/4506) - [Backport-1.6] Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4648](https://github.com/openziti/ziti/issues/4648) - [Backport-1.6] Remove the edge router API proxy
