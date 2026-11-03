@@ -183,7 +183,7 @@ var Model = &model.Model{
 				"router-east-2": {
 					Components: model.Components{
 						"router-east-2": {
-							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator", "ctrl-managed-link"}},
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator", "ctrl-managed-link", "link-dial-only"}},
 							Type: &zitilab.RouterType{
 								Debug:   true,
 								Version: ZitiRouterVersion,

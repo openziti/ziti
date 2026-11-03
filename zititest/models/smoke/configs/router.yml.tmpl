@@ -44,10 +44,12 @@ managedConfig:
     - router.link
 {{else}}
 link:
+{{- if not (.Component.HasTag "link-dial-only")}}
   listeners:
     - binding:          transport
       bind:             tls:0.0.0.0:6000
       advertise:        tls:{{$router_ip}}:6000
+{{- end}}
   dialers:
     - binding:          transport
       options:
