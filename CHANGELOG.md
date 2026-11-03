@@ -60,6 +60,9 @@ change goes through once the leader is upgraded.
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4715](https://github.com/openziti/ziti/issues/4715) - [Backport-2.0] Identity PUT re-enables a disabled identity
+    * [Issue #4717](https://github.com/openziti/ziti/issues/4717) - [Backport-2.0] Terminator PUT clears hostId, peerData and sourceCtrl
+    * [Issue #4719](https://github.com/openziti/ziti/issues/4719) - [Backport-2.0] Fabric router PUT crashes the controller
     * [Issue #4657](https://github.com/openziti/ziti/issues/4657) - [Backport-2.0] Router doesn't tell SDKs to stop sending on circuits it no longer has
     * [Issue #4729](https://github.com/openziti/ziti/issues/4729) - [Backport-2.0] API request timeouts surface as TLS 'bad record MAC' errors instead of a 503
     * [Issue #4479](https://github.com/openziti/ziti/issues/4479) - [Backport-2.0] Router never reconnects to a standalone controller after the heartbeat check closes the control channel
