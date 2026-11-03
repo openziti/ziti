@@ -49,6 +49,7 @@ change goes through once the leader is upgraded.
     * [Issue #4647](https://github.com/openziti/ziti/issues/4647) - [Backport-2.0] Remove the edge router API proxy
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4487](https://github.com/openziti/ziti/issues/4487) - [Backport-2.0] Sync a controller's raft advertise address with its config on startup
+    * [Issue #4605](https://github.com/openziti/ziti/issues/4605) - [Backport-2.0] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
 
 
 # Release 2.0.8
