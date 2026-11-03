@@ -18,6 +18,10 @@ package smoke
 
 import (
 	"embed"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
@@ -34,9 +38,7 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	"os"
-	"strings"
-	"time"
+	"github.com/openziti/ziti/zititest/zitilab/validations"
 )
 
 const ZitiEdgeTunnelVersion = "v1.5.10"
@@ -307,6 +309,12 @@ var Model = &model.Model{
 		"login":     model.Bind(edge.Login("#ctrl1")),
 		"login2":    model.Bind(edge.Login("#ctrl2")),
 		"login3":    model.Bind(edge.Login("#ctrl3")),
+		"validateLinks": model.Bind(model.ActionFunc(func(run model.Run) error {
+			if err := validations.ValidateLinkMesh(run, ".edge-router", 3*time.Minute, 30*time.Second); err != nil {
+				return err
+			}
+			return validations.ValidateRouterLinks(run, 2*time.Minute)
+		})),
 		"testZet": model.Bind(model.ActionFunc(func(run model.Run) error {
 			out, err := TestFileDownload("zet", ClientCurl, "zet", true, FileSizes[0])
 			pfxlog.Logger().WithField("test output", out).Info("test completed")
