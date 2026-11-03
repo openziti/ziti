@@ -574,6 +574,14 @@ func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouter(roleAttributes ..
 	ctx.startEdgeRouter(nil)
 }
 
+// CreateEnrollAndStartTunnelerEdgeRouterWithCfgTweaks creates a tunneler-enabled edge router,
+// lets the caller modify the router config before startup, and returns the started router.
+func (ctx *TestContext) CreateEnrollAndStartTunnelerEdgeRouterWithCfgTweaks(cfgTweaks func(*routerEnv.Config), roleAttributes ...string) *EdgeRouterHelper {
+	ctx.shutdownRouters()
+	ctx.createAndEnrollEdgeRouter(true, roleAttributes...)
+	return ctx.startEdgeRouter(cfgTweaks)
+}
+
 func (ctx *TestContext) CreateEnrollAndStartEdgeRouter(roleAttributes ...string) *EdgeRouterHelper {
 	ctx.shutdownRouters()
 	ctx.createAndEnrollEdgeRouter(false, roleAttributes...)
