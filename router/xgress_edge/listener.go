@@ -435,6 +435,10 @@ type edgeClientConn struct {
 	postureSeq    atomic.Uint64
 	postureSendMu sync.Mutex
 
+	// postureRevalidationRequested is set by notifications that can change posture requirements
+	// and consumed by NotifyBatchComplete, which runs revalidatePostureAccess.
+	postureRevalidationRequested atomic.Bool
+
 	// svcSubscription tracks the per-connection service push subscription state.
 	svcSubscription struct {
 		sync.Mutex
@@ -502,12 +506,12 @@ func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eve
 	} else if eventType == common.IdentityPostureChecksUpdatedEvent {
 		// The identity's posture requirements changed (a posture check added to or
 		// removed from a service policy, or a check definition edited). The
-		// service-membership diff does not surface this, so re-evaluate this
-		// connection's active circuits and terminators against current posture.
-		self.revalidatePostureAccess()
+		// service-membership diff does not surface this, so have NotifyBatchComplete
+		// re-evaluate this connection's active circuits and terminators against current posture.
+		self.postureRevalidationRequested.Store(true)
 		// A pure definition change also produces no service events, so buffer the changed check
 		// defs for the push envelope; the batch flush ships them and follows with a fresh posture
-		// state (the re-evaluation above may have flipped pass/fail without any posture-data
+		// state (the re-evaluation may have flipped pass/fail without any posture-data
 		// mutation to trigger the usual state push).
 		self.bufferPostureCheckChanges(state.ChangedPostureChecks)
 	} else if eventType == common.IdentityFullState {
@@ -524,6 +528,8 @@ func (self *edgeClientConn) NotifyIdentityEvent(state *common.IdentityState, eve
 // current posture, closing any that no longer have access. It runs on the
 // identity-subscription worker, which dedups (via the data model's dirty-set
 // marker) and retries (via the scan fallback), so it inherits that resilience.
+// The access checks take data model identity locks, so it must not be called
+// while one is held.
 func (self *edgeClientConn) revalidatePostureAccess() {
 	apiSession := self.apiSessionToken
 	// Only OIDC sessions are enforced router-side against the RDM. Legacy
@@ -585,6 +591,12 @@ func (self *edgeClientConn) NotifyServiceChange(_ *common.IdentityState, previou
 	} else if eventType == common.ServiceUpdatedEvent {
 		dialLost = previousService.IsDialAllowed() && !service.IsDialAllowed()
 		bindLost = previousService.IsBindAllowed() && !service.IsBindAllowed()
+	} else if eventType == common.ServiceDialPoliciesChanged || eventType == common.ServiceBindPoliciesChanged {
+		// A posture check the identity already had through another policy produces no posture
+		// checks event when added to this service's policy, so this is the only notice of it. The
+		// event is dispatched under the data model's identity lock, so the check waits for
+		// NotifyBatchComplete.
+		self.postureRevalidationRequested.Store(true)
 	}
 
 	if bindLost {
@@ -2181,6 +2193,9 @@ func buildServiceSnapshot(rdm *common.RouterDataModel, identityId string) *edge_
 }
 
 func (self *edgeClientConn) NotifyBatchComplete(rdm *common.RouterDataModel, index uint64) {
+	if self.postureRevalidationRequested.CompareAndSwap(true, false) {
+		self.revalidatePostureAccess()
+	}
 	// Serialized with the subscribe path's deferred flush so index commits and their sends hit
 	// the wire in order (see structuralSendMu).
 	if self.flushServiceChangeBatch(rdm, index) {

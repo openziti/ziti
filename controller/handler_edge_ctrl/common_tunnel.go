@@ -9,11 +9,11 @@ import (
 	"github.com/google/uuid"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/logcontext"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 )
 
@@ -75,12 +75,33 @@ func (self *baseTunnelRequestContext) loadIdentity() {
 			return
 		}
 
+		// A disabled router identity may retain valid policies and sessions, and neither session
+		// creation nor posture evaluation inspects Disabled, so gate every tunnel operation here
+		// rather than in each handler. This covers dial (V1 and V2), hosting, and terminator paths.
+		if self.identity.Disabled {
+			self.err = identityDisabled(self.identity.Id)
+			logrus.
+				WithField("routerId", self.sourceRouter.Id).
+				WithField("identityId", self.identity.Id).
+				WithField("operation", self.handler.Label()).
+				Error("edge router identity is disabled")
+			return
+		}
+
 		self.logContext = logcontext.NewContext()
 		traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(self.identity.Id)
 		if traceSpec != nil && time.Now().After(traceSpec.Until) {
 			self.logContext.SetChannelsMask(traceSpec.ChannelMask)
 			self.logContext.WithField("traceId", traceSpec.TraceId)
 		}
+	}
+}
+
+// verifyEdgeRouterServiceDialAccess checks that the requesting router's own identity has dial access
+// to the loaded service. The disabled-identity check lives in loadIdentity, which runs first.
+func (self *baseTunnelRequestContext) verifyEdgeRouterServiceDialAccess() {
+	if self.err == nil {
+		self.verifyServiceDialAccess(self.sourceRouter.Id, self.service.Id)
 	}
 }
 
