@@ -62,6 +62,13 @@ var (
 // Capabilities lists every capability the smoke model checks.
 var Capabilities = []Capability{CapManagedLinkConfig, CapSdkHosting, CapOidc}
 
+// OidcEnabled reports whether m's controllers serve the OIDC api, which SDK clients then authenticate
+// through: when the oidc variable is set, or the model runs HA, which requires it. Otherwise SDK clients
+// get legacy api sessions and need no CapOidc.
+func OidcEnabled(m *model.Model) bool {
+	return m.GetFlag("oidc") || m.GetFlag("ha")
+}
+
 func (capability Capability) variable() string {
 	return "capability_" + capability.Name
 }
