@@ -18,7 +18,9 @@ package routes
 
 import (
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
+	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/response"
@@ -69,6 +71,12 @@ func MapUpdateFabricTerminatorToModel(id string, terminator *rest_model.Terminat
 	}
 
 	return ret
+}
+
+// fabricTerminatorUpdateFields returns the stored fields a fabric API terminator PUT replaces: those
+// an edge management API PUT replaces, plus hostId.
+func fabricTerminatorUpdateFields() fields.UpdatedFields {
+	return terminatorUpdateFields().AddField(db.FieldTerminatorHostId)
 }
 
 func MapPatchFabricTerminatorToModel(id string, terminator *rest_model.TerminatorPatch) *model.Terminator {

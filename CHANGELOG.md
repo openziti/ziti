@@ -887,6 +887,9 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4712](https://github.com/openziti/ziti/issues/4712) - Identity PUT re-enables a disabled identity
+    * [Issue #4713](https://github.com/openziti/ziti/issues/4713) - Terminator PUT clears hostId, peerData and sourceCtrl
+    * [Issue #4714](https://github.com/openziti/ziti/issues/4714) - Fabric router PUT crashes the controller
     * [Issue #4655](https://github.com/openziti/ziti/issues/4655) - Router doesn't tell SDKs to stop sending on circuits it no longer has
     * [Issue #4763](https://github.com/openziti/ziti/issues/4763) - miniziti fails to install Traefik because chart v42.3.1 rejects service.type
     * [Issue #4552](https://github.com/openziti/ziti/issues/4552) - transport_udp and proxy_udp listeners can deadlock their own event loop
