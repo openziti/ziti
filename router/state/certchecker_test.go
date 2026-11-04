@@ -573,7 +573,7 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 			},
 		},
 	}
-	return NewCertExpirationChecker(testEnv), func() { close(closeNotify) }
+	return NewCertExpirationChecker(testEnv, false), func() { close(closeNotify) }
 }
 
 type testCertEnv struct {
