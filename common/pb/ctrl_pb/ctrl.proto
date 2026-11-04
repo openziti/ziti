@@ -370,10 +370,17 @@ message UpdateCtrlAddresses {
   uint64 index = 2;
   bool isLeader = 3;
   repeated CtrlDetail controllers = 4;
+  // raftTerm is the raft term in which the sender is leader, set when isLeader is. Raft starts a new,
+  // higher term with each election and elects at most one leader per term, so a leadership claim from
+  // a higher term supersedes one from a lower term. 0 from controllers that don't send it.
+  uint64 raftTerm = 5;
 }
 
 message UpdateClusterLeader {
   uint64 index = 1;
+  // raftTerm is the raft term in which the sender is leader, ordered as UpdateCtrlAddresses.raftTerm
+  // is. 0 from controllers that don't send it.
+  uint64 raftTerm = 2;
 }
 
 enum PeerState {
