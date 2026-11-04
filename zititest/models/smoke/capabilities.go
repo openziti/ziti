@@ -30,8 +30,11 @@ import (
 // than MinVersion. Setting the variable capability_<Name> to "on" or "off" overrides the version
 // check for every router.
 type Capability struct {
-	Name        string
-	MinVersion  string
+	Name       string
+	MinVersion string
+	// Backports are the versions that brought the capability to older release lines, at most one per
+	// line. A router on one of those lines has it from that version instead of MinVersion.
+	Backports   []string
 	Description string
 }
 
@@ -50,10 +53,18 @@ var (
 		MinVersion:  "v1.6.0",
 		Description: "handles the OIDC api sessions SDK clients get from a 2.x controller",
 	}
+
+	// ziti tunnel uses SDK flow control whenever it keeps more than one default connection per router.
+	CapSdkFlowControl = Capability{
+		Name:        "sdk_flow_control",
+		MinVersion:  "v2.0.6",
+		Backports:   []string{"v1.6.21"},
+		Description: "carries the half-close of SDK flow-controlled connections",
+	}
 )
 
 // Capabilities lists every capability the smoke model checks.
-var Capabilities = []Capability{CapSdkHosting, CapOidc}
+var Capabilities = []Capability{CapSdkHosting, CapOidc, CapSdkFlowControl}
 
 // OidcEnabled reports whether m's controllers serve the OIDC api, which SDK clients then authenticate
 // through: when the oidc variable is set, or the model runs HA, which requires it. Otherwise SDK clients
@@ -120,16 +131,36 @@ func (capability Capability) supportedBy(id, version, override string, overridde
 		return Support{Supported: true}
 	}
 
+	minVersion := capability.minVersion(version)
+	since := minVersion
+	if minVersion == capability.MinVersion && len(capability.Backports) > 0 {
+		since += " (backported to " + strings.Join(capability.Backports, ", ") + ")"
+	}
 	missing := Support{Reason: fmt.Sprintf("%s on %s lacks %s, from %s: %s",
-		id, version, capability.Name, capability.MinVersion, capability.Description)}
+		id, version, capability.Name, since, capability.Description)}
 	v, err := versions.ParseSemVer(version)
 	if err != nil {
 		return missing
 	}
-	if v.CompareTo(versions.MustParseSemVer(capability.MinVersion)) < 0 {
+	if v.CompareTo(versions.MustParseSemVer(minVersion)) < 0 {
 		return missing
 	}
 	return Support{Supported: true}
+}
+
+// minVersion returns the first version on version's release line with the capability: that line's
+// backport if it has one, otherwise MinVersion.
+func (capability Capability) minVersion(version string) string {
+	line, err := releaseLine(version)
+	if err != nil {
+		return capability.MinVersion
+	}
+	for _, backport := range capability.Backports {
+		if backportLine, _ := releaseLine(backport); backportLine == line {
+			return backport
+		}
+	}
+	return capability.MinVersion
 }
 
 // gaps returns why router c lacks each of capabilities it lacks.
@@ -150,8 +181,10 @@ func combine(reasons []string) Support {
 	return Support{Supported: true}
 }
 
-// applyCapabilities rejects malformed capability overrides and logs what each edge router lacks. It
-// runs after the routers' versions are set.
+// applyCapabilities fits the model's config to what its edge routers support: a ziti tunnel whose
+// routers lack SDK flow control keeps one default connection per router, which keeps flow control off.
+// It also rejects malformed capability overrides and logs what each router lacks. It runs after the
+// routers' versions are set.
 func applyCapabilities(m *model.Model) error {
 	for _, capability := range Capabilities {
 		if override, found := m.GetStringVariable(capability.variable()); found && override != "on" && override != "off" {
@@ -159,11 +192,37 @@ func applyCapabilities(m *model.Model) error {
 		}
 	}
 
-	return m.ForEachComponent(".edge-router", 1, func(c *model.Component) error {
+	err := m.ForEachComponent(".edge-router", 1, func(c *model.Component) error {
 		if support := combine(gaps(m, c, Capabilities)); !support.Supported {
 			pfxlog.Logger().Infof("router capabilities: %s", support.Reason)
 		}
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	return m.ForEachComponent(".ziti-tunnel", 1, fitZitiTunnel(m))
+}
+
+// fitZitiTunnel returns a component visitor that keeps a ziti tunnel to one default connection per
+// router when the routers on its side lack SDK flow control.
+func fitZitiTunnel(m *model.Model) func(c *model.Component) error {
+	return func(c *model.Component) error {
+		tunnel, ok := c.Type.(*zitilab.ZitiTunnelType)
+		if !ok {
+			return nil
+		}
+		for _, side := range []string{"client", "host"} {
+			if !c.HasTag(side) {
+				continue
+			}
+			if support := RoutersSupport(m, "."+side, CapSdkFlowControl); !support.Supported {
+				tunnel.DefaultRouterConnections = 1
+				pfxlog.Logger().Infof("%s runs without SDK flow control: %s", c.Id, support.Reason)
+			}
+		}
+		return nil
+	}
 }

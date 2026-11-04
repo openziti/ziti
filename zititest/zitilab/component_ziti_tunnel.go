@@ -52,11 +52,13 @@ func (self ZitiTunnelMode) String() string {
 }
 
 type ZitiTunnelType struct {
-	Mode                     ZitiTunnelMode
-	Version                  string
-	LocalPath                string
-	ConfigPathF              func(c *model.Component) string
-	Count                    uint8
+	Mode        ZitiTunnelMode
+	Version     string
+	LocalPath   string
+	ConfigPathF func(c *model.Component) string
+	Count       uint8
+	// DefaultRouterConnections, when non-zero, sets --default-connections. Above 1, ziti tunnel uses SDK
+	// flow control.
 	DefaultRouterConnections uint8
 	ControlRouterConnections uint8
 	EnableSdkFlowControl     bool
@@ -190,7 +192,7 @@ func (self *ZitiTunnelType) StartIndividual(c *model.Component, idx int) error {
 			connectCfg += fmt.Sprintf("--control-connections %d", self.ControlRouterConnections)
 		}
 
-		if self.DefaultRouterConnections > 1 {
+		if self.DefaultRouterConnections > 0 {
 			connectCfg += fmt.Sprintf(" --default-connections %d", self.DefaultRouterConnections)
 		}
 

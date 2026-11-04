@@ -53,10 +53,44 @@ func TestCapabilitySupportedBy(t *testing.T) {
 	}
 }
 
+func TestCapabilitySupportedByWithBackport(t *testing.T) {
+	capability := Capability{Name: "thing", MinVersion: "v2.0.6", Backports: []string{"v1.6.21"}, Description: "does the thing"}
+
+	tests := []struct {
+		name    string
+		version string
+		support Support
+	}{
+		{name: "line without a backport", version: "v1.5.4", support: Support{Reason: "router-west on v1.5.4 lacks thing, from v2.0.6 (backported to v1.6.21): does the thing"}},
+		{name: "backport line, before the backport", version: "v1.6.20", support: Support{Reason: "router-west on v1.6.20 lacks thing, from v1.6.21: does the thing"}},
+		{name: "the backport", version: "v1.6.21", support: Support{Supported: true}},
+		{name: "after the backport", version: "v1.6.22", support: Support{Supported: true}},
+		{name: "minimum line, before the minimum", version: "v2.0.5", support: Support{Reason: "router-west on v2.0.5 lacks thing, from v2.0.6 (backported to v1.6.21): does the thing"}},
+		{name: "the minimum", version: "v2.0.6", support: Support{Supported: true}},
+		{name: "newer line", version: "v2.1.0-pre2", support: Support{Supported: true}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.support, capability.supportedBy("router-west", test.version, "", false))
+		})
+	}
+}
+
 func TestCapabilityMinVersionsParse(t *testing.T) {
 	for _, capability := range Capabilities {
 		_, err := versions.ParseSemVer(capability.MinVersion)
 		require.NoError(t, err, capability.Name)
+
+		lines := map[string]bool{}
+		for _, backport := range capability.Backports {
+			line, err := releaseLine(backport)
+			require.NoError(t, err, capability.Name)
+			require.False(t, lines[line], "%s has two backports on %s", capability.Name, line)
+			lines[line] = true
+			require.Negative(t, versions.MustParseSemVer(backport).CompareTo(versions.MustParseSemVer(capability.MinVersion)),
+				"%s backport %s is not older than %s", capability.Name, backport, capability.MinVersion)
+		}
 	}
 }
 
