@@ -1368,7 +1368,10 @@ func (network *Network) GetCapabilities() []string {
 	return network.capabilities
 }
 
-func (network *Network) RemoveLink(linkId string) {
+// RemoveLink removes linkId and sends a fault for it to the routers at its ends, so they close it. For an id
+// this controller does not know, the fault goes to every connected router instead, in case one still holds
+// the link. Reports whether the link was known.
+func (network *Network) RemoveLink(linkId string) bool {
 	log := pfxlog.Logger().WithField("linkId", linkId)
 
 	link, _ := network.Link.Get(linkId)
@@ -1412,6 +1415,7 @@ func (network *Network) RemoveLink(linkId string) {
 		network.Link.Remove(link)
 		network.RerouteLink(link)
 	}
+	return link != nil
 }
 
 // RemoveLinkAtIteration removes linkId only while it is still at iteration, and
