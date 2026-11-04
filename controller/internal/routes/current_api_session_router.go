@@ -339,6 +339,9 @@ func (router *CurrentSessionRouter) CreateTotpToken(ae *env.AppEnv, rc *response
 		return
 	}
 
+	// a verified TOTP code passes MFA for this api session, as /authenticate/mfa does for legacy sessions
+	ae.Managers.PostureResponse.SetMfaPosture(identity.Id, apiSessionToken.OidcToken.AccessClaims.ApiSessionId, true)
+
 	tokenStr, tokenClaims, err := ae.CreateTotpTokenFromAccessClaims(ae.RootIssuer(), apiSessionToken.OidcToken.AccessClaims)
 
 	if err != nil {

@@ -73,6 +73,51 @@ func (self *PostureResponseManager) SetMfaPosture(identityId string, apiSessionI
 	self.Create(identityId, []*PostureResponse{postureResponse})
 }
 
+// SeedMfaPosture records that an API Session passed MFA at passedAt, as attested by an OIDC access token whose
+// amr includes totp. It only fills in a session the cache has no MFA state for: a later MFA code, or MFA removed
+// since, is never overwritten by the (older) token. This is the controller-side counterpart of the router's
+// posture.Cache.SeedMfaFromApiSession. Returns true if the session was seeded.
+func (self *PostureResponseManager) SeedMfaPosture(identityId string, apiSessionId string, passedAt time.Time) bool {
+	seeded := false
+
+	self.postureCache.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
+		pd := newValue
+		if exist && valueInMap != nil {
+			pd = valueInMap
+		}
+
+		if apiSessionData := pd.ApiSessions[apiSessionId]; apiSessionData != nil && apiSessionData.Mfa != nil {
+			return pd
+		}
+
+		postureResponse := &PostureResponse{
+			PostureCheckId: MfaProviderZiti,
+			TypeId:         PostureCheckTypeMFA,
+			TimedOut:       false,
+			LastUpdatedAt:  passedAt,
+		}
+
+		postureSubType := &PostureResponseMfa{
+			ApiSessionId: apiSessionId,
+			PassedMfaAt:  &passedAt,
+		}
+
+		postureResponse.SubType = postureSubType
+		postureSubType.PostureResponse = postureResponse
+
+		postureResponse.Apply(pd)
+		seeded = true
+
+		return pd
+	})
+
+	if seeded {
+		self.postureCache.Emit(EventIdentityPostureDataAltered, identityId)
+	}
+
+	return seeded
+}
+
 // SetMfaPostureForIdentity sets the MFA passing status for all API Sessions associated to an identity
 func (self *PostureResponseManager) SetMfaPostureForIdentity(identityId string, isPassed bool) {
 	postureResponse := &PostureResponse{
