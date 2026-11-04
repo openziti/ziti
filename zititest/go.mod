@@ -18,7 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/michaelquigley/pfxlog v1.0.0
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.3.14
+	github.com/openziti/channel/v4 v4.3.15
 	github.com/openziti/edge-api v0.36.1
 	github.com/openziti/fablab v0.6.28
 	github.com/openziti/foundation/v2 v2.0.105
@@ -130,7 +130,7 @@ require (
 	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20261103173213-e298cbadad8e // indirect
+	github.com/gomarkdown/markdown v0.0.0-20261104120941-c01a8a138111 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
