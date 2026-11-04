@@ -284,6 +284,25 @@ func (self *Controller) IsLeader() bool {
 	return self.Raft.State() == raft.Leader
 }
 
+// LeadershipTerm implements command.Dispatcher.
+func (self *Controller) LeadershipTerm() (uint64, bool) {
+	return readLeadershipTerm(self.Raft.CurrentTerm, self.IsLeader)
+}
+
+// readLeadershipTerm reads the term, then leadership, then the term again, and returns once the two term
+// reads agree, since leadership read between two reads of the same term belongs to that term. If
+// elections keep the reads from agreeing, it reports no leadership.
+func readLeadershipTerm(currentTerm func() uint64, isLeader func() bool) (uint64, bool) {
+	for range 5 {
+		term := currentTerm()
+		leader := isLeader()
+		if currentTerm() == term {
+			return term, leader
+		}
+	}
+	return currentTerm(), false
+}
+
 // IsLeaderAndCaughtUp reports whether this node is the leader and has applied everything that was
 // committed when it took leadership. Deciding from a local read whether a replicated mutation is
 // needed requires this rather than IsLeader, which is true from the moment an election is won,

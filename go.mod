@@ -63,7 +63,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/agent v1.0.33
-	github.com/openziti/channel/v4 v4.3.14
+	github.com/openziti/channel/v4 v4.3.15
 	github.com/openziti/cobra-to-md v1.0.1
 	github.com/openziti/edge-api v0.36.1
 	github.com/openziti/foundation/v2 v2.0.105
@@ -146,7 +146,7 @@ require (
 	github.com/go-openapi/swag/typeutils v0.29.2 // indirect
 	github.com/go-openapi/swag/yamlutils v0.29.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20261103173213-e298cbadad8e // indirect
+	github.com/gomarkdown/markdown v0.0.0-20261104120941-c01a8a138111 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-metrics v0.7.0 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.5 // indirect

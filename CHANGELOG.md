@@ -43,7 +43,8 @@ change goes through once the leader is upgraded.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v4: [v4.3.13 -> v4.3.14](https://github.com/openziti/channel/compare/v4.3.13...v4.3.14)
+* github.com/openziti/channel/v4: [v4.3.13 -> v4.3.15](https://github.com/openziti/channel/compare/v4.3.13...v4.3.15)
+    * [Issue #317](https://github.com/openziti/channel/issues/317) - [Backport-4.x] Hellos with a value other than 4 bytes under the ReplyFor header key are rejected
     * [Issue #313](https://github.com/openziti/channel/issues/313) - [Backport-v4] A queued message can be discarded unwritten after Send reports success
 
 * github.com/openziti/foundation/v2: [v2.0.104 -> v2.0.105](https://github.com/openziti/foundation/compare/v2.0.104...v2.0.105)
@@ -59,6 +60,7 @@ change goes through once the leader is upgraded.
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4574](https://github.com/openziti/ziti/issues/4574) - [Backport-2.0] Router can drop controllers on a follower's stale controller list and never re-add them
     * [Issue #4389](https://github.com/openziti/ziti/issues/4389) - [Backport-2.0] Router applies posture responses out of order and without bound
     * [Issue #4392](https://github.com/openziti/ziti/issues/4392) - Router posture access checks read posture data without synchronization
     * [Issue #4390](https://github.com/openziti/ziti/issues/4390) - [Backport-2.0] Circuit endpoint faults are sent inline from arbitrary goroutines and lost on failure
