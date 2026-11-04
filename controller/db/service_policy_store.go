@@ -301,6 +301,7 @@ func (store *servicePolicyStoreImpl) PersistEntity(entity *ServicePolicy, ctx *b
 
 		_, _ = ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
 		_, _ = ctx.GetAndSetStringList(FieldServiceRoles, entity.ServiceRoles)
+		_, _ = ctx.GetAndSetStringList(FieldPostureCheckRoles, entity.PostureCheckRoles)
 
 		servicePolicyStore.identityRolesUpdated(ctx, entity)
 		servicePolicyStore.serviceRolesUpdated(ctx, entity)
