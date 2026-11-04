@@ -505,6 +505,7 @@ const (
 	FlagIsCircuitInitiator      = 2
 	FlagIsHostSide              = 3
 	FlagSentFin                 = 4
+	FlagFinReceived             = 5 // the SDK ended its data with a FIN, so its close is a graceful one
 
 	FlagPostCreateAccessCheckedMask = 1 << FlagPostCreateAccessChecked
 	FlagIsCircuitInitiatorMask      = 1 << FlagIsCircuitInitiator
@@ -654,7 +655,7 @@ func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	msg := self.seq.Pop()
 	if msg == nil {
 		log.Debug("sequencer closed, return EOF")
-		return nil, nil, xgress.ErrPeerClosed // if the sequencer is closed, the whole conn is being closed
+		return nil, nil, self.peerEnded() // if the sequencer is closed, the whole conn is being closed
 	}
 
 	log = log.WithFields(edge.GetLoggerFields(msg))
@@ -663,18 +664,33 @@ func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	switch msg.ContentType {
 	case edge.ContentTypeData:
 		log.Debugf("received data message with payload size %v", len(msg.Body))
+		if flags, _ := msg.GetUint32Header(edge.FlagsHeader); flags&edge.FIN != 0 {
+			self.flags.Set(FlagFinReceived, true)
+		}
 		return msg.Body, self.getHeaderMap(msg), nil
 
 	case edge.ContentTypeStateClosed:
 		log.Debug("received close message, closing connection and returning EOF")
 		self.close(false, "close message received")
-		return nil, nil, xgress.ErrPeerClosed // ErrPeerClosed signals the whole xgress to shutdown
+		return nil, nil, self.peerEnded() // the error signals the whole xgress to shutdown
 
 	default:
 		log.Error("unexpected message type, closing connection")
 		self.close(false, "close message received")
 		return nil, nil, io.EOF // io.EOF signals xgress to shutdown
 	}
+}
+
+// peerEnded returns the error that ends the xgress read loop once the SDK is done with the conn.
+// An SDK that ended its data with a FIN before it closed ended gracefully. One that closed with no
+// FIN before it, or was lost, ended abruptly, and the xgress has to say so to the far side, which can
+// only tell the application behind it what it was told: only a graceful end is passed on as an end
+// of data, so a router that blurred the two would make every abort look like a normal close.
+func (self *edgeXgressConn) peerEnded() error {
+	if self.flags.IsSet(FlagFinReceived) {
+		return xgress.ErrPeerClosed
+	}
+	return xgress.ErrPeerAborted
 }
 
 func (self *edgeXgressConn) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
@@ -756,13 +772,20 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 
 // FlowFromFabricToXgressClosed implements xgress.SignalConnection. It is invoked
 // when the fabric->app (tx) half of the circuit closes gracefully: the far side
-// sent EOF/end-of-circuit without tearing the whole circuit down. This happens
+// sent EOF (or, for a far side that does not support EOF, CircuitEnd) without
+// tearing the whole circuit down. This happens
 // on the ConnectV2 path when an xgress-based initiator closes (the SDK sends a
 // half-close EOF rather than a full CircuitEnd), with this conn bridging to a
 // legacy host. We propagate a FIN to the SDK edge conn so a blocked Read returns
 // io.EOF, while leaving the app->fabric (rx) half open so the conn can still
 // write. This is the half-close counterpart to close(), which sends a full
 // StateClosed and tears down both halves.
+//
+// When the far side supports EOF, this is not invoked for an abort or for a circuit
+// torn down underneath it: the xgress closes this conn instead, and the SDK gets a
+// close with no FIN before it, which is how it tells an abort from a graceful end.
+// A far side that does not support EOF has only CircuitEnd to say it is done, so
+// there the FIN is still sent, as it always was.
 func (self *edgeXgressConn) FlowFromFabricToXgressClosed() {
 	if self.flags.IsSet(FlagClosed) || self.GetChannel().IsClosed() {
 		return
