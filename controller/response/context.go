@@ -170,7 +170,8 @@ func (rc *RequestContext) NewChangeContextForIdentity(identity *model.Identity) 
 		SetSourceAuth("edge").
 		SetSourceMethod(rc.GetRequest().Method).
 		SetSourceLocal(rc.GetRequest().Host).
-		SetSourceRemote(rc.GetRequest().RemoteAddr)
+		SetSourceRemote(rc.GetRequest().RemoteAddr).
+		SetRequestContext(rc.GetRequest().Context())
 
 	if identity != nil {
 		changeCtx.SetChangeAuthorType(change.AuthorTypeIdentity).
