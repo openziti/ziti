@@ -43,7 +43,23 @@ change goes through once the leader is upgraded.
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/channel/v4: [v4.3.13 -> v4.3.14](https://github.com/openziti/channel/compare/v4.3.13...v4.3.14)
+    * [Issue #313](https://github.com/openziti/channel/issues/313) - [Backport-v4] A queued message can be discarded unwritten after Send reports success
+
+* github.com/openziti/foundation/v2: [v2.0.104 -> v2.0.105](https://github.com/openziti/foundation/compare/v2.0.104...v2.0.105)
+* github.com/openziti/identity: [v1.0.143 -> v1.0.144](https://github.com/openziti/identity/compare/v1.0.143...v1.0.144)
+* github.com/openziti/runzmd: [v1.0.96 -> v1.0.97](https://github.com/openziti/runzmd/compare/v1.0.96...v1.0.97)
+* github.com/openziti/sdk-golang: [v1.8.2 -> v1.8.3](https://github.com/openziti/sdk-golang/compare/v1.8.2...v1.8.3)
+    * [Issue #1049](https://github.com/openziti/sdk-golang/issues/1049) - [Backport-1.8] Write-failed payload is written to the peer as empty data, failing encrypted reads with invalid input
+    * [Issue #1037](https://github.com/openziti/sdk-golang/issues/1037) - [Backport-1.8] Closing an SDK-hosted xgress conn before its circuit starts blocks for the circuit start timeout
+    * [Issue #1043](https://github.com/openziti/sdk-golang/issues/1043) - [Backport-1.8] Cost and precedence updates on a hosted service are lost when its listener rebinds
+    * [Issue #1032](https://github.com/openziti/sdk-golang/issues/1032) - [Backport-1.8] Service refresh retry panics in rand.Int63n when RefreshInterval is 10s or less
+    * [Issue #1056](https://github.com/openziti/sdk-golang/issues/1056) - [Backport-1.8] Xgress conn closed locally ignores the router's StateClosed and retransmits forever
+
+* github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
+* github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4390](https://github.com/openziti/ziti/issues/4390) - [Backport-2.0] Circuit endpoint faults are sent inline from arbitrary goroutines and lost on failure
     * [Issue #4585](https://github.com/openziti/ziti/issues/4585) - [Backport-2.0] Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
     * [Issue #4599](https://github.com/openziti/ziti/issues/4599) - [Backport-2.0] ER/T terminator re-create reverts health check cost and precedence
     * [Issue #4594](https://github.com/openziti/ziti/issues/4594) - [Backport-2.0] CLI id-or-name resolution is duplicated, and the fabric version misreads names starting with 'id'
