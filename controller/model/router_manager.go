@@ -230,7 +230,13 @@ func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]
 		return self.ApplyDequiesce(cmd, ctx)
 	}
 
-	if cmd.UpdatedFields.IsUpdated(db.FieldInterfaces) {
+	var checker boltz.FieldChecker = cmd.UpdatedFields
+	if cmd.UpdatedFields == nil {
+		// A full update replaces what the update API carries; routers report their own interfaces.
+		checker = NotFieldChecker{db.FieldInterfaces: struct{}{}}
+	}
+
+	if checker.IsUpdated(db.FieldInterfaces) {
 		ctx.AddPreCommitAction(func(ctx boltz.MutateContext) error {
 			er, _, err := self.env.GetStores().EdgeRouter.FindById(ctx.Tx(), cmd.Entity.Id)
 			if err != nil {
@@ -251,7 +257,7 @@ func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]
 		})
 	}
 
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 // QuiesceRouter marks all terminators on the router as failed, so that new traffic will avoid this router, if there's
