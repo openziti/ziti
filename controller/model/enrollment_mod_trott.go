@@ -84,11 +84,19 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apiErr
 	}
 
+	serverUris, err := routerCsrUris(serverCsr, txRouter.Id, "server")
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
 	signingOpts := &cert.SigningOpts{
 		DNSNames:       serverCsr.DNSNames,
 		EmailAddresses: serverCsr.EmailAddresses,
 		IPAddresses:    serverCsr.IPAddresses,
-		URIs:           serverCsr.URIs,
+		URIs:           serverUris,
 	}
 
 	srvCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, signingOpts)
@@ -109,11 +117,19 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
+	clientUris, err := routerCsrUris(clientCsr, txRouter.Id, "client")
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
 	signingOpts = &cert.SigningOpts{
 		DNSNames:       clientCsr.DNSNames,
 		EmailAddresses: clientCsr.EmailAddresses,
 		IPAddresses:    clientCsr.IPAddresses,
-		URIs:           clientCsr.URIs,
+		URIs:           clientUris,
 	}
 
 	clientCsr.Subject.CommonName = txRouter.Id

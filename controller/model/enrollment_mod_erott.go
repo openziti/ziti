@@ -17,9 +17,14 @@
 package model
 
 import (
+	"crypto/x509"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common/cert"
@@ -31,6 +36,7 @@ import (
 const (
 	EdgeRouterEnrollmentCommonNameInvalidCode    = "EDGE_ROUTER_ENROLL_COMMON_NAME_INVALID"
 	EdgeRouterEnrollmentCommonNameInvalidMessage = "The edge router CSR enrollment must have a common name that matches the edge router's id"
+	RouterCsrSpiffeIdNotAllowedCode              = "ROUTER_CSR_SPIFFE_ID_NOT_ALLOWED"
 	MethodEnrollEdgeRouterOtt                    = "erott"
 )
 
@@ -92,11 +98,12 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid client CSR"))
 	}
 
-	serverCertRaw, err := module.ProcessServerCsrPem(serverCertCsrPem)
+	serverCertRaw, err := module.ProcessServerCsrPem(serverCertCsrPem, edgeRouter.Id)
 
 	if err != nil {
 		apiError := apierror.NewCouldNotProcessCsr()
-		apiError.Cause = errors.New("invalid server CSR")
+		apiError.Cause = err
+		apiError.AppendCause = true
 		return nil, apiError
 	}
 
@@ -104,7 +111,8 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	if err != nil {
 		apiError := apierror.NewCouldNotProcessCsr()
-		apiError.Cause = errors.New("invalid client CSR")
+		apiError.Cause = err
+		apiError.AppendCause = true
 		return nil, apiError
 	}
 
@@ -147,7 +155,9 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	}, nil
 }
 
-func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte) ([]byte, error) {
+// ProcessServerCsrPem signs a router's server cert CSR with the API server signer, copying the CSR's SANs.
+// It returns an error if the CSR requests a SPIFFE ID.
+func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte, routerId string) ([]byte, error) {
 	if len(serverCertCsrPem) == 0 {
 		return nil, errors.New("empty server cert csr")
 	}
@@ -161,11 +171,16 @@ func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte) ([]by
 		return nil, apiErr
 	}
 
+	uris, err := routerCsrUris(serverCsr, routerId, "server")
+	if err != nil {
+		return nil, err
+	}
+
 	so := &cert.SigningOpts{
 		DNSNames:       serverCsr.DNSNames,
 		EmailAddresses: serverCsr.EmailAddresses,
 		IPAddresses:    serverCsr.IPAddresses,
-		URIs:           serverCsr.URIs,
+		URIs:           uris,
 	}
 
 	serverCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, so)
@@ -177,6 +192,8 @@ func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte) ([]by
 	return serverCert, nil
 }
 
+// ProcessClientCsrPem signs a router's client cert CSR with the control client signer, copying the CSR's
+// SANs. It returns an error if the CSR's common name isn't edgeRouterId or the CSR requests a SPIFFE ID.
 func (module *EnrollModuleEr) ProcessClientCsrPem(clientCertCsrPem []byte, edgeRouterId string) ([]byte, error) {
 	if len(clientCertCsrPem) == 0 {
 		return nil, errors.New("empty client cert csr")
@@ -188,11 +205,16 @@ func (module *EnrollModuleEr) ProcessClientCsrPem(clientCertCsrPem []byte, edgeR
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
+	uris, err := routerCsrUris(clientCsr, edgeRouterId, "client")
+	if err != nil {
+		return nil, err
+	}
+
 	so := &cert.SigningOpts{
 		DNSNames:       clientCsr.DNSNames,
 		EmailAddresses: clientCsr.EmailAddresses,
 		IPAddresses:    clientCsr.IPAddresses,
-		URIs:           clientCsr.URIs,
+		URIs:           uris,
 	}
 
 	if clientCsr.Subject.CommonName != edgeRouterId {
@@ -212,4 +234,25 @@ func (module *EnrollModuleEr) ProcessClientCsrPem(clientCertCsrPem []byte, edgeR
 	}
 
 	return cltCert, nil
+}
+
+// routerCsrUris returns the URI SANs to copy from a router CSR into its signed cert. If the CSR requests a
+// SPIFFE ID it logs a warning and returns an ApiError instead, since only the controller may assign one.
+// routerId and csrType ("client" or "server") identify the CSR in the log and the error.
+func routerCsrUris(csr *x509.CertificateRequest, routerId string, csrType string) ([]*url.URL, error) {
+	for _, uri := range csr.URIs {
+		if strings.EqualFold(uri.Scheme, "spiffe") {
+			pfxlog.Logger().
+				WithField("routerId", routerId).
+				WithField("csrType", csrType).
+				WithField("uri", uri.String()).
+				Warn("rejected router CSR that requests a SPIFFE ID")
+			return nil, &errorz.ApiError{
+				AppCode: RouterCsrSpiffeIdNotAllowedCode,
+				Message: fmt.Sprintf("the router %s CSR requests SPIFFE ID %s, router CSRs may not request SPIFFE IDs", csrType, uri),
+				Status:  http.StatusBadRequest,
+			}
+		}
+	}
+	return csr.URIs, nil
 }
