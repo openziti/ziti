@@ -207,7 +207,7 @@ func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgre
 				if err := dst.SendPayload(payload, timeout, payloadType); err != nil {
 					return err
 				}
-				log.WithFields(payload.GetLoggerFields()).Debugf("=> %s", string(dstAddr))
+				log.WithFields(payload.GetLoggerFields()).Tracef("=> %s", string(dstAddr))
 				return nil
 			} else {
 				return fmt.Errorf("cannot forward payload, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
@@ -230,7 +230,7 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 				if err := dst.SendAcknowledgement(acknowledgement); err != nil {
 					return err
 				}
-				log.Debugf("=> %s", string(dstAddr))
+				log.Tracef("=> %s", string(dstAddr))
 				return nil
 
 			} else {

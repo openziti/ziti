@@ -647,11 +647,11 @@ func (self *edgeXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	}
 
 	log = log.WithFields(edge.GetLoggerFields(msg))
-	log.Debug("processing")
+	log.Trace("processing")
 
 	switch msg.ContentType {
 	case edge.ContentTypeData:
-		log.Debugf("received data message with payload size %v", len(msg.Body))
+		log.Tracef("received data message with payload size %v", len(msg.Body))
 		return msg.Body, self.getHeaderMap(msg), nil
 
 	case edge.ContentTypeStateClosed:
