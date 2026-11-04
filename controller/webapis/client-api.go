@@ -21,14 +21,12 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/openziti/edge-api/rest_client_api_client"
 	"github.com/openziti/edge-api/rest_client_api_server"
 	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/xweb/v3"
 	"github.com/openziti/ziti/v2/controller/api"
-	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/response"
 	"github.com/pkg/errors"
@@ -90,8 +88,8 @@ func (factory ClientApiFactory) Binding() string {
 	return ClientApiBinding
 }
 
-func (factory ClientApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
-	clientApi, err := NewClientApiHandler(factory.appEnv, options)
+func (factory ClientApiFactory) New(serverConfig *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
+	clientApi, err := NewClientApiHandler(serverConfig, factory.appEnv, options)
 
 	if err != nil {
 		return nil, err
@@ -136,18 +134,18 @@ func (clientApi ClientApiHandler) IsDefault() bool {
 	return true
 }
 
-func NewClientApiHandler(ae *env.AppEnv, options map[interface{}]interface{}) (*ClientApiHandler, error) {
+func NewClientApiHandler(serverConfig *xweb.ServerConfig, ae *env.AppEnv, options map[interface{}]interface{}) (*ClientApiHandler, error) {
 	clientApi := &ClientApiHandler{
 		options: options,
 		appEnv:  ae,
 	}
 
-	clientApi.handler = clientApi.newHandler(ae)
+	clientApi.handler = clientApi.newHandler(ae, serverConfig)
 
 	return clientApi, nil
 }
 
-func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
+func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv, serverConfig *xweb.ServerConfig) http.Handler {
 	innerClientHandler := ae.ClientApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -206,5 +204,5 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 		innerClientHandler.ServeHTTP(rw, r)
 	})
 
-	return api.TimeoutHandler(api.WrapCorsHandler(handler), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
+	return wrapWithTimeout(handler, serverConfig)
 }
