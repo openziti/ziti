@@ -387,6 +387,17 @@ message PeerStateChange {
   string version = 2;
   PeerState state = 3;
   repeated Listener listeners = 4;
+
+  // storeIndex is the index of the sending controller's store that this statement rests on. It orders one
+  // controller's statement about whether the router exists against another's, which nothing else does. It
+  // says nothing about reachability, which the store does not answer.
+  //
+  // A Removed carries an index at or after the point its non-existence was read, which stays true because
+  // router ids are not reused. The others carry one at or before the point they were observed, since a
+  // router that exists now may not later.
+  //
+  // Zero means the sender has no index to offer, as a controller running without raft does not.
+  uint64 storeIndex = 5;
 }
 
 message PeerStateChanges {

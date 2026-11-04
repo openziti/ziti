@@ -631,6 +631,10 @@ type RouterDataModel struct {
 	// construction; a nil-pointer Load means no dispatch.
 	routerConfigSubscriber atomic.Pointer[RouterConfigEventSubscriber]
 
+	// routerSubscriber receives notifications for Router entity events. Set via
+	// SetRouterSubscriber after construction; a nil-pointer Load means no dispatch.
+	routerSubscriber atomic.Pointer[RouterEventSubscriber]
+
 	lock  sync.Mutex
 	index uint64
 }
@@ -969,6 +973,8 @@ func (rdm *RouterDataModel) Handle(index uint64, event *edge_ctrl_pb.DataState_E
 }
 
 // HandleRouterEvent applies a Router create/update/delete delta to the RDM cache.
+// The registered RouterEventSubscriber, if any, is notified after the cache has
+// been updated.
 // On the receiver side, when the event is for the local router (selfRouterId)
 // and the action is not Delete, also GC any router-target configs in
 // rdm.Configs whose IDs are no longer referenced by the new Router.Configs
@@ -988,11 +994,18 @@ func (rdm *RouterDataModel) Handle(index uint64, event *edge_ctrl_pb.DataState_E
 func (rdm *RouterDataModel) HandleRouterEvent(event *edge_ctrl_pb.DataState_Event, model *edge_ctrl_pb.DataState_Event_Router) {
 	if event.Action == edge_ctrl_pb.DataState_Delete {
 		rdm.Routers.Remove(model.Router.Id)
+		if sub := rdm.RouterSubscriber(); sub != nil {
+			sub.OnRouterRemoved(model.Router.Id)
+		}
 		return
 	}
 
 	prev, _ := rdm.Routers.Get(model.Router.Id)
 	rdm.Routers.Set(model.Router.Id, model.Router)
+
+	if sub := rdm.RouterSubscriber(); sub != nil {
+		sub.OnRouterChanged(model.Router)
+	}
 
 	selfId := rdm.SelfRouterId()
 	if selfId == "" || model.Router.Id != selfId || prev == nil {
@@ -1428,6 +1441,27 @@ func (rdm *RouterDataModel) SetRouterConfigSubscriber(s RouterConfigEventSubscri
 // RouterConfigSubscriber returns the currently-registered subscriber, or nil.
 func (rdm *RouterDataModel) RouterConfigSubscriber() RouterConfigEventSubscriber {
 	if p := rdm.routerConfigSubscriber.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
+// SetRouterSubscriber registers (or clears, when s is nil) the subscriber that
+// receives Router entity events. Subsequent HandleRouterEvent calls dispatch
+// through s. Replaces any previous subscriber. This sets only the hook; bootstrap
+// and diff-on-resync are handled by the state manager that owns the subscriber
+// lifecycle.
+func (rdm *RouterDataModel) SetRouterSubscriber(s RouterEventSubscriber) {
+	if s == nil {
+		rdm.routerSubscriber.Store(nil)
+		return
+	}
+	rdm.routerSubscriber.Store(&s)
+}
+
+// RouterSubscriber returns the currently-registered subscriber, or nil.
+func (rdm *RouterDataModel) RouterSubscriber() RouterEventSubscriber {
+	if p := rdm.routerSubscriber.Load(); p != nil {
 		return *p
 	}
 	return nil

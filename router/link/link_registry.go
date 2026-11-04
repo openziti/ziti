@@ -61,6 +61,7 @@ func NewLinkRegistry(routerEnv Env) xlink.Registry {
 		events:                 make(chan event, 16),
 		env:                    routerEnv,
 		destinations:           map[string]*linkDest{},
+		removedDests:           map[string]removedDest{},
 		linkStateQueue:         &linkStateHeap{},
 		triggerNotifyC:         make(chan struct{}, 1),
 		ctrlSynchronizer:       newCtrlSynchronizer(),
@@ -89,7 +90,11 @@ type linkRegistryImpl struct {
 	// fullRefreshSendTimeout bounds one attempt at the reconnect announcement. A field so tests can reach the
 	// timeout, which is the only way to tell a message that was queued and then discarded from one that
 	// reached the wire.
-	fullRefreshSendTimeout   time.Duration
+	fullRefreshSendTimeout time.Duration
+	// removedDests remembers, per destination, the controller store index a removal was computed against, so
+	// a report of that destination computed against an older index cannot bring it back. Entries are dropped
+	// by a newer report and swept by evaluateDestinations; see removedDestTTL.
+	removedDests             map[string]removedDest
 	linkStateQueue           *linkStateHeap
 	events                   chan event
 	triggerNotifyC           chan struct{}
@@ -202,17 +207,30 @@ func (self *linkRegistryImpl) DebugForgetLink(linkId string) bool {
 
 func (self *linkRegistryImpl) LinkAccepted(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	// Queued once the lock is released: queueEvent blocks while the event loop is backlogged, and holding the
+	// lock through that stalls every other LinkAccepted and DialSucceeded behind it.
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
 func (self *linkRegistryImpl) DialSucceeded(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
-	defer self.Unlock()
-	return self.applyLink(link)
+	existing, success, pending := self.applyLinkLocked(link)
+	self.Unlock()
+	for _, evt := range pending {
+		self.queueEvent(evt)
+	}
+	return existing, success
 }
 
-func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
+// applyLinkLocked applies the incoming link. The caller must hold self.Lock().
+// Returns any events that should be queued after the lock is released; the
+// caller is responsible for invoking queueEvent on each one.
+func (self *linkRegistryImpl) applyLinkLocked(link xlink.Xlink) (xlink.Xlink, bool, []event) {
 	log := logrus.WithField("dest", link.DestinationId()).
 		WithField("linkProtocol", link.LinkProtocol()).
 		WithField("newLinkId", link.Id()).
@@ -221,8 +239,10 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 
 	if link.IsClosed() {
 		log.Info("link being registered, but is already closed, skipping registration")
-		return nil, false
+		return nil, false, nil
 	}
+
+	var pending []event
 
 	if existing, _ := self.GetLink(link.Key()); existing != nil {
 		log = log.WithField("currentLinkId", existing.Id()).
@@ -231,7 +251,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		if existing == link {
 			log.Warn("link was re-applied, should not happen, not making any changes")
 			debugz.DumpLocalStack()
-			return nil, true
+			return nil, true, nil
 		}
 
 		// If the id is the same, we want to throw away the older one, since the new one is a replacement.
@@ -255,40 +275,28 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 					}
 				})
 			}
-			return existing, false
+			return existing, false, nil
 		}
 
-		// make sure we don't block the registry loop
-		go func() {
-			log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
+		log.Info("duplicate link detected. closing current link (current link id is >= than new link id)")
 
-			self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
-				// report link fault, then close link after allowing some time for circuits to be re-routed
-				fault := &ctrl_pb.Fault{
-					Id:        existing.Id(),
-					Subject:   ctrl_pb.FaultSubject_LinkDuplicate,
-					Iteration: existing.Iteration(),
-				}
+		// Carried by the link state rather than sent from here, so the notification cycle retries it until every
+		// controller has it. A replaced link this router accepted has no state here, and its dialer reports the
+		// fault instead.
+		pending = append(pending, &addLinkFaultForReplacedLink{link: existing})
 
-				if err := protobufs.MarshalTyped(fault).WithTimeout(time.Second).SendAndWaitForWire(ch); err != nil {
-					log.WithField("ctrlId", ctrlId).
-						WithError(err).
-						Error("failed to send router fault when duplicate link detected")
-				}
-			})
-
-			// if we're not the link dialer, wait longer to let the dialer close the link
-			closeTimeout := func() time.Duration {
-				if existing.IsDialed() {
-					return time.Minute
-				}
-				return 75 * time.Second
-			}()
-
-			time.AfterFunc(closeTimeout, func() {
-				_ = existing.Close()
-			})
+		// Closed later, giving circuits time to be rerouted. A router that did not dial the link waits longer,
+		// so its dialer closes it first.
+		closeTimeout := func() time.Duration {
+			if existing.IsDialed() {
+				return time.Minute
+			}
+			return 75 * time.Second
 		}()
+
+		time.AfterFunc(closeTimeout, func() {
+			_ = existing.Close()
+		})
 	}
 
 	self.linkMapLocks.Lock()
@@ -296,7 +304,10 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.linkByIdMap[link.Id()] = link
 	self.linkMapLocks.Unlock()
 
-	self.updateLinkStateEstablished(link)
+	pending = append(pending, &updateLinkStatusForLink{
+		link:   link,
+		status: StatusEstablished,
+	})
 
 	// A link samples its heartbeat settings while binding and only joins the
 	// registry afterwards, so a change pushed in between missed it. A no-op when the
@@ -305,11 +316,14 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 
 	log.Info("link registered")
 
-	return nil, true
+	return nil, true, pending
 }
 
 func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
 	markLinkStateClosed := false
+	// applyLinkLocked checks that a link is open and inserts it under the registry lock. Without it here, a link
+	// closing between the two is not found, and is then registered after its close was handled.
+	self.Lock()
 	self.linkMapLocks.Lock()
 	if val := self.linkMap[link.Key()]; val == link {
 		delete(self.linkMap, link.Key())
@@ -320,6 +334,7 @@ func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
 		delete(self.linkByIdMap, link.Id())
 	}
 	self.linkMapLocks.Unlock()
+	self.Unlock()
 
 	if markLinkStateClosed {
 		self.updateLinkStateClosed(link)
@@ -552,13 +567,14 @@ func (self *linkRegistryImpl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
+func (self *linkRegistryImpl) UpdateLinkDest(ctrlId string, storeIndex uint64, id string, version string, healthy bool, listeners []*ctrl_pb.Listener) {
 	updateEvent := &linkDestUpdate{
-		id:        id,
-		ctrlId:    ctrlId,
-		version:   version,
-		healthy:   healthy,
-		listeners: listeners,
+		id:         id,
+		ctrlId:     ctrlId,
+		storeIndex: storeIndex,
+		version:    version,
+		healthy:    healthy,
+		listeners:  listeners,
 	}
 
 	self.queueEvent(updateEvent)
@@ -588,9 +604,10 @@ func (self *linkRegistryImpl) GetDestinationListeners() (map[string][]*ctrl_pb.L
 	return nil, false
 }
 
-func (self *linkRegistryImpl) RemoveLinkDest(id string) {
+func (self *linkRegistryImpl) RemoveLinkDest(id string, storeIndex uint64) {
 	self.queueEvent(&removeLinkDest{
-		id: id,
+		id:         id,
+		storeIndex: storeIndex,
 	})
 }
 
@@ -723,8 +740,32 @@ func (self *linkRegistryImpl) sendLinkFaultDirect(link xlink.Xlink) {
 	})
 }
 
+// destAbandonedAfter is how long a destination has to go without any connected controller saying it is up
+// before the router stops tracking it. It is deliberately far longer than any controller outage or cluster
+// membership change takes, so lapsed affirmation only ever means the destination is genuinely gone.
+const destAbandonedAfter = 48 * time.Hour
+
+// removedDestTTL is how long a removed destination is remembered so a peer state computed before the removal
+// cannot recreate it. A controller computes peer state against its own store, so one lagging in replication
+// reports from before the removal for as long as it lags. The bound is far longer than any lag or outage a
+// working cluster sees; a controller lagging past it removes the destination again once it applies the delete.
+const removedDestTTL = 48 * time.Hour
+
 func (self *linkRegistryImpl) evaluateDestinations() {
+	connectedCtrls := map[string]struct{}{}
+	for ctrlId := range self.ctrls.GetAll() {
+		connectedCtrls[ctrlId] = struct{}{}
+	}
+	now := time.Now()
+
 	for destId, dest := range self.destinations {
+		// Refresh the affirmation while any connected controller still says the destination is up. Health
+		// reports only arrive on change (and on a full resync when a controller connects), so a destination
+		// that is up and quiet would otherwise look no different from one nobody has vouched for in days.
+		if dest.affirmedBy(connectedCtrls) {
+			dest.lastAffirmedAt = now
+		}
+
 		hasEstablishedLinks := false
 		for _, state := range dest.linkMap {
 			// verify that links marked as established have an open link. There's a small chance that a link established
@@ -745,11 +786,17 @@ func (self *linkRegistryImpl) evaluateDestinations() {
 			self.evaluateLinkState(state)
 		}
 
-		// we are notified of deleted routers. In case we're unreachable while a router is deleted,
-		// we will also stop trying to contact unhealthy routers after a period. If a destination
-		// has nothing to dial, it should also be removed
-		if len(dest.linkMap) == 0 || (!dest.healthy && !hasEstablishedLinks && time.Since(dest.unhealthyAt) > 48*time.Hour) {
+		// We are notified of deleted routers, but that notification can be missed: we may be unreachable when
+		// the router is deleted, and a controller's resync on connect only covers the routers it currently
+		// sees, so it never says a destination is gone. Lapsed affirmation is the backstop.
+		if dest.abandoned(hasEstablishedLinks, now) {
 			delete(self.destinations, destId)
+		}
+	}
+
+	for destId, removed := range self.removedDests {
+		if now.Sub(removed.at) > removedDestTTL {
+			delete(self.removedDests, destId)
 		}
 	}
 }
@@ -809,6 +856,7 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 		log = log.WithField("linkId", state.linkId).WithField("iteration", iteration)
 		log.Info("queuing link to dial")
 
+		attempt := state.newDialAttempt(uint32(iteration))
 		err := self.env.GetLinkDialerPool().QueueOrError(func() {
 			defer state.dialActive.Store(false)
 
@@ -820,7 +868,7 @@ func (self *linkRegistryImpl) evaluateLinkState(state *linkState) {
 			}
 
 			log.Info("dialing link")
-			link, err := state.dialer.Dial(state)
+			link, err := attempt.dialer.Dial(attempt)
 			if err != nil {
 				log.WithError(err).Error("error dialing link")
 				self.dialFailed(state, false)

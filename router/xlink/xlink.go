@@ -30,11 +30,15 @@ import (
 
 // Registry contains known link instances and manages link de-duplication
 type Registry interface {
-	// UpdateLinkDest adds or updates the state of the given destination, as reported by controller ctrlId
-	UpdateLinkDest(ctrlId string, id string, version string, healthy bool, listeners []*ctrl_pb.Listener)
+	// UpdateLinkDest adds or updates the state of the given destination.
+	// ctrlId identifies which controller is reporting the state. storeIndex is the controller store index
+	// the report was computed against, and zero where the reporter has none to offer.
+	UpdateLinkDest(ctrlId string, storeIndex uint64, id string, version string, healthy bool, listeners []*ctrl_pb.Listener)
 
-	// RemoveLinkDest removes the given link destination
-	RemoveLinkDest(id string)
+	// RemoveLinkDest removes the given link destination. storeIndex is the controller store index the
+	// removal was computed against; a non-zero one is remembered, so a report of the destination computed
+	// against an older index cannot bring it back. Pass zero where there is no such index.
+	RemoveLinkDest(id string, storeIndex uint64)
 
 	// GetLink returns the link to the given router, of the given type, if one exists
 	GetLink(linkKey string) (Xlink, bool)

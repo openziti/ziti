@@ -38,23 +38,39 @@ type event interface {
 }
 
 type removeLinkDest struct {
-	id string
+	id         string
+	storeIndex uint64
 }
 
 func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 	dest := registry.destinations[self.id]
 	delete(registry.destinations, self.id)
+
+	// A removal computed against a known store index leaves a marker, so a report of this destination that
+	// was computed before the router was deleted cannot recreate it. Controllers compute peer state
+	// independently and nothing orders their messages, so such a report can arrive after the removal.
+	if self.storeIndex > 0 {
+		registry.removedDests[self.id] = removedDest{storeIndex: self.storeIndex, at: time.Now()}
+	}
+
 	if dest != nil {
 		for _, state := range dest.linkMap {
 			state.updateStatus(StatusDestRemoved)
-			if link, _ := registry.GetLink(state.linkId); link != nil {
-				if err := link.Close(); err != nil {
-					pfxlog.Logger().
-						WithField("linkKey", state.linkKey).
-						WithField("linkId", link.Id()).
-						WithError(err).
-						Error("error closing link")
-				}
+			// By id: GetLink keys on the link key, and this is a link id, so it never matched and the links
+			// a removed destination owns were left open.
+			if link, _ := registry.GetLinkById(state.linkId); link != nil {
+				// Off the loop: closing takes the link channel's lock, and a goroutine holding that lock can
+				// be blocked queueing a link event to this loop.
+				linkKey := state.linkKey
+				go func() {
+					if err := link.Close(); err != nil {
+						pfxlog.Logger().
+							WithField("linkKey", linkKey).
+							WithField("linkId", link.Id()).
+							WithError(err).
+							Error("error closing link")
+					}
+				}()
 			}
 		}
 	}
@@ -63,32 +79,79 @@ func (self *removeLinkDest) Handle(registry *linkRegistryImpl) {
 type linkDestUpdate struct {
 	id string
 	// ctrlId is the controller the update came from, empty for a synthetic update from a local rescan.
-	ctrlId    string
-	version   string
-	healthy   bool
-	listeners []*ctrl_pb.Listener
+	ctrlId     string
+	storeIndex uint64
+	version    string
+	healthy    bool
+	listeners  []*ctrl_pb.Listener
+}
+
+// supersededByRemoval reports whether this update is an older statement about the destination's existence
+// than a removal already applied, and clears the marker when it is a newer one.
+//
+// The comparison is only sound for existence, which is what the store answers. Health is not in the store:
+// it is each controller's own view of what it is connected to, which the registry unions across controllers,
+// so it is never suppressed here. A controller lagging in replication reports a low index alongside a
+// perfectly good health report, and dropping that would strand a destination that is up.
+//
+// An update at the same index as the removal loses. A router being deleted stays in a controller's connected
+// map until its control channel teardown runs, so the same store state can still produce a healthy report.
+//
+// An update with no index loses too, and leaves the marker in place: it cannot be ordered against the removal.
+// Only a removal with an index leaves a marker, so this never holds up a controller without raft.
+func (self *linkDestUpdate) supersededByRemoval(registry *linkRegistryImpl) bool {
+	removed, ok := registry.removedDests[self.id]
+	if !ok {
+		return false
+	}
+
+	if self.storeIndex <= removed.storeIndex {
+		pfxlog.Logger().
+			WithField("routerId", self.id).
+			WithField("ctrlId", self.ctrlId).
+			WithField("storeIndex", self.storeIndex).
+			WithField("removedAtStoreIndex", removed.storeIndex).
+			Info("ignoring link destination update older than the removal already applied")
+		return true
+	}
+
+	delete(registry.removedDests, self.id)
+	return false
 }
 
 func (self *linkDestUpdate) Handle(registry *linkRegistryImpl) {
-	dest := registry.destinations[self.id]
+	if self.supersededByRemoval(registry) {
+		return
+	}
 
-	becameHealthy := false
+	dest := registry.destinations[self.id]
 
 	if dest == nil {
 		dest = newLinkDest(self.id)
 		registry.destinations[self.id] = dest
-	} else {
-		if !dest.healthy && self.healthy {
-			becameHealthy = true
-		}
 	}
-	dest.update(self)
-	// Cache the latest listener set so the registry's local dialer
-	// rescan path (localDialersChangedEvent) can re-evaluate matches
-	// without an upstream listener event.
-	dest.listeners = self.listeners
 
+	wasHealthy := dest.healthy
+	dest.updateHealthFromCtrl(self.ctrlId, self.healthy)
+	dest.healthy = dest.isHealthy()
+
+	if !wasHealthy && dest.healthy {
+		dest.unhealthyAt = time.Time{}
+	} else if wasHealthy && !dest.healthy {
+		dest.unhealthyAt = time.Now()
+	}
+
+	// An unhealthy report carries no version or listeners, and the destination can stay up through one, since
+	// health is a union across controllers. Only a healthy report updates them, or reconciles link states
+	// against them.
 	if self.healthy {
+		dest.lastAffirmedAt = time.Now()
+		dest.version.Store(self.version)
+		// Cache the latest listener set so the registry's local dialer
+		// rescan path (localDialersChangedEvent) can re-evaluate matches
+		// without an upstream listener event.
+		dest.listeners = self.listeners
+		becameHealthy := !wasHealthy && dest.healthy
 		// Peer listener updates are authoritative about which listeners the peer
 		// offers, so a vanished or moved listener closes its established link
 		// here. This is long-standing peer-driven behavior, independent of the
@@ -273,6 +336,17 @@ func (self *updateLinkStatusForLink) Handle(registry *linkRegistryImpl) {
 	}
 
 	if state.status == StatusDestRemoved {
+		return
+	}
+
+	// A status event is queued after the link map change it reports, outside the lock that ordered that change,
+	// so events can be handled out of order. The state follows the link the map holds now.
+	current, _ := registry.GetLink(link.Key())
+	if self.status == StatusEstablished && current != link {
+		return
+	}
+	if self.status == StatusLinkFailed && current != nil && current != link {
+		state.addPendingLinkFault(link.Id(), link.Iteration())
 		return
 	}
 

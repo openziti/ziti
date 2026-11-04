@@ -43,6 +43,38 @@ type fakeCtrlChannel struct {
 	ctrlchan.CtrlChannel
 	closed  atomic.Bool
 	onClose func()
+
+	sendLock sync.Mutex
+	sent     []*channel.Message
+}
+
+// GetDefaultSender returns a sender that records what was sent and reports it written, which is what a
+// SendAndWaitForWire caller blocks on.
+func (f *fakeCtrlChannel) GetDefaultSender() channel.Sender { return f }
+
+func (f *fakeCtrlChannel) Send(s channel.Sendable) error {
+	f.sendLock.Lock()
+	f.sent = append(f.sent, s.Msg())
+	f.sendLock.Unlock()
+
+	listener := s.SendListener()
+	listener.NotifyQueued()
+	listener.NotifyBeforeWrite()
+	listener.NotifyAfterWrite()
+	return nil
+}
+
+func (f *fakeCtrlChannel) TrySend(s channel.Sendable) (bool, error) {
+	return true, f.Send(s)
+}
+
+func (f *fakeCtrlChannel) CloseNotify() <-chan struct{} { return nil }
+
+// sentMessages returns a copy of what has been sent, safe to read while sends continue.
+func (f *fakeCtrlChannel) sentMessages() []*channel.Message {
+	f.sendLock.Lock()
+	defer f.sendLock.Unlock()
+	return append([]*channel.Message(nil), f.sent...)
 }
 
 func (f *fakeCtrlChannel) Close() error {
@@ -72,6 +104,16 @@ func newConnectTestNetwork(t *testing.T) (*model.TestContext, *Network, transpor
 	return ctx, network, addr
 }
 
+// testConfigOf returns the config a test network was built with, for a test that needs to change what the
+// controller answers about itself. IsLeader reads raft state from the config, so this is how a test says
+// whether it is clustered and whether it is the leader.
+func testConfigOf(t *testing.T, network *Network) *testConfig {
+	t.Helper()
+	cfg, ok := network.config.(*testConfig)
+	require.True(t, ok, "test network was not built by newConnectTestNetwork")
+	return cfg
+}
+
 // TestConnectRouter_RejectsAndKicksWhenBusy: a connect into an occupied slot returns ErrConnectRejected,
 // kicks the occupant (whose teardown clears the slot), and a subsequent redial then connects cleanly.
 func TestConnectRouter_RejectsAndKicksWhenBusy(t *testing.T) {
@@ -82,12 +124,12 @@ func TestConnectRouter_RejectsAndKicksWhenBusy(t *testing.T) {
 	// Simulate the real close handler: closing the occupant runs its DisconnectRouter.
 	currentCh.onClose = func() { network.DisconnectRouter(cur) }
 
-	require.NoError(t, network.ConnectRouter(cur))
+	require.NoError(t, network.QueueRouterConnect(cur))
 	require.Equal(t, cur, network.Router.GetConnected("r1"))
 
 	newCh := &fakeCtrlChannel{}
 	rNew := model.NewRouterForTest("r1", "", addr, newCh, 0, false)
-	err := network.ConnectRouter(rNew)
+	err := network.QueueRouterConnect(rNew)
 	require.ErrorIs(t, err, ErrConnectRejected)
 	require.True(t, IsConnectRejected(err))
 	require.True(t, currentCh.IsClosed(), "occupant should have been kicked")
@@ -96,7 +138,7 @@ func TestConnectRouter_RejectsAndKicksWhenBusy(t *testing.T) {
 
 	// Redial into the now-clear slot succeeds.
 	rRedial := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(rRedial))
+	require.NoError(t, network.QueueRouterConnect(rRedial))
 	require.Equal(t, rRedial, network.Router.GetConnected("r1"))
 	require.True(t, rRedial.Connected.Load())
 }
@@ -106,7 +148,7 @@ func TestConnectRouter_SetsUpWhenClear(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
 
 	r := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(r))
+	require.NoError(t, network.QueueRouterConnect(r))
 	require.Equal(t, r, network.Router.GetConnected("r1"))
 	require.True(t, r.Connected.Load())
 }
@@ -117,7 +159,7 @@ func TestDisconnectRouter_IgnoresStaleConnection(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
 
 	rNew := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(rNew))
+	require.NoError(t, network.QueueRouterConnect(rNew))
 	require.Equal(t, rNew, network.Router.GetConnected("r1"))
 
 	// A stale disconnect for a different (old) instance of the same router id.
@@ -133,7 +175,7 @@ func TestDisconnectRouter_CurrentTearsDown(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
 
 	r := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(r))
+	require.NoError(t, network.QueueRouterConnect(r))
 	require.Equal(t, r, network.Router.GetConnected("r1"))
 
 	network.DisconnectRouter(r)
@@ -153,19 +195,19 @@ func TestReject_DisplacesOccupantThatCannotTearItselfDown(t *testing.T) {
 	// channel already closed before the reject and one whose close handler has already run.
 	currentCh := &fakeCtrlChannel{}
 	cur := model.NewRouterForTest("r1", "", addr, currentCh, 0, false)
-	require.NoError(t, network.ConnectRouter(cur))
+	require.NoError(t, network.QueueRouterConnect(cur))
 	require.Equal(t, cur, network.Router.GetConnected("r1"))
 	currentCh.closed.Store(true)
 
 	rNew := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.ErrorIs(t, network.ConnectRouter(rNew), ErrConnectRejected)
+	require.ErrorIs(t, network.QueueRouterConnect(rNew), ErrConnectRejected)
 	require.Nil(t, network.Router.GetConnected("r1"), "reject must displace an occupant that cannot tear itself down")
 	require.False(t, cur.Connected.Load())
 	require.False(t, rNew.Connected.Load(), "rejected connect must not be registered")
 
 	// The redial therefore makes progress instead of bouncing off the slot forever.
 	rRedial := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(rRedial))
+	require.NoError(t, network.QueueRouterConnect(rRedial))
 	require.Equal(t, rRedial, network.Router.GetConnected("r1"))
 	require.True(t, rRedial.Connected.Load())
 }
@@ -181,7 +223,7 @@ func TestConnectRouter_RefusesAlreadyClosedChannel(t *testing.T) {
 	deadCh.closed.Store(true)
 	r := model.NewRouterForTest("r1", "", addr, deadCh, 0, false)
 
-	err := network.ConnectRouter(r)
+	err := network.QueueRouterConnect(r)
 	require.ErrorIs(t, err, ErrConnectChannelClosed)
 	require.True(t, IsConnectRejected(err), "an already-closed channel is a refusal the router redials after")
 	require.Nil(t, network.Router.GetConnected("r1"), "a closed connection must not occupy the slot")
@@ -189,7 +231,7 @@ func TestConnectRouter_RefusesAlreadyClosedChannel(t *testing.T) {
 
 	// A subsequent healthy connect is unaffected.
 	rOk := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(rOk))
+	require.NoError(t, network.QueueRouterConnect(rOk))
 	require.Equal(t, rOk, network.Router.GetConnected("r1"))
 }
 
@@ -205,7 +247,7 @@ func TestConnectDisconnectRace(t *testing.T) {
 			defer wg.Done()
 			if connect {
 				r := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-				_ = network.ConnectRouter(r)
+				_ = network.QueueRouterConnect(r)
 			} else if cur := network.Router.GetConnected("r1"); cur != nil {
 				network.DisconnectRouter(cur)
 			}
@@ -237,6 +279,15 @@ func newFakeConnectChannel(routerId string) *fakeConnectChannel {
 
 // newPersistedRouter stores a router so the connect path can load it. Create publishes the instance it was
 // given into the router cache, which is the instance a connection must not be handed.
+// connectSetupSignal records which routers' deferred connect setup has finished. The presence callback runs
+// at the end of that setup, so it is the signal a test can wait on instead of racing it. Counting callbacks
+// is not enough here: several routers connect, and a count cannot say which one finished.
+type connectSetupSignal struct{ done sync.Map }
+
+func (self *connectSetupSignal) RouterConnected(r *model.Router)  { self.done.Store(r.Id, true) }
+func (self *connectSetupSignal) RouterDisconnected(*model.Router) {}
+func (self *connectSetupSignal) has(id string) bool               { _, ok := self.done.Load(id); return ok }
+
 func newPersistedRouter(t *testing.T, network *Network, addr transport.Address, id string) *model.Router {
 	t.Helper()
 	router := model.NewRouterForTest(id, "", addr, nil, 0, false)
@@ -347,10 +398,12 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
 
 	// The destination is left unconnected: only the source router's disconnect can recreate a stale link,
-	// so connecting a second router would add the peer-state sync to the race for no extra coverage.
+	// so connecting a second router would add the peer-state sync to the race for no extra coverage. It has
+	// to exist, since a report naming one that does not is refused.
+	newPersistedRouter(t, network, addr, "r2")
 	for i := 0; i < 200; i++ {
 		r := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-		require.NoError(t, network.ConnectRouter(r))
+		require.NoError(t, network.QueueRouterConnect(r))
 
 		reported := &ctrl_pb.RouterLinks_RouterLink{
 			Id:           fmt.Sprintf("l-%d", i),
@@ -380,6 +433,26 @@ func TestNotifyExistingLink_RaceDisconnect(t *testing.T) {
 	}
 }
 
+// TestNotifyExistingLink_RefusesGoneDestination: a report naming a destination that is neither connected nor
+// stored records no link.
+func TestNotifyExistingLink_RefusesGoneDestination(t *testing.T) {
+	_, network, addr := newConnectTestNetwork(t)
+
+	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
+	require.NoError(t, network.QueueRouterConnect(src))
+
+	network.NotifyExistingLink(src, &ctrl_pb.RouterLinks_RouterLink{
+		Id:           "l0",
+		DestRouterId: "gone",
+		LinkProtocol: "tls",
+		DialAddress:  "tcp:localhost:1234",
+		Iteration:    1,
+	})
+
+	_, found := network.Link.Get("l0")
+	require.False(t, found, "a link to a destination that no longer exists must not be recorded")
+}
+
 // TestRouterReportedLink_RepairsDestConnectedMidReport drives the interleave where both paths that pair a
 // link with its destination miss: the report resolves the destination before the link is in the table, and
 // the destination's own link build runs before the link lands there. The destination connects through
@@ -389,7 +462,9 @@ func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
 
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(src))
+	// The destination has to exist, since a report naming one that does not is refused.
+	require.NoError(t, network.Router.Create(dst, change.New()))
+	require.NoError(t, network.QueueRouterConnect(src))
 
 	report := &ctrl_pb.RouterLinks_RouterLink{
 		Id:           "l0",
@@ -404,7 +479,7 @@ func TestRouterReportedLink_RepairsDestConnectedMidReport(t *testing.T) {
 	require.Nil(t, resolved)
 
 	// The destination connects in the gap. Its link build finds nothing, the link is not in the table yet.
-	require.NoError(t, network.ConnectRouter(dst))
+	require.NoError(t, network.QueueRouterConnect(dst))
 	require.Empty(t, dst.GetLinks(), "the destination's link build must have found nothing")
 
 	// Only now does the report land, still carrying the resolution that was accurate when it was taken.
@@ -433,16 +508,23 @@ func TestRouterDelete_DropsTheLinkIndex(t *testing.T) {
 
 	gone := newPersistedRouter(t, network, addr, "r0")
 	peer := newPersistedRouter(t, network, addr, "r1")
+	other := newPersistedRouter(t, network, addr, "r2")
 	network.Link.Add(model.NewTestLink("l0", gone, peer))
+	network.Link.Add(model.NewTestLink("l1", peer, other))
 
 	require.Len(t, network.Link.LinksForRouter(gone.Id), 1)
-	require.Len(t, network.Link.LinksForRouter(peer.Id), 1)
+	require.Len(t, network.Link.LinksForRouter(peer.Id), 2)
 
 	require.NoError(t, network.Router.Delete(gone.Id, change.New()))
 
 	require.Eventually(t, func() bool { return len(network.Link.LinksForRouter(gone.Id)) == 0 },
 		2*time.Second, 10*time.Millisecond, "deleting a router must drop its link index")
-	require.Len(t, network.Link.LinksForRouter(peer.Id), 1, "the other endpoint's index must be untouched")
+
+	// The deleted router's links are retired outright, so the endpoint on the far side loses them too. A
+	// link between two surviving routers is what must be left alone.
+	require.Eventually(t, func() bool { return len(network.Link.LinksForRouter(peer.Id)) == 1 },
+		2*time.Second, 10*time.Millisecond, "the deleted router's link must be retired from the far endpoint too")
+	require.Len(t, network.Link.LinksForRouter(other.Id), 1, "a link between surviving routers must be untouched")
 }
 
 // TestRouterDelete_KeepsTheIndexOfAReusedId covers the delete cleanup running late against an id that has
@@ -483,7 +565,7 @@ func TestRouterDisable_DisconnectsConnectedRouter(t *testing.T) {
 	ch := &fakeCtrlChannel{}
 	r := model.NewRouterForTest("r1", "", addr, ch, 0, false)
 	ch.onClose = func() { network.DisconnectRouter(r) }
-	require.NoError(t, network.ConnectRouter(r))
+	require.NoError(t, network.QueueRouterConnect(r))
 
 	update := model.NewRouterForTest("r1", "", addr, nil, 0, false)
 	update.Disabled = true
@@ -515,8 +597,8 @@ func TestRouterReportedLink_RepairsDestDisplacedMidReport(t *testing.T) {
 
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	firstDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(src))
-	require.NoError(t, network.ConnectRouter(firstDst))
+	require.NoError(t, network.QueueRouterConnect(src))
+	require.NoError(t, network.QueueRouterConnect(firstDst))
 
 	// The reporting path resolves the destination, and gets the connection that is current right then.
 	resolved := network.Router.GetConnected(firstDst.Id)
@@ -525,7 +607,7 @@ func TestRouterReportedLink_RepairsDestDisplacedMidReport(t *testing.T) {
 	// That connection is replaced before the report lands.
 	network.DisconnectRouter(firstDst)
 	secondDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(secondDst))
+	require.NoError(t, network.QueueRouterConnect(secondDst))
 	require.Empty(t, secondDst.GetLinks(), "the replacement's link build must have found nothing")
 
 	report := &ctrl_pb.RouterLinks_RouterLink{
@@ -554,10 +636,19 @@ func TestRouterReportedLink_RepairsDestDisplacedMidReport(t *testing.T) {
 func TestRouterReportedLink_RepairsDestOnALaterReport(t *testing.T) {
 	_, network, addr := newConnectTestNetwork(t)
 
+	setupDone := &connectSetupSignal{}
+	network.AddRouterPresenceHandler(setupDone)
+	connect := func(r *model.Router) {
+		t.Helper()
+		require.NoError(t, network.QueueRouterConnect(r))
+		require.Eventually(t, func() bool { return setupDone.has(r.Id) }, 5*time.Second, 5*time.Millisecond,
+			"connect setup should run for %v", r.Id)
+	}
+
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	firstDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(src))
-	require.NoError(t, network.ConnectRouter(firstDst))
+	connect(src)
+	connect(firstDst)
 
 	report := &ctrl_pb.RouterLinks_RouterLink{
 		Id:           "l0",
@@ -574,7 +665,8 @@ func TestRouterReportedLink_RepairsDestOnALaterReport(t *testing.T) {
 	// cannot reach by putting the link back on the stale instance behind its back.
 	network.DisconnectRouter(firstDst)
 	secondDst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(secondDst))
+	setupDone.done.Delete(secondDst.Id)
+	connect(secondDst)
 	require.True(t, link.PointDestAt(firstDst), "putting the link back on the displaced instance")
 
 	again, created := network.Link.RouterReportedLink(report, src, firstDst)
@@ -590,7 +682,9 @@ func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
 
 	src := model.NewRouterForTest("r0", "", addr, &fakeCtrlChannel{}, 0, false)
 	dst := model.NewRouterForTest("r1", "", addr, &fakeCtrlChannel{}, 0, false)
-	require.NoError(t, network.ConnectRouter(src))
+	// The destination has to exist, since a report naming one that does not is refused.
+	require.NoError(t, network.Router.Create(dst, change.New()))
+	require.NoError(t, network.QueueRouterConnect(src))
 
 	// A link recorded while its destination was not connected, so it points at nothing.
 	report := &ctrl_pb.RouterLinks_RouterLink{
@@ -604,9 +698,11 @@ func TestConnectRouter_RepairsLinkAlreadyMissingItsDest(t *testing.T) {
 	require.True(t, created)
 	require.Nil(t, link.GetDest(), "the destination was not connected when the link was recorded")
 
-	require.NoError(t, network.ConnectRouter(dst))
+	require.NoError(t, network.QueueRouterConnect(dst))
 
-	require.Same(t, dst, link.GetDest(), "connecting the destination must repair the link")
+	// The repair runs in the deferred connect setup, not in QueueRouterConnect.
+	require.Eventually(t, func() bool { return link.GetDest() == dst }, 5*time.Second, 5*time.Millisecond,
+		"connecting the destination must repair the link")
 	require.Len(t, dst.GetLinks(), 1, "and index it on the destination")
 
 	neighbors := network.Link.ConnectedNeighborsOfRouter(src)

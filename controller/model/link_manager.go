@@ -20,6 +20,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/common/concurrency"
 	"github.com/openziti/ziti/v2/common/datastructures"
 	"github.com/openziti/ziti/v2/common/logging"
@@ -160,16 +161,71 @@ func (self *LinkManager) has(link *Link) bool {
 	return self.linkTable.has(link)
 }
 
-func (self *LinkManager) ScanForDeadLinks() {
+// ScanForDeadLinks removes links whose dialer is no longer connected to this controller, skipping any the
+// keep predicate claims.
+//
+// Sound only for links the dialer re-announces on reconnect, which is what keep is for. A router that
+// reports links the pre-gossip way sends its whole dialed set every time it reconnects, so dropping its
+// links when it goes away costs nothing: it says them all again when it returns, and while it is away this
+// controller cannot route through it in any case. A router that gossips deliberately does not re-announce,
+// leaving that to anti-entropy, so dropping its links would strand them until a digest exchange noticed.
+//
+// The dialer is the only end considered. A link whose far end is gone is still the dialer's to retire, and
+// it does so by faulting it. A link always has a source: every path that builds one stores a router, and
+// disconnect clears the router's link set rather than the link's source.
+//
+// Every candidate is re-tested before it is removed. Walking the table and removing from it are separate
+// passes, and on a large table the gap between them is wide enough for a dialer to reconnect and re-announce
+// its links. Acting on the first pass's answer then removes a link the controller has just been told about,
+// and a router that reports the pre-gossip way announces its set only on reconnect, so it does not say so
+// again until it next connects.
+func (self *LinkManager) ScanForDeadLinks(keep func(*Link) bool) {
+	dead := func(link *Link) bool {
+		if link.Src.Connected.Load() {
+			return false
+		}
+		return keep == nil || !keep(link)
+	}
+
 	var toRemove []*Link
 	self.linkTable.links.IterCb(func(_ string, link *Link) {
-		if !link.Src.Connected.Load() {
+		if dead(link) {
 			toRemove = append(toRemove, link)
 		}
 	})
 
 	for _, link := range toRemove {
-		self.Remove(link)
+		if !dead(link) {
+			pfxlog.Logger().
+				WithField("linkId", link.Id).
+				WithField("iteration", link.Iteration).
+				WithField("srcRouterId", link.Src.Id).
+				WithField("destRouterId", link.DstId).
+				Info("skipping retirement of a link whose dialer returned mid-scan")
+			continue
+		}
+
+		src := link.Src
+
+		// Whether the id is connected here under a different object is the distinction that matters when
+		// this fires: a router that is genuinely away, versus a link still pointing at a connection that has
+		// been replaced. The second is a stale pointer rather than a dead dialer, and retiring on it drops a
+		// live router's link. The two want different fixes, and nothing else records which one happened.
+		supersededSrc := false
+		if self.env != nil {
+			if current := self.env.GetManagers().Router.GetConnected(src.Id); current != nil && current != src {
+				supersededSrc = true
+			}
+		}
+
+		pfxlog.Logger().
+			WithField("linkId", link.Id).
+			WithField("iteration", link.Iteration).
+			WithField("srcRouterId", src.Id).
+			WithField("destRouterId", link.DstId).
+			WithField("supersededSrc", supersededSrc).
+			WithField("removed", self.Remove(link)).
+			Info("retiring link whose dialer is not connected here")
 	}
 }
 
@@ -194,11 +250,38 @@ func (self *LinkManager) repairDest(link *Link) {
 	}
 }
 
+// destinationExists reports whether routerId names a router that still exists. The router cache answers
+// most calls without a bolt transaction; a miss falls through to the store.
+//
+// True when there is no one to ask, so a link report is never refused on the strength of a missing lookup.
+func (self *LinkManager) destinationExists(routerId string) bool {
+	if self.env == nil {
+		return true
+	}
+	router, err := self.env.GetManagers().Router.Read(routerId)
+	return err == nil && router != nil
+}
+
 func (self *LinkManager) RouterReportedLink(reportedLink *ctrl_pb.RouterLinks_RouterLink, src, dst *Router) (*Link, bool) {
 	// Striped by link id so concurrent reports for different links proceed in
 	// parallel; reports for the same link still serialize. Replaces a single
 	// global mutex that funneled every router's link reports through one lock.
 	defer self.linkLocks.LockFor(reportedLink.Id)()
+
+	// A nil dst means the destination is not connected here, which is ordinary: the link is recorded and
+	// repaired when that router connects. It also covers a router that has been deleted, and that link can
+	// never be repaired, since a recreated router is assigned a new id. Left alone it is a link to an entity
+	// that does not exist: it counts, it validates, it offers itself for routing, and it cannot even be
+	// rendered by the API, which fails the whole listing rather than one row.
+	//
+	// The routers that dialed it do not know the router is gone and re-announce the link on every reconnect,
+	// so refusing here is what stops it coming back.
+	if dst == nil && !self.destinationExists(reportedLink.DestRouterId) {
+		linkLog.Warn("ignoring link report naming a destination router that no longer exists",
+			"linkId", reportedLink.Id,
+			"destRouterId", reportedLink.DestRouterId)
+		return nil, false
+	}
 
 	link, _ := self.Get(reportedLink.Id)
 	if link != nil && link.Iteration >= reportedLink.Iteration {

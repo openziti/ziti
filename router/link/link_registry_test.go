@@ -506,7 +506,7 @@ func Test_LinkRegistry_RescanForDialOpportunities(t *testing.T) {
 	// matching dialer yet, so the listener doesn't produce a linkState.
 	destId := "peer-router-1"
 	tenv.setDialers(nil)
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -537,7 +537,7 @@ func Test_LinkRegistry_RescanIsNoopWhenNoMatches(t *testing.T) {
 	// shouldn't create a state because there's no group intersection.
 	destId := "peer-router-2"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"b"}}})
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -604,6 +604,7 @@ func newReconnectTestRegistry(t *testing.T) (*linkRegistryImpl, *testEnv) {
 		events:           make(chan event, 16),
 		triggerNotifyC:   make(chan struct{}, 1),
 		ctrlSynchronizer: newCtrlSynchronizer(),
+		removedDests:     map[string]removedDest{},
 		// Production's pacing is not this test's concern; the timeout has to stay reachable, though, since it
 		// is what distinguishes a discarded message from a delivered one.
 		fullRefreshSendTimeout: 20 * time.Millisecond,
@@ -960,7 +961,7 @@ func Test_LinkRegistry_RescanDetachesRemovedDialerPairing(t *testing.T) {
 	// A matching dialer + listener produces a linkState.
 	destId := "peer-router-3"
 	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"a"}}})
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 	req.Eventually(func() bool {
@@ -1002,14 +1003,14 @@ func Test_ApplyListenerChanges_ClosesOrphansOnlyOnPeerUpdate(t *testing.T) {
 	rescanDest, rescanXl := newDestWithEstablishedLink()
 	(&linkDestUpdate{id: "peer", healthy: true}).ApplyListenerChanges(reg, rescanDest, false, false)
 	req.NotContains(rescanDest.linkMap, "k", "orphan detached so it can't redial")
-	req.False(rescanXl.closed, "local rescan must not close the established link")
+	req.False(rescanXl.IsClosed(), "local rescan must not close the established link")
 
 	// Peer listener update (closeOrphans=true): detach and close, since the peer
 	// no longer advertises the listener.
 	peerDest, peerXl := newDestWithEstablishedLink()
 	(&linkDestUpdate{id: "peer", healthy: true}).ApplyListenerChanges(reg, peerDest, false, true)
 	req.NotContains(peerDest.linkMap, "k", "orphan detached")
-	req.True(peerXl.closed, "peer update closes the vanished listener's link")
+	req.True(peerXl.IsClosed(), "peer update closes the vanished listener's link")
 }
 
 // recordingDialer records whether Dial was invoked.
@@ -1067,6 +1068,65 @@ func Test_evaluateLinkStateQueue_SkipsDetachedState(t *testing.T) {
 	req.Equal(StatusPending, detached.status, "detached queued state should be dropped, not evaluated")
 }
 
+// addressRecordingDialer reports the address of each dial it is handed.
+type addressRecordingDialer struct {
+	stubDialer
+	dialed chan string
+}
+
+func newAddressRecordingDialer() *addressRecordingDialer {
+	return &addressRecordingDialer{
+		stubDialer: stubDialer{binding: "transport", groups: []string{"default"}},
+		dialed:     make(chan string, 1),
+	}
+}
+
+func (d *addressRecordingDialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
+	select {
+	case d.dialed <- dial.GetAddress():
+	default:
+	}
+	return nil, fmt.Errorf("addressRecordingDialer never connects")
+}
+
+// Test_evaluateLinkState_DialUsesTheStateAsQueued: a dial runs on the dialer pool while the event loop goes on
+// updating its link state, and a peer listener update in that time can move the listener's address and
+// replace the dialer. The dial works from the state as it was when the dial was queued.
+func Test_evaluateLinkState_DialUsesTheStateAsQueued(t *testing.T) {
+	req := require.New(t)
+	reg, tenv := newReconnectTestRegistry(t)
+	report := func(address string) {
+		(&linkDestUpdate{id: "dest", ctrlId: "ctrl1", healthy: true, listeners: []*ctrl_pb.Listener{
+			{Address: address, Protocol: "tls", Groups: []string{"default"}},
+		}}).Handle(reg)
+	}
+
+	// The test env's dialer pool runs at most two workers, so holding two keeps the dial queued behind them.
+	release := make(chan struct{})
+	for i := 0; i < 2; i++ {
+		req.NoError(tenv.GetLinkDialerPool().QueueOrError(func() { <-release }))
+	}
+
+	queued, replacement := newAddressRecordingDialer(), newAddressRecordingDialer()
+	tenv.setDialers([]xlink.Dialer{queued})
+	report("tls:peer:6000")
+	req.Len(reg.destinations["dest"].linkMap, 1)
+
+	tenv.setDialers([]xlink.Dialer{replacement})
+	report("tls:peer:6001")
+	req.Len(reg.destinations["dest"].linkMap, 1, "the second report updates the same link state")
+	close(release)
+
+	select {
+	case address := <-queued.dialed:
+		req.Equal("tls:peer:6000", address, "the dial goes to the address it was queued for")
+	case address := <-replacement.dialed:
+		req.Failf("the dial used a dialer that replaced the one it was queued with", "dialed %s", address)
+	case <-time.After(2 * time.Second):
+		req.Fail("the queued dial never ran")
+	}
+}
+
 func Test_updateLinkStatusForLink_ReportsFaultWhenStateMissing(t *testing.T) {
 	req := require.New(t)
 	tenv := newTestEnv()
@@ -1095,7 +1155,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
 
 	destId := "peer-router-1"
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"a"}},
 	})
 
@@ -1106,7 +1166,7 @@ func Test_LinkRegistry_GetDestinationListeners_OmitsUnhealthyDestinations(t *tes
 
 	// PeerState_Unhealthy carries no listeners, so the cache empties. It has to
 	// drop out entirely rather than appear with an empty set.
-	reg.UpdateLinkDest("ctrl1", destId, "v0", false, nil)
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", false, nil)
 
 	req.Eventually(func() bool {
 		snapshot, ok := reg.GetDestinationListeners()
@@ -1209,7 +1269,7 @@ func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
 	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
 	destId := "doomed-dest"
 
-	reg.UpdateLinkDest("ctrl1", destId, "v0", true, []*ctrl_pb.Listener{
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
 		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
 	})
 	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
@@ -1225,7 +1285,7 @@ func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
 	state := <-stateC
 	req.NotNil(state)
 
-	reg.RemoveLinkDest(destId)
+	reg.RemoveLinkDest(destId, 0)
 
 	// Queue it as the only due entry: scheduled to dial, with its destination removed out from under it.
 	statusC := make(chan linkStatus, 1)
@@ -1246,3 +1306,690 @@ func Test_LinkRegistry_RemovedDestIsNotDialed(t *testing.T) {
 type funcEvent func(*linkRegistryImpl)
 
 func (self funcEvent) Handle(registry *linkRegistryImpl) { self(registry) }
+
+// destPresentProbe reports whether a destination is held at all, which the link count cannot: a destination
+// with no links and one that was never created both count zero. Runs on the event loop for the same reason
+// destLinkCountProbe does.
+type destPresentProbe struct {
+	destId string
+	out    chan bool
+}
+
+func (p destPresentProbe) Handle(reg *linkRegistryImpl) {
+	_, ok := reg.destinations[p.destId]
+	p.out <- ok
+}
+
+func destPresent(t *testing.T, reg *linkRegistryImpl, destId string) bool {
+	t.Helper()
+	probe := destPresentProbe{destId: destId, out: make(chan bool, 1)}
+	reg.queueEvent(probe)
+	select {
+	case present := <-probe.out:
+		return present
+	case <-time.After(2 * time.Second):
+		t.Fatal("registry event loop did not answer the destination probe")
+		return false
+	}
+}
+
+func peerListeners() []*ctrl_pb.Listener {
+	return []*ctrl_pb.Listener{{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}}}
+}
+
+// Test_LinkRegistry_StaleUpdateCannotResurrectRemovedDest is the ordering the store index exists for.
+// Controllers compute peer state independently and nothing sequences their messages, so a report computed
+// before a router was deleted can arrive after the removal. Applied, it recreates the destination, and the
+// router dials an address that now answers for somebody else.
+func Test_LinkRegistry_StaleUpdateCannotResurrectRemovedDest(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "deleted-router"
+
+	reg.UpdateLinkDest("ctrl1", 100, destId, "v0", true, peerListeners())
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.RemoveLinkDest(destId, 110)
+	req.Eventually(func() bool { return !destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	// Computed by another controller before it applied the delete, and delivered late.
+	reg.UpdateLinkDest("ctrl2", 105, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "a report older than the removal must not bring the destination back")
+
+	// Same store state, and still older than the removal: a router being deleted stays in a controller's
+	// connected map until its control channel teardown runs, so it can still be reported as healthy.
+	reg.UpdateLinkDest("ctrl3", 110, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "a report level with the removal must not bring the destination back")
+}
+
+// Test_LinkRegistry_NewerUpdateClearsRemoval: the marker must not outlive its purpose. Nothing else would
+// clear it, and a destination that genuinely exists at a later index has to be able to come back.
+func Test_LinkRegistry_NewerUpdateClearsRemoval(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "recreated-router"
+
+	reg.RemoveLinkDest(destId, 110)
+	reg.UpdateLinkDest("ctrl1", 120, destId, "v0", true, peerListeners())
+
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond,
+		"a report newer than the removal must be applied")
+
+	req.Eventually(func() bool {
+		probe := removedDestProbe{destId: destId, out: make(chan bool, 1)}
+		reg.queueEvent(probe)
+		return !<-probe.out
+	}, 2*time.Second, 25*time.Millisecond, "and must clear the marker rather than leave it to the sweep")
+}
+
+type removedDestProbe struct {
+	destId string
+	out    chan bool
+}
+
+func (p removedDestProbe) Handle(reg *linkRegistryImpl) {
+	_, ok := reg.removedDests[p.destId]
+	p.out <- ok
+}
+
+// Test_LinkRegistry_UnindexedRemovalDoesNotBlockUpdates: a controller without raft has no index to offer, and
+// a zero one says nothing about order. Refusing reports on the strength of it would strand every destination
+// a standalone controller ever removed.
+func Test_LinkRegistry_UnindexedRemovalDoesNotBlockUpdates(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "peer-router"
+
+	reg.RemoveLinkDest(destId, 0)
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, peerListeners())
+
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+}
+
+// Test_LinkRegistry_UnindexedUpdateCannotResurrectRemovedDest: a controller from before store indexes sends
+// none, so its report says nothing about whether it was computed before a removal. During a rolling upgrade,
+// one computed before the router was deleted can arrive after an indexed removal.
+func Test_LinkRegistry_UnindexedUpdateCannotResurrectRemovedDest(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "deleted-router"
+
+	reg.UpdateLinkDest("ctrl1", 100, destId, "v0", true, peerListeners())
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.RemoveLinkDest(destId, 110)
+	req.Eventually(func() bool { return !destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.UpdateLinkDest("older-ctrl", 0, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "an unindexed report must not bring the destination back")
+
+	reg.UpdateLinkDest("ctrl2", 105, destId, "v0", true, peerListeners())
+	req.False(destPresent(t, reg, destId), "nor clear the removal for a later stale report")
+
+	reg.UpdateLinkDest("ctrl1", 120, destId, "v0", true, peerListeners())
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond,
+		"a report indexed after the removal still brings it back")
+}
+
+// Test_LinkRegistry_RemovalOutlastsALaggingController: a controller computes peer state against its own store,
+// so one lagging in replication reports a deleted router from before the removal for as long as it lags. The
+// marker has to outlast that lag, and is still swept once its lifetime is up.
+func Test_LinkRegistry_RemovalOutlastsALaggingController(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	destId := "deleted-router"
+	removedAgo := func(age time.Duration) {
+		marker := reg.removedDests[destId]
+		marker.at = time.Now().Add(-age)
+		reg.removedDests[destId] = marker
+	}
+
+	(&linkDestUpdate{id: destId, ctrlId: "ctrl1", storeIndex: 100, healthy: true, listeners: peerListeners()}).Handle(reg)
+	(&removeLinkDest{id: destId, storeIndex: 110}).Handle(reg)
+	req.NotContains(reg.destinations, destId)
+
+	removedAgo(time.Hour)
+	reg.evaluateDestinations()
+	(&linkDestUpdate{id: destId, ctrlId: "lagging", storeIndex: 105, healthy: true, listeners: peerListeners()}).Handle(reg)
+	req.NotContains(reg.destinations, destId, "a report from before the removal must not bring the destination back an hour on")
+
+	removedAgo(removedDestTTL + time.Minute)
+	reg.evaluateDestinations()
+	req.NotContains(reg.removedDests, destId, "the marker is swept once its lifetime is up")
+}
+
+// Test_LinkRegistry_LaggingControllerHealthIsNotSuppressed: the index orders existence, which the store
+// answers, not health, which is each controller's own view of what it is connected to. A controller behind on
+// replication reports a low index alongside a perfectly good health report, and dropping that would strand a
+// destination that is up.
+func Test_LinkRegistry_LaggingControllerHealthIsNotSuppressed(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "live-router"
+
+	reg.UpdateLinkDest("ctrl1", 200, destId, "v0", false, nil)
+	req.Eventually(func() bool { return destPresent(t, reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	reg.UpdateLinkDest("ctrl2", 150, destId, "v0", true, peerListeners())
+
+	req.Eventually(func() bool {
+		probe := destHealthyProbe{destId: destId, out: make(chan bool, 1)}
+		reg.queueEvent(probe)
+		return <-probe.out
+	}, 2*time.Second, 25*time.Millisecond,
+		"health from a controller behind on replication must still be applied")
+}
+
+type destHealthyProbe struct {
+	destId string
+	out    chan bool
+}
+
+func (p destHealthyProbe) Handle(reg *linkRegistryImpl) {
+	if d, ok := reg.destinations[p.destId]; ok {
+		p.out <- d.healthy
+		return
+	}
+	p.out <- false
+}
+
+// Test_RemoveLinkDest_ClosesItsLinks: a destination removal is meant to close the links that pointed at it.
+// The call was there, behind a lookup that could never match: GetLink keys on the link key while the state
+// holds a link id, so the branch never ran and the links were left open with nothing to ever close them.
+func Test_RemoveLinkDest_ClosesItsLinks(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"default"}}})
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "going-away"
+
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
+	})
+	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
+
+	// The registry dials the destination at once and the stub dialer fails. Paired before that failure is
+	// handled, the link is found under the key and closed on the loop, which would pass this test without the
+	// removal closing anything.
+	req.Eventually(func() bool { return destDialFailed(reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	// Pair an established link with the state, which is what a successful dial leaves behind.
+	link := &stubXlink{id: "l1", dialed: true, destId: destId}
+	paired := make(chan struct{})
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		defer close(paired)
+		for _, state := range r.destinations[destId].linkMap {
+			state.linkId = link.Id()
+			state.link = link
+			state.updateStatus(StatusEstablished)
+			r.linkMapLocks.Lock()
+			r.linkByIdMap[link.Id()] = link
+			r.linkMap[state.linkKey] = link
+			r.linkMapLocks.Unlock()
+			return
+		}
+	}))
+	<-paired
+
+	reg.RemoveLinkDest(destId, 0)
+
+	req.Eventually(func() bool { return link.IsClosed() }, 2*time.Second, 25*time.Millisecond,
+		"removing a destination must close the links that pointed at it")
+}
+
+// blockingCloseXlink signals entry to Close and waits for release. Close may be called more than once, as a
+// real link's may.
+type blockingCloseXlink struct {
+	*stubXlink
+	startOnce sync.Once
+	started   chan struct{}
+	release   chan struct{}
+}
+
+func (s *blockingCloseXlink) Close() error {
+	s.startOnce.Do(func() { close(s.started) })
+	<-s.release
+	return s.stubXlink.Close()
+}
+
+// destDialFailed reports whether the destination's link state has had its dial fail.
+func destDialFailed(reg *linkRegistryImpl, destId string) bool {
+	result := make(chan bool, 1)
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		dest := r.destinations[destId]
+		if dest == nil {
+			result <- false
+			return
+		}
+		for _, state := range dest.linkMap {
+			result <- state.status == StatusDialFailed
+			return
+		}
+		result <- false
+	}))
+	return <-result
+}
+
+// Test_RemoveLinkDest_ClosesOffTheEventLoop checks that the registry handles events while Close waits.
+func Test_RemoveLinkDest_ClosesOffTheEventLoop(t *testing.T) {
+	req := require.New(t)
+	tenv := newTestEnv()
+	defer close(tenv.closeNotify)
+
+	tenv.setDialers([]xlink.Dialer{&stubDialer{binding: "transport", groups: []string{"default"}}})
+	reg := NewLinkRegistry(tenv).(*linkRegistryImpl)
+	destId := "going-away"
+
+	reg.UpdateLinkDest("ctrl1", 0, destId, "v0", true, []*ctrl_pb.Listener{
+		{Address: "tls:peer:6000", Protocol: "tls", Groups: []string{"default"}, LocalBinding: "default"},
+	})
+	req.Eventually(func() bool { return destLinkCount(reg, destId) == 1 }, 2*time.Second, 25*time.Millisecond)
+
+	// The registry dials the destination at once and the stub dialer fails. Paired before that failure is
+	// handled, the link is found under the key and closed again on the loop, which this test is not about.
+	req.Eventually(func() bool { return destDialFailed(reg, destId) }, 2*time.Second, 25*time.Millisecond)
+
+	link := &blockingCloseXlink{
+		stubXlink: &stubXlink{id: "l1", dialed: true, destId: destId},
+		started:   make(chan struct{}),
+		release:   make(chan struct{}),
+	}
+	releaseClose := sync.OnceFunc(func() { close(link.release) })
+	defer releaseClose()
+
+	paired := make(chan struct{})
+	reg.queueEvent(funcEvent(func(r *linkRegistryImpl) {
+		defer close(paired)
+		for _, state := range r.destinations[destId].linkMap {
+			state.linkId = link.Id()
+			state.link = link
+			state.updateStatus(StatusEstablished)
+			r.linkMapLocks.Lock()
+			r.linkByIdMap[link.Id()] = link
+			r.linkMap[state.linkKey] = link
+			r.linkMapLocks.Unlock()
+			return
+		}
+	}))
+	<-paired
+
+	reg.RemoveLinkDest(destId, 0)
+	select {
+	case <-link.started:
+	case <-time.After(2 * time.Second):
+		req.FailNow("link close did not start")
+	}
+
+	answered := make(chan struct{})
+	reg.queueEvent(funcEvent(func(*linkRegistryImpl) { close(answered) }))
+	select {
+	case <-answered:
+	case <-time.After(2 * time.Second):
+		req.FailNow("the registry's event loop is blocked on a link close")
+	}
+	req.False(link.IsClosed(), "the close is still held")
+
+	releaseClose()
+	req.Eventually(func() bool { return link.IsClosed() }, 2*time.Second, 25*time.Millisecond,
+		"and the link is still closed once it can be")
+}
+
+// Test_linkDestUpdate_HealthIsTheUnionAcrossControllers: a controller that loses sight of a destination must
+// not mark it down while another still has it, or the router backs off dialing a destination that is up.
+func Test_linkDestUpdate_HealthIsTheUnionAcrossControllers(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	report := func(ctrlId string, healthy bool) {
+		(&linkDestUpdate{id: "dest", ctrlId: ctrlId, healthy: healthy}).Handle(reg)
+	}
+
+	report("ctrl1", true)
+	report("ctrl2", false)
+	req.True(reg.destinations["dest"].healthy, "ctrl1 still says the destination is up")
+
+	report("ctrl1", false)
+	req.False(reg.destinations["dest"].healthy, "no controller says the destination is up")
+
+	report("ctrl2", true)
+	req.True(reg.destinations["dest"].healthy)
+}
+
+// Test_linkDestUpdate_UnhealthyReportKeepsThePeerDetails: an unhealthy report carries no version or listeners,
+// and the destination stays up through it while another controller says it is. A dial with no version falls
+// back to a single or split link, and the local dialer rescan skips a destination with no listeners.
+func Test_linkDestUpdate_UnhealthyReportKeepsThePeerDetails(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+
+	(&linkDestUpdate{id: "dest", ctrlId: "ctrl1", healthy: true, version: "v1.6.0", listeners: peerListeners()}).Handle(reg)
+	(&linkDestUpdate{id: "dest", ctrlId: "ctrl2", healthy: false}).Handle(reg)
+
+	dest := reg.destinations["dest"]
+	req.True(dest.healthy, "ctrl1 still says the destination is up")
+	req.Equal("v1.6.0", dest.version.Load())
+	req.Len(dest.listeners, 1)
+}
+
+// Test_evaluateDestinations_AbandonsDestNoRegisteredControllerAffirms covers the backstop for a missed
+// removal. Health is a union over every controller that has reported, so a controller that said a
+// destination was up and then went away would hold it up forever. Abandonment asks only the controllers the
+// router still has.
+func Test_evaluateDestinations_AbandonsDestNoRegisteredControllerAffirms(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	withCtrl(reg, "ctrl1", newFlakySendChannel(0))
+
+	addPendingLink := func(dest *linkDest) {
+		dest.linkMap["k"] = &linkState{linkKey: "k", status: StatusDialFailed, dest: dest, nextDial: time.Now().Add(time.Hour)}
+	}
+
+	// Both are up by some controller's account, have nothing established, and have gone unaffirmed past the
+	// grace period. Only the controller vouching for "affirmed" is still registered.
+	for destId, ctrlId := range map[string]string{"orphaned": "departed", "affirmed": "ctrl1"} {
+		(&linkDestUpdate{id: destId, ctrlId: ctrlId, healthy: true}).Handle(reg)
+		dest := reg.destinations[destId]
+		dest.lastAffirmedAt = time.Now().Add(-destAbandonedAfter - time.Minute)
+		addPendingLink(dest)
+	}
+
+	// A destination first heard of as down gets the full grace period.
+	(&linkDestUpdate{id: "fresh", ctrlId: "ctrl1", healthy: false}).Handle(reg)
+	addPendingLink(reg.destinations["fresh"])
+
+	reg.evaluateDestinations()
+
+	req.NotContains(reg.destinations, "orphaned", "a destination only a departed controller vouched for must be abandoned")
+	req.Contains(reg.destinations, "affirmed", "a destination a registered controller still says is up must be kept")
+	req.Contains(reg.destinations, "fresh", "a new destination must not be abandoned the moment it appears")
+}
+
+// Test_evaluateDestinations_KeepsADestAHealthyReportAffirmed: a healthy report affirms the destination when it
+// arrives, not at the next scan. A destination can go long unaffirmed while an established link holds it, as
+// through a controller outage, and a controller that resyncs and drops again before the scan must not leave it
+// judged on the old affirmation.
+func Test_evaluateDestinations_KeepsADestAHealthyReportAffirmed(t *testing.T) {
+	req := require.New(t)
+	reg, tenv := newReconnectTestRegistry(t)
+	dialer := &stubDialer{binding: "transport", groups: []string{"default"}}
+	tenv.setDialers([]xlink.Dialer{dialer})
+	withCtrl(reg, "ctrl1", newFlakySendChannel(0))
+
+	// Long unaffirmed, with a link state the report will match that is not due to dial.
+	dest := newLinkDest("dest")
+	dest.lastAffirmedAt = time.Now().Add(-destAbandonedAfter - time.Minute)
+	listener := peerListeners()[0]
+	linkKey := reg.GetLinkKey(dialer.GetBinding(), listener.Protocol, dest.id, listener.GetLocalBinding())
+	dest.linkMap[linkKey] = &linkState{linkKey: linkKey, status: StatusDialFailed, dest: dest, listener: listener,
+		dialer: dialer, nextDial: time.Now().Add(time.Hour)}
+	reg.destinations[dest.id] = dest
+
+	(&linkDestUpdate{id: dest.id, ctrlId: "ctrl1", healthy: true, listeners: peerListeners()}).Handle(reg)
+	req.Contains(dest.linkMap, linkKey, "the report matches the existing link state")
+	reg.ctrls = &testCtrls{all: map[string]env.NetworkController{}}
+
+	reg.evaluateDestinations()
+	req.Contains(reg.destinations, dest.id, "a destination a controller has just said is up must be kept")
+}
+
+// Test_linkDestUpdate_UnhealthyReportDoesNotAffirm: affirmation follows the reporting controller, not the
+// union. A departed controller's last report holds the union up, so an unhealthy report from a connected one
+// must not count as affirming the destination.
+func Test_linkDestUpdate_UnhealthyReportDoesNotAffirm(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	withCtrl(reg, "ctrl1", newFlakySendChannel(0))
+
+	(&linkDestUpdate{id: "dest", ctrlId: "departed", healthy: true}).Handle(reg)
+	dest := reg.destinations["dest"]
+	dest.linkMap["k"] = &linkState{linkKey: "k", status: StatusDialFailed, dest: dest, nextDial: time.Now().Add(time.Hour)}
+	dest.lastAffirmedAt = time.Now().Add(-destAbandonedAfter - time.Minute)
+
+	(&linkDestUpdate{id: "dest", ctrlId: "ctrl1", healthy: false}).Handle(reg)
+	req.True(dest.healthy, "the departed controller still holds the union up")
+
+	reg.evaluateDestinations()
+	req.NotContains(reg.destinations, "dest", "no connected controller says the destination is up")
+}
+
+// drainEvents handles every event queued so far, standing in for the registry's event loop.
+func drainEvents(reg *linkRegistryImpl) {
+	for {
+		select {
+		case evt := <-reg.events:
+			evt.Handle(reg)
+		default:
+			return
+		}
+	}
+}
+
+// Test_DuplicateLink_ReplacedLinksFaultIsRetried: the fault for a link replaced by a duplicate rides on that
+// link's state, so a controller that misses it is sent it again on a later pass rather than keeping the link
+// until this router next reconnects to it.
+func Test_DuplicateLink_ReplacedLinksFaultIsRetried(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+
+	destId := "dest"
+	replaced := &stubXlink{id: "l2", dialed: true, destId: destId}
+	dest := newLinkDest(destId)
+	state := &linkState{
+		linkKey:       replaced.Key(),
+		linkId:        replaced.Id(),
+		status:        StatusEstablished,
+		dest:          dest,
+		link:          replaced,
+		ctrlsNotified: true,
+	}
+	dest.linkMap[state.linkKey] = state
+	reg.destinations[destId] = dest
+	reg.linkMap[replaced.Key()] = replaced
+	reg.linkByIdMap[replaced.Id()] = replaced
+
+	// The same key from the other router, with the lower id, so it wins and the link this router dialed goes.
+	_, applied := reg.LinkAccepted(&stubXlink{id: "l1", destId: destId})
+	req.True(applied)
+	drainEvents(reg)
+
+	req.Equal([]linkFault{{linkId: replaced.Id(), iteration: replaced.Iteration()}}, state.linkFaults,
+		"the replaced link's fault is carried by its state")
+
+	ch := newFlakySendChannel(1)
+	withCtrl(reg, "ctrl1", ch)
+
+	pass := func() {
+		reg.sendLinkFaults([]stateAndFaults{{state: state, faults: append([]linkFault(nil), state.linkFaults...)}})
+		drainEvents(reg)
+	}
+
+	pass()
+	req.Len(state.linkFaults, 1, "a send the controller missed leaves the fault to be sent again")
+
+	pass()
+	req.Empty(state.linkFaults, "and a later pass delivers it")
+	req.Equal(int32(2), ch.sends.Load())
+}
+
+// Test_LinkAccepted_QueuesEventsAfterReleasingTheLock: queueing an event blocks while the event loop is
+// backlogged. Blocking with the registry lock held stalls every other link being applied, and everything else
+// that takes the lock, until the loop catches up.
+func Test_LinkAccepted_QueuesEventsAfterReleasingTheLock(t *testing.T) {
+	req := require.New(t)
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+	reg.events = make(chan event) // nothing receives, so a queued event waits
+
+	link := &stubXlink{id: "l1", destId: "dest"}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		reg.LinkAccepted(link)
+	}()
+
+	req.Eventually(func() bool {
+		applied, _ := reg.GetLink(link.Key())
+		return applied != nil
+	}, 2*time.Second, time.Millisecond)
+
+	req.Eventually(func() bool {
+		if reg.TryLock() {
+			reg.Unlock()
+			return true
+		}
+		return false
+	}, 2*time.Second, time.Millisecond, "the lock is free while the event waits to be queued")
+
+	select {
+	case <-done:
+		req.FailNow("returned without queueing its event")
+	default:
+	}
+
+	<-reg.events
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		req.FailNow("did not return once its event was taken")
+	}
+}
+
+// newStatusOrderTest returns a registry holding one link state for "dest", with no link registered.
+func newStatusOrderTest(t *testing.T) (*linkRegistryImpl, *linkState) {
+	reg, _ := newReconnectTestRegistry(t)
+	reg.linkByIdMap = map[string]xlink.Xlink{}
+
+	dest := newLinkDest("dest")
+	state := &linkState{linkKey: (&stubXlink{}).Key(), linkId: "s1", status: StatusDialing, dest: dest}
+	dest.linkMap[state.linkKey] = state
+	reg.destinations[dest.id] = dest
+	return reg, state
+}
+
+func handleEvents(reg *linkRegistryImpl, events []event) {
+	for _, evt := range events {
+		evt.Handle(reg)
+	}
+}
+
+// Test_updateLinkStatusForLink_IgnoresAReplacedLinksLateEvent: a link's status events are queued after the
+// registry lock is released, so a link that replaces another can have its events handled first. Taking the
+// replaced link's late event pins the state to a link that is going away: the live one is never marked
+// notified, so it is announced on every pass, and a peer listener change closes the wrong link.
+func Test_updateLinkStatusForLink_IgnoresAReplacedLinksLateEvent(t *testing.T) {
+	req := require.New(t)
+	reg, state := newStatusOrderTest(t)
+
+	replaced := &stubXlink{id: "l2", dialed: true, destId: "dest"}
+	_, applied, replacedEvents := reg.applyLinkLocked(replaced)
+	req.True(applied)
+
+	// The lower id wins, so this replaces the link just registered.
+	replacement := &stubXlink{id: "l1", destId: "dest"}
+	_, applied, replacementEvents := reg.applyLinkLocked(replacement)
+	req.True(applied)
+
+	handleEvents(reg, replacementEvents)
+	handleEvents(reg, replacedEvents)
+
+	req.Equal(StatusEstablished, state.status)
+	req.Same(replacement, state.link, "the state follows the link the registry holds")
+	req.Equal([]linkFault{{linkId: replaced.Id(), iteration: replaced.Iteration()}}, state.linkFaults)
+}
+
+// Test_updateLinkStatusForLink_IgnoresAnEarlierLinksLateFailure: a closed link's failure event is queued after
+// it leaves the registry, so a link registered in between can have its events handled first. Taking the late
+// failure fails the live link's state and redials it.
+func Test_updateLinkStatusForLink_IgnoresAnEarlierLinksLateFailure(t *testing.T) {
+	req := require.New(t)
+	reg, state := newStatusOrderTest(t)
+
+	closed := &stubXlink{id: "l1", dialed: true, destId: "dest"}
+	_, applied, events := reg.applyLinkLocked(closed)
+	req.True(applied)
+	handleEvents(reg, events)
+
+	_ = closed.Close()
+	reg.LinkClosed(closed)
+
+	next := &stubXlink{id: "l2", dialed: true, destId: "dest"}
+	_, applied, events = reg.applyLinkLocked(next)
+	req.True(applied)
+	handleEvents(reg, events)
+	drainEvents(reg)
+
+	req.Equal(StatusEstablished, state.status, "the link the registry holds is still up")
+	req.Same(next, state.link)
+	req.Equal([]linkFault{{linkId: closed.Id(), iteration: closed.Iteration()}}, state.linkFaults,
+		"the closed link's fault is still owed")
+}
+
+// closesWhileRegistering is a link that closes just after the registry first checks it is open, and has its
+// close handled from there, as the link close handler does.
+type closesWhileRegistering struct {
+	*stubXlink
+	reg          *linkRegistryImpl
+	checked      atomic.Bool
+	closeHandled chan struct{}
+}
+
+func (self *closesWhileRegistering) IsClosed() bool {
+	if !self.checked.CompareAndSwap(false, true) {
+		return self.stubXlink.IsClosed()
+	}
+	_ = self.Close()
+	go func() {
+		defer close(self.closeHandled)
+		self.reg.LinkClosed(self)
+	}()
+	// Long enough for the close to be handled here unless something holds it back.
+	select {
+	case <-self.closeHandled:
+	case <-time.After(100 * time.Millisecond):
+	}
+	return false
+}
+
+// Test_LinkClosed_WhileRegisteringIsNotLost: a link can close between the registry's check that it is open and
+// its insert. A close handled in that window finds nothing to remove, and the link is then registered after
+// its close: the state goes established on a dead link, the next notification pass drops the link's fault as
+// belonging to the established link, and the router goes on reporting a link that is gone.
+func Test_LinkClosed_WhileRegisteringIsNotLost(t *testing.T) {
+	req := require.New(t)
+	reg, state := newStatusOrderTest(t)
+	reg.linkStateQueue = &linkStateHeap{}
+	state.dialer = &stubDialer{}
+	state.listener = &ctrl_pb.Listener{Address: "tls:peer:6000", Protocol: "tls"}
+
+	link := &closesWhileRegistering{
+		stubXlink:    &stubXlink{id: "l1", dialed: true, destId: "dest"},
+		reg:          reg,
+		closeHandled: make(chan struct{}),
+	}
+	reg.DialSucceeded(link)
+	<-link.closeHandled
+	drainEvents(reg)
+
+	current, _ := reg.GetLink(link.Key())
+	req.Nil(current, "a link that closed while registering must not be left registered")
+	req.NotEqual(StatusEstablished, state.status, "nor its state established on it")
+	req.Equal([]linkFault{{linkId: link.Id(), iteration: link.Iteration()}}, state.linkFaults,
+		"the closed link's fault is owed")
+}

@@ -535,6 +535,22 @@ type RouterConfigEventSubscriber interface {
 	OnRouterConfigRemoved(configType string)
 }
 
+// RouterEventSubscriber receives notifications about Router entities appearing in
+// and disappearing from the router data model. The router-side RDM dispatches to a
+// single subscriber.
+//
+// OnRouterChanged is called for both Create and Update events. OnRouterRemoved is
+// called for Delete events; a router the subscriber was never told about may still
+// be reported as removed, so implementations must tolerate unknown ids.
+//
+// Dispatch happens after the RDM's Routers map has been updated, so a subscriber
+// reading the model during a callback sees the post-event state. Callbacks run on
+// the RDM event-processing goroutine and should not block.
+type RouterEventSubscriber interface {
+	OnRouterChanged(router *edge_ctrl_pb.DataState_Router)
+	OnRouterRemoved(routerId string)
+}
+
 // subscriberEvent is an internal interface for events that need to be processed to update
 // identity subscriptions. These events are queued and processed asynchronously.
 type subscriberEvent interface {

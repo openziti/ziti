@@ -18,13 +18,13 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
 	"github.com/openziti/ziti/v2/controller/rest_server/operations/link"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 func init() {
@@ -92,7 +92,16 @@ func (r *LinkRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params l
 
 func (r *LinkRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	Delete(rc, func(rc *response.RequestContext, id string) error {
-		ae.GetHostController().GetNetwork().RemoveLink(id)
-		return nil
+		return deleteLink(ae.GetHostController().GetNetwork().RemoveLink, id)
 	})
+}
+
+// deleteLink removes the link with the given id through removeLink, returning a not found error when
+// removeLink reports the link was not known. removeLink acts on an unknown id as well, so what it does for one
+// happens either way.
+func deleteLink(removeLink func(linkId string) bool, id string) error {
+	if !removeLink(id) {
+		return boltz.NewNotFoundError("link", "id", id)
+	}
+	return nil
 }

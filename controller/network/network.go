@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -121,10 +122,22 @@ type Network struct {
 	// (e.g. a node joining the cluster) instead of exiting and relying on an external process manager.
 	restartSelfOnSnapshot bool
 
-	Inspections         *InspectionsManager
-	RouterMessaging     *RouterMessaging
-	inspectionTargets   concurrenz.CopyOnWriteSlice[InspectTarget]
-	ctrlDialerValidator CtrlDialerValidator
+	Inspections      *InspectionsManager
+	RouterMessaging  *RouterMessaging
+	routerConnectSem concurrenz.Semaphore
+	// routerConnectWaiting counts goroutines parked on routerConnectSem. Reported as a gauge because it
+	// is the only one of these signals visible during a hang: the timers record on completion, so a
+	// wedged setup makes them go quiet exactly when something is wrong.
+	routerConnectWaiting atomic.Int64
+	// Resolved once and held. A Meter lookup takes a reference each time it is called, and nothing
+	// releases them, so looking one up per event leaks a reference per event. The timers do not, but are
+	// held alongside so the call site does not invite the question, and so converting one to a meter
+	// later cannot quietly reintroduce the leak.
+	routerConnectWaitTimer metrics.Timer
+	routerConnectWorkTimer metrics.Timer
+	routerConnectTimeouts  metrics.Meter
+	inspectionTargets      concurrenz.CopyOnWriteSlice[InspectTarget]
+	ctrlDialerValidator    CtrlDialerValidator
 }
 
 func NewNetwork(config Config, env model.Env) (*Network, error) {
@@ -171,6 +184,16 @@ func NewNetwork(config Config, env model.Env) (*Network, error) {
 		return nil, err
 	}
 	network.Inspections = NewInspectionsManager(network)
+
+	network.routerConnectSem = concurrenz.NewSemaphore(int(config.GetOptions().RouterConnectConcurrency))
+	network.routerConnectWaitTimer = config.GetMetricsRegistry().Timer(RouterConnectWaitTimer)
+	network.routerConnectWorkTimer = config.GetMetricsRegistry().Timer(RouterConnectWorkTimer)
+	network.routerConnectTimeouts = config.GetMetricsRegistry().Meter(RouterConnectTimeoutMeter)
+	// A func gauge rather than a counter the code updates: the depth is derived from a value already
+	// maintained, so there is nothing to keep in step.
+	config.GetMetricsRegistry().FuncGauge(RouterConnectQueueSizeGauge, func() int64 {
+		return network.routerConnectWaiting.Load()
+	})
 	network.RouterMessaging = NewRouterMessaging(env, routerCommPool)
 
 	env.GetManagers().Router.Store.AddEntityIdListener(network.HandleRouterDelete, boltz.EntityDeletedAsync)
@@ -210,8 +233,39 @@ func (network *Network) IsLeader() bool {
 
 func (self *Network) HandleRouterDelete(id string) {
 	self.routerDeleted(id)
-	self.Link.RouterDeleted(id)
 	self.RouterMessaging.RouterDeleted(id)
+	// Before the index drop: retirement reads the per-router index to find what to retire, and dropping it
+	// first leaves the links in place on the surviving endpoint.
+	self.retireLinksForDeletedRouter(id)
+	self.Link.RouterDeleted(id)
+}
+
+// retireLinksForDeletedRouter removes every link with the deleted router at either end.
+//
+// Dropping the router's index alone left those links in the link table and in the surviving endpoint's set,
+// where nothing would remove them: a fleet that churns routers accumulated links to routers that were not
+// there, and each one still counted, still validated and still offered itself for routing.
+//
+// Retired the way a fault is rather than merely deleted, so circuits using the link are rerouted and the
+// removal reaches the event stream.
+//
+// Retires by id, and deliberately does not check whether the id has since come back. Store commit handlers
+// run after bolt releases the writer lock, so this can land late; an id that was deleted and recreated in
+// that window would have the new router's links retired. Reaching it needs a router created with a chosen
+// id, which only the deprecated create-outside-enrollment path allows, and needs the delete and recreate to
+// land inside that window. Guarding it is not worth the machinery.
+func (network *Network) retireLinksForDeletedRouter(routerId string) {
+	links := network.Link.LinksForRouter(routerId)
+	if len(links) == 0 {
+		return
+	}
+
+	for _, link := range links {
+		network.LinkFaulted(link, false)
+	}
+
+	pfxlog.Logger().WithField("routerId", routerId).WithField("links", len(links)).
+		Info("removed links belonging to a deleted router")
 }
 
 func (self *Network) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Command, error) {
@@ -406,9 +460,75 @@ func IsConnectRejected(err error) bool {
 // displaces the occupant so its teardown runs; the router redials into the freed slot. A connection whose
 // channel is already closed is refused outright (ErrConnectChannelClosed) rather than registered. There is
 // at most one connection per router in the connected map at a time.
-func (network *Network) ConnectRouter(r *model.Router) error {
+// Router connect setup metrics. Named to match the goroutine pool convention the other gossip pools use
+// (`pool.gossip.apply.*`, `pool.peer.events.*`, `pool.io.*`), so a dashboard built for one transfers, even
+// though this path is bounded by a semaphore rather than a pool.
+const (
+	// RouterConnectQueueSizeGauge is the number of connects waiting for a slot. The one signal that shows
+	// a wedge: the timers below only record on completion.
+	RouterConnectQueueSizeGauge = "pool.router.connect.queue_size"
+
+	// RouterConnectWaitTimer is how long a connect waited for a slot, which measures contention.
+	RouterConnectWaitTimer = "pool.router.connect.wait_timer"
+
+	// RouterConnectWorkTimer is how long the setup itself took, which measures the work. Split from the
+	// wait because the two have opposite remedies: contention wants more concurrency, slow setup wants a
+	// look at what the setup does.
+	RouterConnectWorkTimer = "pool.router.connect.work_timer"
+
+	// RouterConnectTimeoutMeter counts connects that gave up waiting and were closed to force a redial.
+	RouterConnectTimeoutMeter = "pool.router.connect.timeouts"
+)
+
+// runConnectSetup waits for a slot and runs the connect setup, giving up if the wait exceeds the
+// configured timeout.
+//
+// Giving up closes the router's control channel rather than skipping the setup. Skipping would leave a
+// router that is connected, believes it is, and has no links built, which is invisible everywhere; closing
+// makes it redial with its normal backoff and says so in the log. The timeout is long enough that reaching
+// it means setups are wedged rather than slow, and waiters behind a wedge were never going to drain.
+//
+// Waiters are released oldest first, since the semaphore is a channel receive, so a timeout here is a
+// statement about the whole queue rather than about one unlucky router.
+func (network *Network) runConnectSetup(r *model.Router) {
+	network.routerConnectWaiting.Add(1)
+	waitStart := time.Now()
+	acquired := network.routerConnectSem.AcquireWithTimeout(network.options.RouterConnectSetupTimeout)
+	network.routerConnectWaiting.Add(-1)
+	network.routerConnectWaitTimer.UpdateSince(waitStart)
+
+	if !acquired {
+		network.routerConnectTimeouts.Mark(1)
+		log := pfxlog.Logger().
+			WithField("routerId", r.Id).
+			WithField("waitedMs", time.Since(waitStart).Milliseconds())
+		if ctrl := r.Control; ctrl != nil {
+			log.Error("timed out waiting to run router connect setup, closing the connection so the router redials")
+			_ = ctrl.Close()
+		} else {
+			log.Error("timed out waiting to run router connect setup, and the router has no channel to close")
+		}
+		return
+	}
+	defer network.routerConnectSem.Release()
+
+	setupStart := time.Now()
+	network.ConnectRouter(r)
+	network.routerConnectWorkTimer.UpdateSince(setupStart)
+}
+
+// QueueRouterConnect makes the synchronous connect decision for r, serialized per router. If the slot is
+// already held by a different connection it rejects this one (returning ErrConnectRejected) and displaces
+// the occupant so its teardown runs; the router redials into the freed slot. A connection whose channel is
+// already closed is refused outright (ErrConnectChannelClosed) rather than registered. Otherwise it
+// registers r (MarkConnected), fires synchronous presence handlers, and hands the remaining, non-gating
+// setup to a goroutine bounded by the connect semaphore. The decision and registration are synchronous so
+// the bind handler can fail a refused connect (no rx started, not registered) and so there is at most one
+// connection per router current at a time. Capacity is never a reason to refuse: a refusal fails the bind,
+// which strands the router's channel group, so the setup waits for a slot instead.
+func (network *Network) QueueRouterConnect(r *model.Router) error {
 	unlock := network.Router.LockConnectFor(r.Id)
-	defer unlock() // leak-safety net; idempotent, so the explicit unlocks below are the ones that matter
+	defer unlock() // leak-safety net; idempotent, so the explicit unlock below is the one that matters
 
 	if cur := network.Router.GetConnected(r.Id); cur != nil && cur != r {
 		// Displace the occupant outside the lock: the teardown acquires the stripe itself (we have
@@ -424,22 +544,49 @@ func (network *Network) ConnectRouter(r *model.Router) error {
 		return ErrConnectChannelClosed
 	}
 
-	// Mark connected before building links: repairDest re-reads the connected map for links that land in
-	// the table after this build, and must find the router there.
+	// Mark connected before the deferred setup builds this router's links: repairDest re-reads the
+	// connected map for links that land in the table after that build, and must find the router there.
 	network.Router.MarkConnected(r)
-	network.Link.BuildRouterLinks(r)
 
 	for _, h := range network.routerPresenceHandlers.Value() {
 		if syncCapableHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncCapableHandler.InvokeRouterConnectedSynchronously() {
 			h.RouterConnected(r)
-		} else {
-			go h.RouterConnected(r)
 		}
 	}
 	unlock()
 
-	go network.ValidateTerminators(r)
+	// Off the accept goroutine, so binding stays quick: the listener holds this group's create
+	// reservation until the bind returns, and the group's other underlays wait on it. The semaphore
+	// bounds how many of these run at once so a mass reconnect cannot starve the gossip and I/O pools,
+	// and it waits rather than refusing, since a refusal here would fail the bind, and the expensive
+	// part of connecting has already been paid by this point.
+	go network.runConnectSetup(r)
+
 	return nil
+}
+
+// ConnectRouter runs the deferred, non-gating connect setup for r on the router connect pool. It
+// re-acquires the per-router lock and re-checks currency, so its link building and gossip reconcile are
+// serialized against a concurrent disconnect of the same router and are skipped entirely if r was
+// superseded or disconnected while it was queued. Different routers run concurrently on separate stripes.
+func (network *Network) ConnectRouter(r *model.Router) {
+	unlock := network.Router.LockConnectFor(r.Id)
+	if !network.isCurrentConnection(r) {
+		unlock()
+		return
+	}
+
+	network.Link.BuildRouterLinks(r)
+
+	for _, h := range network.routerPresenceHandlers.Value() {
+		if syncHandler, ok := h.(model.SyncRouterPresenceHandler); ok && syncHandler.InvokeRouterConnectedSynchronously() {
+			continue // already called synchronously in QueueRouterConnect
+		}
+		h.RouterConnected(r)
+	}
+	unlock()
+
+	network.ValidateTerminators(r)
 }
 
 func (network *Network) ValidateTerminators(r *model.Router) {
@@ -643,6 +790,13 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		network.NotifyLinkIdEvent(reportedLink.Id, event.LinkFromRouterDisconnectedDest)
 	}
 
+	if link == nil {
+		// Refused; RouterReportedLink has already said why. A report naming a destination that no longer
+		// exists is also the evidence that the router never got the removal, so answer it with one.
+		network.notifyDestinationRemovedIfGone(src, reportedLink.DestRouterId, dst)
+		return
+	}
+
 	if created {
 		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
 		log.Info("router reported link added")
@@ -650,6 +804,55 @@ func (network *Network) NotifyExistingLink(srcRouter *model.Router, reportedLink
 		network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
 		log.Info("router reported link already known")
 	}
+}
+
+// notifyDestinationRemovedIfGone tells srcRouter that destRouterId is gone, when a link report or gossip
+// entry naming it has been refused. dst is the destination's connection here, if any.
+func (network *Network) notifyDestinationRemovedIfGone(srcRouter *model.Router, destRouterId string, dst *model.Router) {
+	if network.shouldNotifyDestinationRemoved(srcRouter, destRouterId, dst) {
+		network.RouterMessaging.NotifyRouterRemoved(srcRouter.Id, destRouterId)
+	}
+}
+
+// shouldNotifyDestinationRemoved reports whether to re-assert a removal for destRouterId to srcRouter. dst
+// is the destination's connection here, if any.
+//
+// Peer state is only recomputed when a router connects or disconnects, and a deleted router does neither
+// again, so a removal a router misses is never repeated and it dials the dead destination forever. A link
+// report or a gossip entry naming the destination is the evidence that it was missed, and both repeat, so
+// the correction repeats with them.
+//
+// Every router that names the destination is told, whatever it supports. A router in link gossip learns of
+// deletions from the router data model instead, but only where its controllers distribute routers there,
+// and the statement is true regardless of who hears it.
+//
+// Leader only. This is an unsolicited assertion rather than a reaction to a local event, and it tears links
+// down: a controller lagging on a create would otherwise tell a router to drop a destination that is fine.
+// One controller saying it is enough, since the reports that prompt it repeat.
+func (network *Network) shouldNotifyDestinationRemoved(srcRouter *model.Router, destRouterId string, dst *model.Router) bool {
+	if srcRouter == nil || destRouterId == "" || dst != nil {
+		return false
+	}
+
+	if !network.IsLeader() {
+		return false
+	}
+
+	// A gossip entry names its dialer whether or not that router is connected here, and a router this
+	// controller does not hold is one it cannot tell.
+	if network.Router.GetConnected(srcRouter.Id) == nil {
+		return false
+	}
+
+	exists, err := network.Router.Exists(destRouterId)
+	if err != nil {
+		// Saying a router is gone on the strength of a failed read would have the reporting router tear
+		// down links to one that is probably fine.
+		pfxlog.Logger().WithError(err).WithField("routerId", destRouterId).
+			Error("failed to check if reported link destination exists")
+		return false
+	}
+	return !exists
 }
 
 func (network *Network) LinkFaulted(link *model.Link, dupe bool) {
@@ -1089,7 +1292,7 @@ func (network *Network) Run() {
 		case <-ticker.C:
 			network.clean()
 			network.smart()
-			network.Link.ScanForDeadLinks()
+			network.Link.ScanForDeadLinks(nil)
 
 		case <-network.closeNotify:
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)
@@ -1165,7 +1368,10 @@ func (network *Network) GetCapabilities() []string {
 	return network.capabilities
 }
 
-func (network *Network) RemoveLink(linkId string) {
+// RemoveLink removes linkId and sends a fault for it to the routers at its ends, so they close it. For an id
+// this controller does not know, the fault goes to every connected router instead, in case one still holds
+// the link. Reports whether the link was known.
+func (network *Network) RemoveLink(linkId string) bool {
 	log := pfxlog.Logger().WithField("linkId", linkId)
 
 	link, _ := network.Link.Get(linkId)
@@ -1209,6 +1415,7 @@ func (network *Network) RemoveLink(linkId string) {
 		network.Link.Remove(link)
 		network.RerouteLink(link)
 	}
+	return link != nil
 }
 
 // RemoveLinkAtIteration removes linkId only while it is still at iteration, and

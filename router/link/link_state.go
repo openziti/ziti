@@ -50,7 +50,17 @@ func newLinkDest(destId string) *linkDest {
 		healthy:     true,
 		unhealthyAt: time.Time{},
 		linkMap:     map[string]*linkState{},
+		// A brand new destination is treated as just affirmed, so it gets the full grace period before it
+		// can be considered abandoned rather than being eligible for removal the moment it appears.
+		lastAffirmedAt: time.Now(),
 	}
+}
+
+// removedDest marks a destination this router was told is gone, so a peer state computed before the removal
+// cannot recreate it. Router ids are never reused, so the marker is settled fact rather than a guess.
+type removedDest struct {
+	storeIndex uint64
+	at         time.Time
 }
 
 type linkDest struct {
@@ -58,7 +68,13 @@ type linkDest struct {
 	version     concurrenz.AtomicValue[string]
 	healthy     bool
 	unhealthyAt time.Time
-	linkMap     map[string]*linkState
+	ctrlHealth  map[string]bool // per-controller health reports
+	// lastAffirmedAt is the last time a controller the router was connected to said this destination was up.
+	// It drives removal of an abandoned destination, which healthy cannot: healthy is a sticky union over
+	// every report ever received, so a controller that said "up" and then went away holds it true forever.
+	// See affirmedBy for why removal asks a different question than the dial backoff does.
+	lastAffirmedAt time.Time
+	linkMap        map[string]*linkState
 
 	// listeners caches the most recent listener set advertised by this
 	// destination router. Stored so we can re-evaluate matches when the
@@ -67,16 +83,56 @@ type linkDest struct {
 	listeners []*ctrl_pb.Listener
 }
 
-func (self *linkDest) update(update *linkDestUpdate) {
-	if self.healthy && !update.healthy {
-		self.unhealthyAt = time.Now()
+// updateHealthFromCtrl records a health report from a specific controller.
+func (self *linkDest) updateHealthFromCtrl(ctrlId string, healthy bool) {
+	if self.ctrlHealth == nil {
+		self.ctrlHealth = map[string]bool{}
 	}
+	self.ctrlHealth[ctrlId] = healthy
+}
 
-	self.healthy = update.healthy
-
-	if update.healthy {
-		self.version.Store(update.version)
+// isHealthy returns true if any controller reports the destination as healthy.
+func (self *linkDest) isHealthy() bool {
+	for _, healthy := range self.ctrlHealth {
+		if healthy {
+			return true
+		}
 	}
+	return false
+}
+
+// affirmedBy reports whether any of the given controllers says this destination is up. It exists so that
+// deciding a destination has been abandoned can ignore reports from controllers the router is no longer
+// connected to, which isHealthy deliberately does not.
+//
+// The two want different answers. The dial backoff reads isHealthy, and treating a controller outage as
+// "nobody says this is up" would switch every destination to the unhealthy backoff, whose retry interval
+// starts at a minute and multiplies by ten toward an hour; a controller restart would then stall re-dialing
+// links that are perfectly fine. Removal has no such problem, because the caller only acts once a destination
+// has gone unaffirmed for far longer than any outage lasts.
+func (self *linkDest) affirmedBy(ctrlIds map[string]struct{}) bool {
+	for ctrlId, healthy := range self.ctrlHealth {
+		if healthy {
+			if _, ok := ctrlIds[ctrlId]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// abandoned reports whether the router should stop tracking this destination: either there is nothing left to
+// dial, or nothing established to it and no controller has affirmed it in long enough that the notification
+// saying it was deleted must have been missed.
+//
+// An established link keeps a destination regardless of affirmation. Affirmation lapses on a controller
+// outage, and a link that is up is better evidence that the destination is there than a controller's silence
+// is that it is not.
+func (self *linkDest) abandoned(hasEstablishedLinks bool, now time.Time) bool {
+	if len(self.linkMap) == 0 {
+		return true
+	}
+	return !hasEstablishedLinks && now.Sub(self.lastAffirmedAt) > destAbandonedAfter
 }
 
 type linkFault struct {
@@ -118,33 +174,42 @@ func (self *linkState) updateStatus(status linkStatus) {
 	}
 }
 
-func (self *linkState) GetLinkId() string {
-	return self.linkId
+// newDialAttempt copies what a dial needs from the state. Call it on the registry's event loop, which owns the
+// state.
+func (self *linkState) newDialAttempt(iteration uint32) *dialAttempt {
+	return &dialAttempt{
+		dialer:          self.dialer,
+		linkId:          self.linkId,
+		routerId:        self.dest.id,
+		address:         self.listener.Address,
+		linkProtocol:    self.listener.Protocol,
+		listenerBinding: self.listener.LocalBinding,
+		routerVersion:   self.dest.version.Load(),
+		iteration:       iteration,
+	}
 }
 
-func (self *linkState) GetRouterId() string {
-	return self.dest.id
+// dialAttempt is one dial of a linkState, fixed when the dial is queued, and is the xlink.Dial its dialer is
+// handed. The dial runs on the dialer pool while the event loop goes on updating the state, which can move
+// the listener's address or replace the dialer, so the dial reads only this copy.
+type dialAttempt struct {
+	dialer          xlink.Dialer
+	linkId          string
+	routerId        string
+	address         string
+	linkProtocol    string
+	listenerBinding string
+	routerVersion   string
+	iteration       uint32
 }
 
-func (self *linkState) GetAddress() string {
-	return self.listener.Address
-}
-
-func (self *linkState) GetLinkProtocol() string {
-	return self.listener.Protocol
-}
-
-func (self *linkState) GetListenerBinding() string {
-	return self.listener.LocalBinding
-}
-
-func (self *linkState) GetRouterVersion() string {
-	return self.dest.version.Load()
-}
-
-func (self *linkState) GetIteration() uint32 {
-	return uint32(self.dialAttempts.Load())
-}
+func (self *dialAttempt) GetLinkId() string          { return self.linkId }
+func (self *dialAttempt) GetRouterId() string        { return self.routerId }
+func (self *dialAttempt) GetAddress() string         { return self.address }
+func (self *dialAttempt) GetLinkProtocol() string    { return self.linkProtocol }
+func (self *dialAttempt) GetListenerBinding() string { return self.listenerBinding }
+func (self *dialAttempt) GetRouterVersion() string   { return self.routerVersion }
+func (self *dialAttempt) GetIteration() uint32       { return self.iteration }
 
 func (self *linkState) addPendingLinkFault(linkId string, iteration uint32) {
 	log := pfxlog.Logger().WithField("linkId", linkId).WithField("iteration", iteration)

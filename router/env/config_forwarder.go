@@ -23,6 +23,13 @@ import (
 )
 
 const (
+	// DefaultRxPoolQueueLength and DefaultRxPoolWorkerCount size the pool for work lifted off a control
+	// channel's receive goroutine. The queue is generous because the work arrives in bursts, one per
+	// controller reconnect, while the worker count stays modest since the work is per control channel and
+	// there are only ever a handful of those.
+	DefaultRxPoolQueueLength = 1024
+	DefaultRxPoolWorkerCount = 16
+
 	DefaultXgressCloseCheckInterval    = 5 * time.Second
 	DefaultXgressDialDwellTime         = 0
 	DefaultFaultTxInterval             = 15 * time.Second

@@ -133,7 +133,11 @@ func (self *BaseLinkChannel) UnderlayAdded(ch channel.Channel, underlay channel.
 	self.connIteration.Add(1)
 }
 
-// UnderlayRemoved implements channel.UnderlayEventListener.
+// UnderlayRemoved implements channel.UnderlayEventListener. Removing an underlay bumps the
+// connection-state iteration for the same reason adding one does: the iteration is how a controller tells
+// that the set of connections it was told about has been superseded. Leaving it unchanged lets the
+// connection set change while the iteration still claims the controller's copy is current, so the
+// controller cannot tell its copy is stale and keeps comparing against connections that are gone.
 func (self *BaseLinkChannel) UnderlayRemoved(ch channel.Channel, underlay channel.Underlay) {
 	pfxlog.Logger().
 		WithField("id", ch.Label()).
@@ -141,6 +145,7 @@ func (self *BaseLinkChannel) UnderlayRemoved(ch channel.Channel, underlay channe
 		WithField("underlayType", channel.GetUnderlayType(underlay)).
 		WithField("channelClosed", ch.IsClosed()).
 		Info("underlay closed")
+	self.connIteration.Add(1)
 }
 
 type DialLinkChannelConfig struct {
@@ -269,7 +274,6 @@ func (self *DialLinkChannel) UnderlayAdded(ch channel.Channel, underlay channel.
 // UnderlayRemoved implements channel.UnderlayEventListener.
 func (self *DialLinkChannel) UnderlayRemoved(ch channel.Channel, underlay channel.Underlay) {
 	self.BaseLinkChannel.UnderlayRemoved(ch, underlay)
-	self.connIteration.Add(1)
 	self.changeCallback(self)
 }
 
