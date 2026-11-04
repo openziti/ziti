@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -34,13 +35,46 @@ func NewPostureResponseManager(env Env) *PostureResponseManager {
 		postureCache: newPostureCache(env),
 	}
 
+	manager.mfaEnrolledAt = manager.readMfaEnrolledAt
+
 	manager.AddPostureDataListener(manager.postureDataUpdated)
+
+	if !env.GetConfig().Edge.DisablePostureChecks {
+		// Fires on every controller as the delete is applied, so MFA removal resets posture cluster-wide, for both the
+		// self-service and the admin removal paths.
+		env.GetStores().Mfa.AddEntityEventListenerF(manager.mfaDeleted, boltz.EntityDeletedAsync)
+	}
+
 	return manager
 }
 
 type PostureResponseManager struct {
 	env          Env
 	postureCache *PostureCache
+
+	// mfaEnrolledAt returns when the identity's current, verified MFA enrollment was created, and false if it has
+	// none. A field so tests can stub it.
+	mfaEnrolledAt func(identityId string) (time.Time, bool, error)
+}
+
+func (self *PostureResponseManager) readMfaEnrolledAt(identityId string) (time.Time, bool, error) {
+	mfa, err := self.env.GetManagers().Mfa.ReadOneByIdentityId(identityId)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+
+	if mfa == nil || !mfa.IsVerified {
+		return time.Time{}, false, nil
+	}
+
+	return mfa.CreatedAt, true, nil
+}
+
+// mfaDeleted fails MFA posture for every api session of an identity whose verified MFA enrollment was removed.
+func (self *PostureResponseManager) mfaDeleted(mfa *db.Mfa) {
+	if mfa.IsVerified {
+		self.SetMfaPostureForIdentity(mfa.IdentityId, false)
+	}
 }
 
 func (self *PostureResponseManager) Create(identityId string, postureResponses []*PostureResponse) {
@@ -77,7 +111,41 @@ func (self *PostureResponseManager) SetMfaPosture(identityId string, apiSessionI
 // amr includes totp. It only fills in a session the cache has no MFA state for: a later MFA code, or MFA removed
 // since, is never overwritten by the (older) token. This is the controller-side counterpart of the router's
 // posture.Cache.SeedMfaFromApiSession. Returns true if the session was seeded.
+//
+// The token keeps amr=totp through refresh, so it is only trusted if the identity still has the verified MFA
+// enrollment it was issued under: one that exists and was created no later than passedAt. Otherwise MFA was
+// removed (or removed and re-enrolled) since, and the session is recorded as not having passed MFA, so the
+// enrollment is not read again on every request.
 func (self *PostureResponseManager) SeedMfaPosture(identityId string, apiSessionId string, passedAt time.Time) bool {
+	hasMfaState := func(pd *PostureData) bool {
+		apiSessionData := pd.ApiSessions[apiSessionId]
+		return apiSessionData != nil && apiSessionData.Mfa != nil
+	}
+
+	known := false
+	self.postureCache.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
+		pd := newValue
+		if exist && valueInMap != nil {
+			pd = valueInMap
+		}
+		known = hasMfaState(pd)
+		return pd
+	})
+
+	if known {
+		return false
+	}
+
+	enrolledAt, enrolled, err := self.mfaEnrolledAt(identityId)
+	if err != nil {
+		pfxlog.Logger().WithError(err).WithField("identityId", identityId).WithField("apiSessionId", apiSessionId).
+			Error("could not read MFA enrollment, not seeding MFA posture from token")
+		return false
+	}
+
+	// auth_time has second precision, the enrollment's creation time does not
+	trusted := enrolled && !passedAt.Before(enrolledAt.Truncate(time.Second))
+
 	seeded := false
 
 	self.postureCache.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
@@ -86,8 +154,14 @@ func (self *PostureResponseManager) SeedMfaPosture(identityId string, apiSession
 			pd = valueInMap
 		}
 
-		if apiSessionData := pd.ApiSessions[apiSessionId]; apiSessionData != nil && apiSessionData.Mfa != nil {
+		// a concurrent request or MFA change got here first
+		if hasMfaState(pd) {
 			return pd
+		}
+
+		var passedMfaAt *time.Time
+		if trusted {
+			passedMfaAt = &passedAt
 		}
 
 		postureResponse := &PostureResponse{
@@ -99,14 +173,14 @@ func (self *PostureResponseManager) SeedMfaPosture(identityId string, apiSession
 
 		postureSubType := &PostureResponseMfa{
 			ApiSessionId: apiSessionId,
-			PassedMfaAt:  &passedAt,
+			PassedMfaAt:  passedMfaAt,
 		}
 
 		postureResponse.SubType = postureSubType
 		postureSubType.PostureResponse = postureResponse
 
 		postureResponse.Apply(pd)
-		seeded = true
+		seeded = trusted
 
 		return pd
 	})

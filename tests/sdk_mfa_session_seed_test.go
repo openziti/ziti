@@ -186,4 +186,15 @@ func Test_SDK_MfaBaselineSeededFromApiSession(t *testing.T) {
 		ctx.Req.True(controllerMfaCheckPassing(clientCtx), "the controller should report the MFA check passing from the api session token")
 		ctx.Req.False(totpTokenRequested.Load(), "no posture TOTP token may be requested: the session token is the only MFA source")
 	})
+
+	// The token keeps amr=totp through refresh, so it must not keep passing the check once MFA is gone.
+	t.Run("admin mfa removal fails the controller mfa check", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		ctx.Req.NoError(adminManagementApi.RemoveIdentityMfa(identity.Id))
+
+		ctx.Req.Eventually(func() bool {
+			return !controllerMfaCheckPassing(clientCtx)
+		}, 5*time.Second, 100*time.Millisecond, "the controller should report the MFA check failing after MFA removal")
+	})
 }
