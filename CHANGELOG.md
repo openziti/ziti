@@ -44,6 +44,7 @@ change goes through once the leader is upgraded.
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4556](https://github.com/openziti/ziti/issues/4556) - [Backport-2.0] transport_udp and proxy_udp listeners can deadlock their own event loop
     * [Issue #4597](https://github.com/openziti/ziti/issues/4597) - [Backport-2.0] Compilation fails on Illumos
     * [Issue #4605](https://github.com/openziti/ziti/issues/4605) - [Backport-2.0] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
     * [Issue #4563](https://github.com/openziti/ziti/issues/4563) - [Backport-2.0] Identity admin protection is decided from the serving controller's view before dispatch
