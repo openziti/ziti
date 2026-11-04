@@ -18,11 +18,16 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4600](https://github.com/openziti/ziti/issues/4600) - [Backport-1.6] ER/T terminator re-create reverts health check cost and precedence
+    * [Issue #4587](https://github.com/openziti/ziti/issues/4587) - [Backport-1.6] Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
+    * [Issue #4601](https://github.com/openziti/ziti/issues/4601) - [Backport-1.6] Handle UDP difference between proxy and tproxy implementations
+    * [Issue #4606](https://github.com/openziti/ziti/issues/4606) - [Backport-1.6] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
+    * [Issue #4567](https://github.com/openziti/ziti/issues/4567) - [Backport-1.6] The default admin's isAdmin flag can be cleared
+    * [Issue #4568](https://github.com/openziti/ziti/issues/4568) - [Backport-1.6] ProtobufToIdentity loops forever when the identity carries SDK info
     * [Issue #4491](https://github.com/openziti/ziti/issues/4491) - [Backport-1.6] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4506](https://github.com/openziti/ziti/issues/4506) - [Backport-1.6] Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4648](https://github.com/openziti/ziti/issues/4648) - [Backport-1.6] Remove the edge router API proxy
     * [Issue #4613](https://github.com/openziti/ziti/issues/4613) - [Backport-1.6] Controller deadlocks when posture data changes for an identity with legacy API sessions
-    * [Issue #4606](https://github.com/openziti/ziti/issues/4606) - [Backport-1.6] ziti tunnel host mode: contextProvider.accept dials the upstream and completes the accept inline, so one slow connection blocks every later dial to that service
 
 
 # Release 1.6.22
@@ -34,7 +39,6 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/ziti: [v1.6.21 -> v1.6.22](https://github.com/openziti/ziti/compare/v1.6.21...v1.6.22)
-    * [Issue #4601](https://github.com/openziti/ziti/issues/4601) - [Backport-1.6] Handle UDP difference between proxy and tproxy implementations
     * [Issue #4463](https://github.com/openziti/ziti/issues/4463) - [Backport-1.6] Router gives up announcing its links to a controller after a reconnect, leaving the controller missing links
     * [Issue #4464](https://github.com/openziti/ziti/issues/4464) - [Backport-1.6] Checking whether a half-built split link is closed panics
     * [Issue #4465](https://github.com/openziti/ziti/issues/4465) - [Backport-1.6] A dialed link the router has no state for is left up and never reported
