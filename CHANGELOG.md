@@ -3,6 +3,7 @@
 ## What's New
 
 * [Connect-V2: Sessionless SDK Dial](#connect-v2-sessionless-sdk-dial) - SDKs can dial services without a per-service controller session; the router authorizes the dial locally against the Router Data Model
+* [Aborts Reach the Far SDK as Aborts](#aborts-reach-the-far-sdk-as-aborts) - A connection that ends abruptly is no longer relayed to the far SDK as a normal close
 * [ZAC Bootstrapping CLI](#zac-bootstrapping-cli) - CLI commands to download, configure, and serve the Ziti Admin Console without hand-editing YAML
 * [Verify Traffic with ext-jwt-signers](#verify-traffic-with-ext-jwt-signers) - `ziti ops verify traffic` can authenticate with an ext-jwt-signer (OIDC) to test the certless ephemeral-cert path
 * [Cluster Quorum Recovery](#cluster_quorum_recovery) - A mechanism for recovering clusters that have irrevocably lost the ability to form a quorum
@@ -100,6 +101,20 @@ session creation on the controller.
 Connect-V2 requires both a router and an SDK from this release (or newer). Mixed networks
 are fine: a dial uses Connect-V2 only when both ends support it, and otherwise falls back
 to the session-based path.
+
+## Aborts Reach the Far SDK as Aborts
+
+The router used to relay every end of an SDK connection to the far SDK as a FIN followed by a
+close, whether the connection ended gracefully or was aborted, so the far application could not
+tell a lost connection from a finished one. A connection that ends gracefully, meaning the SDK
+sent a FIN or an EOF before it closed, is still relayed that way. One that ends abruptly now
+reaches the far SDK as a close with no FIN before it: an SDK that closed without a FIN or lost
+its channel, or a circuit torn down underneath the connection.
+
+An SDK that tells the two apart can now report an abort instead of an end of data. The C SDK does
+this with the change for openziti/c#1207. An SDK that closes without sending a FIN first,
+including older SDKs, now looks like an abort to such a receiver. The Go SDK's `Close()` now
+sends one. A peer that predates this change is relayed as before.
 
 ## ZAC Bootstrapping CLI
 
@@ -838,6 +853,7 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4739](https://github.com/openziti/ziti/issues/4739) - Router relays an SDK's abrupt close to the far SDK as a graceful close
     * [Issue #4596](https://github.com/openziti/ziti/issues/4596) - ER/T terminator re-create reverts health check cost and precedence
     * [Issue #4580](https://github.com/openziti/ziti/issues/4580) - Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
     * [Issue #4489](https://github.com/openziti/ziti/issues/4489) - Router panics sending a link state update to a controller it has unregistered
