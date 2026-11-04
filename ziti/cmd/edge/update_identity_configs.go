@@ -61,17 +61,17 @@ func newUpdateIdentityConfigsCmd(out io.Writer, errOut io.Writer) *cobra.Command
 
 // runupdateIdentityConfigs update a new identity on the Ziti Edge Controller
 func runupdateIdentityConfigs(o *updateIdentityConfigsOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("identities", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
 
-	serviceId, err := mapNameToID("services", o.Args[1], o.Options)
+	serviceId, err := api.MapEdgeNameToID("services", &o.Options, o.Args[1])
 	if err != nil {
 		return err
 	}
 
-	configId, err := mapNameToID("configs", o.Args[2], o.Options)
+	configId, err := api.MapEdgeNameToID("configs", &o.Options, o.Args[2])
 	if err != nil {
 		return err
 	}

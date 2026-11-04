@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/ziti/v2/router/xgress_edge_transport"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
-	"github.com/openziti/ziti/v2/ziti/util"
 	"github.com/spf13/cobra"
 )
 
@@ -71,12 +70,12 @@ func newCreateTerminatorCmd(p common.OptionsProvider) *cobra.Command {
 // runCreateTerminator implements the command to create a Terminator
 func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	entityData := gabs.New()
-	service, err := api.MapNameToID(util.FabricAPI, "services", &o.Options, o.Args[0])
+	service, err := api.MapFabricNameToID("services", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
 
-	router, err := api.MapNameToID(util.FabricAPI, "routers", &o.Options, o.Args[1])
+	router, err := api.MapFabricNameToID("routers", &o.Options, o.Args[1])
 	if err != nil {
 		return err
 	}
