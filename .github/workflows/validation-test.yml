@@ -91,6 +91,9 @@ jobs:
       - name: Create Logs Archive
         if: always()
         run: |
+          # compress large logs on the hosts, so fetching them can't fill the runner's disk
+          $(go env GOPATH)/bin/${TEST_TYPE} sshexec '*' 'find logs -type f -name "*.log" -size +10M -exec gzip -f {} +' -c 10 \
+            || echo "::warning::compressing logs on the hosts failed; fetching them uncompressed"
           $(go env GOPATH)/bin/${TEST_TYPE} get files '*' "./logs/{{ .Id }}/" ./logs
 
       - name: Upload artifacts
