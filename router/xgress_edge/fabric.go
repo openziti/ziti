@@ -17,8 +17,10 @@
 package xgress_edge
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"math/rand"
 	"sync"
@@ -54,8 +56,8 @@ type edgeTerminator struct {
 	serviceSessionToken *state.ServiceSessionToken
 	instance            string
 	instanceSecret      []byte
-	cost                uint16
-	precedence          edge_ctrl_pb.TerminatorPrecedence
+	cost                uint16                            // guarded by lock once the terminator is registered
+	precedence          edge_ctrl_pb.TerminatorPrecedence // guarded by lock once the terminator is registered
 	hostData            map[uint32][]byte
 	assignIds           bool
 	useSdkXgress        bool
@@ -76,6 +78,9 @@ type edgeTerminator struct {
 	retryBackoff      time.Duration    // guarded by lock; current backoff ceiling, doubles per consecutive rejection
 	createConfirmed   atomic.Bool      // set once the controller acknowledges the create; lets a later remove use the leader fast-path
 	createRequest     *createRequestId // guarded by lock; nil when no create is awaiting a response
+	// recreateNeeded is set when the controller may hold a cost, precedence or peer data other than
+	// this terminator's, and no create has been built from the current values since. Guarded by lock.
+	recreateNeeded bool
 }
 
 // createRequestId identifies a create terminator request by the control channel it went out on and
@@ -103,6 +108,10 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	lastAttempt := other.lastAttempt
 	createConfirmed := other.createConfirmed.Load()
 	createRequest := other.createRequest
+	otherCost := other.cost
+	otherPrecedence := other.precedence
+	otherHostData := other.hostData
+	otherRecreateNeeded := other.recreateNeeded
 	other.lock.Unlock()
 
 	// establishStart is deliberately not inherited: the SDK deadline that matters belongs to
@@ -119,7 +128,83 @@ func (self *edgeTerminator) replace(other *edgeTerminator) {
 	self.createConfirmed.Store(createConfirmed)
 	// The terminator id comes across too, so a create still awaiting a reply is this terminator's now.
 	self.createRequest = createRequest
+	// The adopted terminator's values are the ones the controller holds or its pending create carries.
+	self.recreateNeeded = otherRecreateNeeded || self.cost != otherCost || self.precedence != otherPrecedence ||
+		!maps.EqualFunc(self.hostData, otherHostData, bytes.Equal)
 	self.lock.Unlock()
+}
+
+// getCostAndPrecedence returns the terminator's current cost and precedence.
+func (self *edgeTerminator) getCostAndPrecedence() (uint16, edge_ctrl_pb.TerminatorPrecedence) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.cost, self.precedence
+}
+
+// takeCreateValues returns the cost, precedence and peer data a create for this terminator carries, and
+// clears recreateNeeded, since a create built from them carries the current values.
+func (self *edgeTerminator) takeCreateValues() (uint16, edge_ctrl_pb.TerminatorPrecedence, map[uint32][]byte) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.recreateNeeded = false
+	return self.cost, self.precedence, self.hostData
+}
+
+// updateCostAndPrecedence records cost and precedence, leaving either as it is when nil, and reports
+// whether the controller can take them as an update. It can when the terminator is established with
+// no create outstanding. Otherwise the controller may not have the terminator yet, or a pending create
+// carries the previous values, so a changed value sets recreateNeeded and reaches the controller in a
+// create instead.
+func (self *edgeTerminator) updateCostAndPrecedence(cost *uint16, precedence *edge_ctrl_pb.TerminatorPrecedence) bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	changed := false
+	if cost != nil && *cost != self.cost {
+		self.cost = *cost
+		changed = true
+	}
+	if precedence != nil && *precedence != self.precedence {
+		self.precedence = *precedence
+		changed = true
+	}
+
+	if self.state.Load() == xgress_common.TerminatorStateEstablished && self.createRequest == nil {
+		return true
+	}
+
+	if changed {
+		self.recreateNeeded = true
+	}
+	return false
+}
+
+// markRecreateNeeded records that the controller may not hold the terminator's current values.
+func (self *edgeTerminator) markRecreateNeeded() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.recreateNeeded = true
+}
+
+// needsRecreate reports whether recreateNeeded is set.
+func (self *edgeTerminator) needsRecreate() bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return self.recreateNeeded
+}
+
+// completeEstablish moves the terminator from Establishing to Established after a successful create
+// and reports whether it moved. When recreateNeeded is set, the create that succeeded carried values
+// that have since changed: the terminator stays Establishing, or returns to it, and stale is true, so
+// the caller sends another create once none is outstanding.
+func (self *edgeTerminator) completeEstablish(reason string) (established bool, stale bool) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.recreateNeeded {
+		self.updateState(xgress_common.TerminatorStateEstablished, xgress_common.TerminatorStateEstablishing, "terminator values changed")
+		return false, true
+	}
+	return self.updateState(xgress_common.TerminatorStateEstablishing, xgress_common.TerminatorStateEstablished, reason), false
 }
 
 func (self *edgeTerminator) IsEstablishing() bool {

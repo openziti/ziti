@@ -17,7 +17,9 @@
 package handler_edge_ctrl
 
 import (
+	"bytes"
 	"fmt"
+	"maps"
 	"math"
 	"time"
 
@@ -26,12 +28,12 @@ import (
 	"github.com/openziti/channel/v5/protobufs"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
 	"github.com/openziti/ziti/v2/controller/model"
-	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -102,37 +104,13 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 
 	terminator, _ := self.getNetwork().Terminator.Read(ctx.req.Address)
 	if terminator != nil {
-		if ctx.err = ctx.validateExistingTerminator(terminator, ctx.session.IdentityId, common.EdgeBinding, logger); ctx.err != nil {
-			self.returnError(ctx, ctx.err, logger)
+		if !self.updateExisting(ctx, terminator, logger) {
 			return
-		}
-
-		// if the precedence or cost has changed, update the terminator
-		if terminator.Precedence != ctx.req.GetXtPrecedence() || terminator.Cost != uint16(ctx.req.Cost) {
-			terminator.Precedence = ctx.req.GetXtPrecedence()
-			terminator.Cost = uint16(ctx.req.Cost)
-			err := self.appEnv.GetManagers().Terminator.Update(terminator, fields.UpdatedFieldsMap{
-				db.FieldTerminatorPrecedence: struct{}{},
-				db.FieldTerminatorCost:       struct{}{},
-			}, ctx.newChangeContext())
-
-			if err != nil {
-				// A rate-limited or leaderless dispatch is transient; reply busy so the router requeues
-				// promptly instead of treating it as a hard failure.
-				if command.WasRateLimited(err) || command.WasLeaderless(err) {
-					self.returnError(ctx, busyError(err), logger)
-					return
-				}
-				self.returnError(ctx, internalError(err), logger)
-				return
-			}
 		}
 	} else {
 		terminator = &model.Terminator{
-			BaseEntity: models.BaseEntity{
-				Id:       ctx.req.Address,
-				IsSystem: true,
-			},
+			Id:             ctx.req.Address,
+			IsSystem:       true,
 			Service:        ctx.session.ServiceId,
 			Router:         ctx.sourceRouter.Id,
 			Binding:        common.EdgeBinding,
@@ -156,8 +134,7 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		if err := self.appEnv.GetHostController().GetNetwork().Managers.Dispatcher.Dispatch(cmd); err != nil {
 			// terminator might have been created while we were trying to create.
 			if terminator, _ = self.getNetwork().Terminator.Read(ctx.req.Address); terminator != nil {
-				if validateError := ctx.validateExistingTerminator(terminator, ctx.session.IdentityId, common.EdgeBinding, logger); validateError != nil {
-					self.returnError(ctx, validateError, logger)
+				if !self.updateExisting(ctx, terminator, logger) {
 					return
 				}
 			} else {
@@ -214,6 +191,54 @@ func (self *createTerminatorV2Handler) returnError(ctx *CreateTerminatorV2Reques
 type CreateTerminatorV2RequestContext struct {
 	baseSessionRequestContext
 	req *edge_ctrl_pb.CreateTerminatorV2Request
+}
+
+// updateExisting validates that terminator can be adopted by the request and applies the request to it
+// with applyToExisting. It reports whether the caller can reply with success; on false the error reply
+// has been sent.
+func (self *createTerminatorV2Handler) updateExisting(ctx *CreateTerminatorV2RequestContext, terminator *model.Terminator, logger *logrus.Entry) bool {
+	if ctx.err = ctx.validateExistingTerminator(terminator, ctx.session.IdentityId, common.EdgeBinding, logger); ctx.err != nil {
+		self.returnError(ctx, ctx.err, logger)
+		return false
+	}
+
+	if err := ctx.applyToExisting(terminator, ctx.newChangeContext()); err != nil {
+		// A rate-limited or leaderless dispatch is transient; reply busy so the router requeues
+		// promptly instead of treating it as a hard failure.
+		if command.WasRateLimited(err) || command.WasLeaderless(err) {
+			self.returnError(ctx, busyError(err), logger)
+			return false
+		}
+		self.returnError(ctx, internalError(err), logger)
+		return false
+	}
+	return true
+}
+
+// applyToExisting persists the request's cost, precedence and peer data to terminator. The write is
+// skipped when terminator already has them and this controller is a caught-up leader or not clustered.
+// The cost must already be validated.
+func (self *CreateTerminatorV2RequestContext) applyToExisting(terminator *model.Terminator, ctx *change.Context) error {
+	precedence := self.req.GetXtPrecedence()
+	cost := uint16(self.req.Cost)
+
+	// Not IsLeader: a leader mid-catch-up can hold a value the cluster has since replaced. A leadership
+	// change around the read can still skip a needed write; that window is accepted. Peer data can't hit
+	// it: sdk keys are random, so a terminator never goes back to an earlier key.
+	if self.handler.getNetwork().Dispatcher.IsLeaderAndCaughtUp() &&
+		terminator.Precedence == precedence && terminator.Cost == cost &&
+		maps.EqualFunc(terminator.PeerData, self.req.PeerData, bytes.Equal) {
+		return nil
+	}
+
+	terminator.Precedence = precedence
+	terminator.Cost = cost
+	terminator.PeerData = self.req.PeerData
+	return self.handler.getNetwork().Terminator.Update(terminator, fields.UpdatedFieldsMap{
+		db.FieldTerminatorPrecedence: struct{}{},
+		db.FieldTerminatorCost:       struct{}{},
+		db.FieldServerPeerData:       struct{}{},
+	}, ctx)
 }
 
 func (self *CreateTerminatorV2RequestContext) GetSessionToken() string {
