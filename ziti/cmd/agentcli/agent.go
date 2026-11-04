@@ -3,6 +3,7 @@ package agentcli
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"slices"
 	"strings"
@@ -11,13 +12,13 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/ziti/v2/common/agent"
 	"github.com/openziti/ziti/v2/common/agentid"
+	"github.com/openziti/ziti/v2/common/logging"
 	"github.com/openziti/ziti/v2/common/pb/mgmt_pb"
 	"github.com/openziti/ziti/v2/controller"
 	"github.com/openziti/ziti/v2/router"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
 	tunnelpkg "github.com/openziti/ziti/v2/ziti/tunnel"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -39,19 +40,21 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 		Use:   "agent",
 		Short: "Interact with ziti processes using the the IPC agent",
 		// Agent commands are short-lived clients. The channel library logs
-		// underlay add/remove at INFO on every connection, which pollutes
-		// stderr and breaks tooling that treats any stderr output as an error
-		// (e.g. the helm chart's readiness probe parsing `ziti agent cluster
-		// list` output). Quiet logging to Warn by default; --verbose restores
-		// detailed logging. This PersistentPreRun replaces the root command's,
-		// so preserve its SilenceUsage behavior here too.
+		// underlay add/remove at INFO on every connection, through slog's
+		// default logger, which pollutes stderr and breaks tooling that treats
+		// any stderr output as an error (e.g. the helm chart's readiness probe
+		// parsing `ziti agent cluster list` output). Quiet logrus and slog's
+		// default logger to Warn by default; --verbose restores detailed
+		// logging. This PersistentPreRun replaces the root command's, so
+		// preserve its SilenceUsage behavior here too.
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmd.SilenceUsage = true
 			if verbose {
-				logrus.SetLevel(logrus.DebugLevel)
+				logging.SetGlobalLevel(slog.LevelDebug)
 			} else {
-				logrus.SetLevel(logrus.WarnLevel)
+				logging.SetGlobalLevel(slog.LevelWarn)
 			}
+			slog.SetDefault(slog.New(logging.HandlerFor(logging.DefaultLoggerName)))
 		},
 	}
 
