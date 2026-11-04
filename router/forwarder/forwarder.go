@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -218,9 +217,9 @@ func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgre
 				if err := dst.SendPayload(payload, timeout, payloadType); err != nil {
 					return err
 				}
-				// Per-payload hot path: build the logger only if Debug is enabled, so
-				// the level check is the only cost when this channel is below Debug.
-				if routeLog.Enabled(context.Background(), slog.LevelDebug) {
+				// Per-payload hot path: build the attrs only if Trace is enabled, so
+				// the level check is the only cost when this channel is above Trace.
+				if routeLog.Enabled(context.Background(), logging.LevelTrace) {
 					attrs := []any{
 						"srcAddr", string(srcAddr),
 						"dstAddr", string(dstAddr),
@@ -233,7 +232,7 @@ func (forwarder *Forwarder) forwardPayload(srcAddr xgress.Address, payload *xgre
 					if uuidVal, found := payload.Headers[xgress.HeaderKeyUUID]; found {
 						attrs = append(attrs, "uuid", uuidz.ToString(uuidVal))
 					}
-					routeLog.Debug("forwarded payload", attrs...)
+					routeLog.Log(context.Background(), logging.LevelTrace, "forwarded payload", attrs...)
 				}
 				return nil
 			} else {
@@ -255,8 +254,8 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 				if err := dst.SendAcknowledgement(acknowledgement); err != nil {
 					return err
 				}
-				if routeLog.Enabled(context.Background(), slog.LevelDebug) {
-					routeLog.Debug("forwarded acknowledgement",
+				if routeLog.Enabled(context.Background(), logging.LevelTrace) {
+					routeLog.Log(context.Background(), logging.LevelTrace, "forwarded acknowledgement",
 						"srcAddr", string(srcAddr),
 						"dstAddr", string(dstAddr),
 						"circuitId", circuitId,
