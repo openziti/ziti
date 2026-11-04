@@ -2,14 +2,15 @@ package db
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -17,11 +18,24 @@ import (
 
 type ServicePolicyEventsKeyType string
 
+// serviceEventHandler queues service events raised during one write for dispatch when it commits.
 type serviceEventHandler struct {
-	events []*ServiceEvent
+	events          []*ServiceEvent
+	updatedServices map[string]struct{}
 }
 
+// addServiceUpdatedEvent queues a ServiceUpdated event for every identity that can dial or bind the
+// service. A service is expanded at most once per handler, so repeated calls for the same service
+// within one write queue nothing further.
 func (self *serviceEventHandler) addServiceUpdatedEvent(stores *stores, tx *bbolt.Tx, serviceId []byte) {
+	if _, done := self.updatedServices[string(serviceId)]; done {
+		return
+	}
+	if self.updatedServices == nil {
+		self.updatedServices = map[string]struct{}{}
+	}
+	self.updatedServices[string(serviceId)] = struct{}{}
+
 	cursor := stores.service.bindIdentitiesCollection.IterateLinks(tx, serviceId, true)
 
 	for cursor != nil && cursor.IsValid() {
@@ -52,15 +66,93 @@ func (self *serviceEventHandler) addServiceEvent(tx *bbolt.Tx, identityId, servi
 
 type roleAttributeChangeContext struct {
 	serviceEventHandler
-	mutateCtx             boltz.MutateContext
-	rolesSymbol           boltz.EntitySetSymbol
-	linkCollection        boltz.LinkCollection
-	relatedLinkCollection boltz.LinkCollection
-	denormLinkCollection  boltz.RefCountedLinkCollection
-	changeHandler         func(fromId []byte, toId []byte, add bool)
-	denormChangeHandler   func(fromId, toId []byte, add bool)
-	entityFilter          func(tx *bbolt.Tx, entityId []byte) bool
+	mutateCtx      boltz.MutateContext
+	rolesSymbol    boltz.EntitySetSymbol
+	linkCollection boltz.LinkCollection
+	pairs          []denormPair
+	changeHandler  func(fromId []byte, toId []byte, add bool)
+	entityFilter   func(tx *bbolt.Tx, entityId []byte) bool
+
+	// policyRoleAttributesIndex is the policy store's role-attribute index of rolesSymbol and
+	// entityPoliciesSymbol is the entity's list of linked policies. Both are required for entity-side
+	// evaluation and are unused on the policy side.
+	policyRoleAttributesIndex boltz.SetReadIndex
+	entityPoliciesSymbol      boltz.EntitySetSymbol
 	errorz.ErrorHolder
+}
+
+// denormPair is one reference-counted table fed by the links between a policy and the entity
+// under evaluation. Linking the entity adds a reference to its pair with every entity the policy
+// selects through related, and unlinking removes one. counts is the table as seen from the
+// evaluated entity's side. onChange, when set, runs when a pair gains its first reference or
+// loses its last.
+type denormPair struct {
+	related  boltz.LinkCollection
+	counts   boltz.RefCountedLinkCollection
+	onChange func(entityId, relatedId []byte, add bool)
+}
+
+// idSet accumulates candidate ids for policy evaluation without duplicates.
+type idSet map[string]struct{}
+
+func (self idSet) add(id []byte) {
+	self[string(id)] = struct{}{}
+}
+
+// sorted returns the ids in lexical order, so evaluation touches entities in a stable order.
+func (self idSet) sorted() []string {
+	result := make([]string, 0, len(self))
+	for id := range self {
+		result = append(result, id)
+	}
+	sort.Strings(result)
+	return result
+}
+
+// candidatePolicyIds returns the ids of every policy whose link to entityId may need to change
+// when the entity's role attributes become entityRoles: the policies currently linked to the
+// entity, which include every policy naming it by id, those naming all entities and those naming
+// any of its attributes. A policy outside this set neither matches the entity nor is linked to it.
+func (self *roleAttributeChangeContext) candidatePolicyIds(entityId []byte, entityRoles []string) []string {
+	if self.policyRoleAttributesIndex == nil || self.entityPoliciesSymbol == nil {
+		self.SetError(errors.Errorf("entity-side evaluation of %v requires the policy role-attribute index and the entity policies symbol",
+			self.rolesSymbol.GetName()))
+		return nil
+	}
+
+	tx := self.tx()
+	candidates := idSet{}
+	for _, policyId := range self.entityPoliciesSymbol.EvalStringList(tx, entityId) {
+		candidates.add([]byte(policyId))
+	}
+	self.policyRoleAttributesIndex.Read(tx, []byte(AllRoleValue), candidates.add)
+	for _, attr := range entityRoles {
+		self.policyRoleAttributesIndex.Read(tx, []byte(attr), candidates.add)
+	}
+	return candidates.sorted()
+}
+
+// candidateEntityIds returns the ids of every entity whose link to policyId may need to change
+// when the policy's roles become ids and roles: the entities currently linked to the policy, those
+// named by id and those carrying any of the named attributes, looked up in roleAttributesIndex. A
+// policy naming all entities has no such bound, and is reported with all set instead.
+func (self *roleAttributeChangeContext) candidateEntityIds(policyId []byte, ids, roles []string, roleAttributesIndex boltz.SetReadIndex) (candidates []string, all bool) {
+	if stringz.Contains(roles, AllRoleValue) {
+		return nil, true
+	}
+
+	tx := self.tx()
+	result := idSet{}
+	for _, id := range ids {
+		result.add([]byte(id))
+	}
+	for _, role := range roles {
+		roleAttributesIndex.Read(tx, []byte(role), result.add)
+	}
+	for cursor := self.linkCollection.IterateLinks(tx, policyId); cursor.IsValid(); cursor.Next() {
+		result.add(cursor.Current())
+	}
+	return result.sorted(), false
 }
 
 func (self *roleAttributeChangeContext) tx() *bbolt.Tx {
@@ -130,8 +222,6 @@ func (store *baseStore[E]) validateRoleAttributes(attributes []string, holder er
 }
 
 func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue) {
-	cursor := ctx.rolesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
-
 	entityRoles := FieldValuesToIds(newRoleAttributes)
 
 	servicePolicyStore := store.stores.servicePolicy
@@ -152,8 +242,8 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 		ctx.notifyOfPolicyChangeEvent(policyId, relatedId, relatedEntityType, add)
 	}
 
-	for ; cursor.IsValid(); cursor.Next() {
-		policyId := cursor.Current()
+	for _, candidate := range ctx.candidatePolicyIds(entityId, entityRoles) {
+		policyId := []byte(candidate)
 		roleSet := ctx.rolesSymbol.EvalStringList(ctx.tx(), policyId)
 		roles, ids, err := splitRolesAndIds(roleSet)
 		if err != nil {
@@ -169,41 +259,7 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 		if fieldType, policyTypeValue := policyTypeSymbol.Eval(ctx.tx(), policyId); fieldType == boltz.TypeInt32 {
 			policyType = GetPolicyTypeForId(*boltz.BytesToInt32(policyTypeValue))
 		}
-		if policyType == PolicyTypeDial {
-			if isServices {
-				ctx.denormLinkCollection = store.stores.service.dialIdentitiesCollection
-				ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-					ctx.addServicePolicyEvent(toId, fromId, PolicyTypeDial, add)
-				}
-			} else if isIdentity {
-				ctx.denormLinkCollection = store.stores.identity.dialServicesCollection
-				ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-					ctx.addServicePolicyEvent(fromId, toId, PolicyTypeDial, add)
-				}
-			} else {
-				ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
-				ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-					pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
-					ctx.addServiceUpdatedEvent(store.stores, ctx.tx(), toId)
-				}
-			}
-		} else if isServices {
-			ctx.denormLinkCollection = store.stores.service.bindIdentitiesCollection
-			ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-				ctx.addServicePolicyEvent(toId, fromId, PolicyTypeBind, add)
-			}
-		} else if isIdentity {
-			ctx.denormLinkCollection = store.stores.identity.bindServicesCollection
-			ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-				ctx.addServicePolicyEvent(fromId, toId, PolicyTypeBind, add)
-			}
-		} else {
-			ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
-			ctx.denormChangeHandler = func(fromId, toId []byte, add bool) {
-				pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
-				ctx.addServiceUpdatedEvent(store.stores, ctx.tx(), toId)
-			}
-		}
+		ctx.pairs = servicePolicyStore.denormPairs(ctx, ctx.rolesSymbol, policyType)
 
 		log := pfxlog.ChannelLogger("policyEval", ctx.rolesSymbol.GetStore().GetSingularEntityType()+"Eval").
 			WithFields(logrus.Fields{
@@ -215,7 +271,11 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 	}
 }
 
-func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttributesSymbol boltz.EntitySetSymbol) {
+// EvaluatePolicy relinks policy to the entities selected by ctx.rolesSymbol, adding and removing
+// links and their denormalized counterparts as needed. roleAttributesSymbol and roleAttributesIndex
+// are the target entity store's role attributes field and its index. Only entities that can be
+// affected are visited, unless the policy names all entities.
+func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttributesSymbol boltz.EntitySetSymbol, roleAttributesIndex boltz.SetReadIndex) {
 	policyId := []byte(policy.GetId())
 	_, semanticB := ctx.rolesSymbol.GetStore().GetSymbol(FieldSemantic).Eval(ctx.tx(), policyId)
 	semantic := string(semanticB)
@@ -246,16 +306,38 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 		return
 	}
 
-	cursor := roleAttributesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
-	for ; cursor.IsValid(); cursor.Next() {
-		entityId := cursor.Current()
+	evaluate := func(entityId []byte) {
 		if ctx.entityFilter != nil && !ctx.entityFilter(ctx.tx(), entityId) {
-			continue
+			return
 		}
 		entityRoleAttributes := roleAttributesSymbol.EvalStringList(ctx.tx(), entityId)
 		match, didChange := evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoleAttributes, log)
 		log.Tracef("evaluating %v match: %v, change: %v", string(entityId), match, didChange)
 	}
+
+	candidates, all := ctx.candidateEntityIds(policyId, ids, roles, roleAttributesIndex)
+	if all {
+		cursor := roleAttributesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
+		for ; cursor.IsValid(); cursor.Next() {
+			evaluate(cursor.Current())
+		}
+		return
+	}
+
+	for _, candidate := range candidates {
+		evaluate([]byte(candidate))
+	}
+}
+
+// semanticChanged reports whether persisting a policy changes its stored semantic. It reads the
+// stored value, so it must be called before the new semantic is written. A create never counts as
+// a change, since the roles are evaluated on create regardless.
+func semanticChanged(ctx *boltz.PersistContext, semantic string) bool {
+	if ctx.IsCreate || !ctx.ProceedWithSet(FieldSemantic) {
+		return false
+	}
+	current := ctx.Bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
+	return !strings.EqualFold(current, semantic)
 }
 
 // validateEntityIds returns a field error if any of the given explicit policy ids does not resolve
@@ -275,13 +357,14 @@ func validateEntityIds(tx *bbolt.Tx, store boltz.Store, field string, ids []stri
 	return nil
 }
 
+// UpdateRelatedRoles relinks the entity identified by entityId to the policies selected by
+// ctx.rolesSymbol after its role attributes become newRoleAttributes. Only policies that can be
+// affected are visited.
 func UpdateRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue, semanticSymbol boltz.EntitySymbol) {
-	cursor := ctx.rolesSymbol.GetStore().IterateIds(ctx.tx(), ast.BoolNodeTrue)
-
 	entityRoles := FieldValuesToIds(newRoleAttributes)
 
-	for ; cursor.IsValid(); cursor.Next() {
-		policyId := cursor.Current()
+	for _, candidate := range ctx.candidatePolicyIds(entityId, entityRoles) {
+		policyId := []byte(candidate)
 		roleSet := ctx.rolesSymbol.EvalStringList(ctx.tx(), policyId)
 		roles, ids, err := splitRolesAndIds(roleSet)
 		if err != nil {
@@ -305,7 +388,7 @@ func UpdateRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRol
 }
 
 func evaluatePolicyAgainstEntity(ctx *roleAttributeChangeContext, semantic string, entityId, policyId []byte, ids, roles, roleAttributes []string, log *logrus.Entry) (bool, bool) {
-	if stringz.Contains(ids, string(entityId)) || stringz.Contains(roles, "all") ||
+	if stringz.Contains(ids, string(entityId)) || stringz.Contains(roles, AllRoleValue) ||
 		(strings.EqualFold(semantic, SemanticAllOf) && len(roles) > 0 && stringz.ContainsAll(roleAttributes, roles...)) ||
 		(strings.EqualFold(semantic, SemanticAnyOf) && len(roles) > 0 && stringz.ContainsAny(roleAttributes, roles...)) {
 		return true, ProcessEntityPolicyMatched(ctx, entityId, policyId, log)
@@ -331,16 +414,18 @@ func ProcessEntityPolicyMatched(ctx *roleAttributeChangeContext, entityId, polic
 	// If we were added to a policy, we need to update all the link tables for all the entities on the
 	// other side of the policy. If we're the first link, we get added to the link table, otherwise we
 	// increment the count of policies linking these entities
-	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx(), policyId)
-	for ; cursor.IsValid(); cursor.Next() {
-		relatedEntityId := cursor.Current()
-		newCount, err := ctx.denormLinkCollection.IncrementLinkCount(ctx.tx(), entityId, relatedEntityId)
-		if ctx.SetError(err) {
-			return false
-		}
-		if ctx.denormChangeHandler != nil && newCount == 1 {
-			log.Tracef("denorm change add handler called for entity %s -> related entity %s", entityId, relatedEntityId)
-			ctx.denormChangeHandler(entityId, relatedEntityId, true)
+	for _, pair := range ctx.pairs {
+		cursor := pair.related.IterateLinks(ctx.tx(), policyId)
+		for ; cursor.IsValid(); cursor.Next() {
+			relatedEntityId := cursor.Current()
+			newCount, err := pair.counts.IncrementLinkCount(ctx.tx(), entityId, relatedEntityId)
+			if ctx.SetError(err) {
+				return false
+			}
+			if pair.onChange != nil && newCount == 1 {
+				log.Tracef("denorm change add handler called for entity %s -> related entity %s", entityId, relatedEntityId)
+				pair.onChange(entityId, relatedEntityId, true)
+			}
 		}
 	}
 	return true
@@ -362,16 +447,18 @@ func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, pol
 	// If we were remove from a policy, we need to update all the link tables for all the entities on the
 	// other side of the policy. If we're the last link, we get removed from the link table, otherwise we
 	// decrement the count of policies linking these entities
-	cursor := ctx.relatedLinkCollection.IterateLinks(ctx.tx(), policyId)
-	for ; cursor.IsValid(); cursor.Next() {
-		relatedEntityId := cursor.Current()
-		newCount, err := ctx.denormLinkCollection.DecrementLinkCount(ctx.tx(), entityId, relatedEntityId)
-		if ctx.SetError(err) {
-			return false
-		}
-		if ctx.denormChangeHandler != nil && newCount == 0 {
-			log.Tracef("denorm change remove handler called for entity %s -> related entity %s", entityId, relatedEntityId)
-			ctx.denormChangeHandler(entityId, relatedEntityId, false)
+	for _, pair := range ctx.pairs {
+		cursor := pair.related.IterateLinks(ctx.tx(), policyId)
+		for ; cursor.IsValid(); cursor.Next() {
+			relatedEntityId := cursor.Current()
+			newCount, err := pair.counts.DecrementLinkCount(ctx.tx(), entityId, relatedEntityId)
+			if ctx.SetError(err) {
+				return false
+			}
+			if pair.onChange != nil && newCount == 0 {
+				log.Tracef("denorm change remove handler called for entity %s -> related entity %s", entityId, relatedEntityId)
+				pair.onChange(entityId, relatedEntityId, false)
+			}
 		}
 	}
 	return true

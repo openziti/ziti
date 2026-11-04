@@ -6,9 +6,9 @@ import (
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/common/eid"
 )
 
 func newEdgeRouterPolicy(name string) *EdgeRouterPolicy {
@@ -132,6 +132,7 @@ func (store *edgeRouterPolicyStoreImpl) PersistEntity(entity *EdgeRouterPolicy, 
 
 	entity.SetBaseValues(ctx)
 	ctx.SetRequiredString(FieldName, entity.Name)
+	reevaluate := semanticChanged(ctx, entity.Semantic)
 	if ctx.ProceedWithSet(FieldSemantic) {
 		if !isSemanticValid(entity.Semantic) {
 			ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
@@ -144,11 +145,11 @@ func (store *edgeRouterPolicyStoreImpl) PersistEntity(entity *EdgeRouterPolicy, 
 	sort.Strings(entity.IdentityRoles)
 
 	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
-	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
+	if reevaluate || (valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles)) {
 		store.identityRolesUpdated(ctx, entity)
 	}
 	oldEdgeRouterRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterRoles, entity.EdgeRouterRoles)
-	if valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles) {
+	if reevaluate || (valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles)) {
 		store.edgeRouterRolesUpdated(ctx, entity)
 	}
 }
@@ -162,26 +163,24 @@ Optimizations
 */
 func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             persistCtx.MutateContext,
-		rolesSymbol:           store.symbolEdgeRouterRoles,
-		linkCollection:        store.edgeRouterCollection,
-		relatedLinkCollection: store.identityCollection,
-		denormLinkCollection:  store.stores.edgeRouter.identitiesCollection,
-		ErrorHolder:           persistCtx.Bucket,
+		mutateCtx:      persistCtx.MutateContext,
+		rolesSymbol:    store.symbolEdgeRouterRoles,
+		linkCollection: store.edgeRouterCollection,
+		pairs:          []denormPair{{related: store.identityCollection, counts: store.stores.edgeRouter.identitiesCollection}},
+		ErrorHolder:    persistCtx.Bucket,
 	}
-	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.edgeRouter.symbolRoleAttributes, store.stores.edgeRouter.indexRoleAttributes)
 }
 
 func (store *edgeRouterPolicyStoreImpl) identityRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             persistCtx.MutateContext,
-		rolesSymbol:           store.symbolIdentityRoles,
-		linkCollection:        store.identityCollection,
-		relatedLinkCollection: store.edgeRouterCollection,
-		denormLinkCollection:  store.stores.identity.edgeRoutersCollection,
-		ErrorHolder:           persistCtx.Bucket,
+		mutateCtx:      persistCtx.MutateContext,
+		rolesSymbol:    store.symbolIdentityRoles,
+		linkCollection: store.identityCollection,
+		pairs:          []denormPair{{related: store.edgeRouterCollection, counts: store.stores.identity.edgeRoutersCollection}},
+		ErrorHolder:    persistCtx.Bucket,
 	}
-	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes)
+	EvaluatePolicy(ctx, policy, store.stores.identity.symbolRoleAttributes, store.stores.identity.indexRoleAttributes)
 }
 
 func (store *edgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

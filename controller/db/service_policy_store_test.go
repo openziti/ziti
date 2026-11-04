@@ -3,14 +3,15 @@ package db
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"sort"
 	"testing"
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/boltztest"
-	"github.com/openziti/ziti/v2/common/eid"
 	"go.etcd.io/bbolt"
 )
 
@@ -25,6 +26,42 @@ func Test_ServicePolicyStore(t *testing.T) {
 	t.Run("test update/delete referenced entities", ctx.testServicePolicyUpdateDeleteRefs)
 	t.Run("test filter service policies by type name", ctx.testServicePolicyFilterByTypeName)
 	t.Run("test service policy enforcer type query", ctx.testServicePolicyEnforcerTypeQuery)
+	t.Run("test service policy type change keeps posture check roles", ctx.testServicePolicyTypeChangeKeepsPostureCheckRoles)
+}
+
+// testServicePolicyTypeChangeKeepsPostureCheckRoles verifies that changing a policy's type keeps its
+// posture check roles, through a full update and through a patch of only the type. The roles must
+// be stored, not just linked: a posture check created afterwards is matched against the stored roles.
+func (ctx *TestContext) testServicePolicyTypeChangeKeepsPostureCheckRoles(_ *testing.T) {
+	ctx.CleanupAll()
+
+	attr := eid.New()
+	byAttr := newTestPostureCheck(attr)
+	boltztest.RequireCreate(ctx, byAttr)
+	byId := newTestPostureCheck()
+	boltztest.RequireCreate(ctx, byId)
+	roles := ss(roleRef(attr), entityRef(byId.Id))
+
+	updated := ctx.newServicePolicy(PolicyTypeDial, SemanticAnyOf, nil, nil, slices.Clone(roles))
+	boltztest.RequireCreate(ctx, updated)
+	updated.PolicyType = PolicyTypeBind
+	boltztest.RequireUpdate(ctx, updated)
+
+	patched := ctx.newServicePolicy(PolicyTypeDial, SemanticAnyOf, nil, nil, slices.Clone(roles))
+	boltztest.RequireCreate(ctx, patched)
+	patched.PolicyType = PolicyTypeBind
+	boltztest.RequirePatch(ctx, patched, boltz.MapFieldChecker{FieldServicePolicyType: struct{}{}})
+
+	for _, policy := range []*ServicePolicy{updated, patched} {
+		loaded := &ServicePolicy{BaseExtEntity: boltz.BaseExtEntity{Id: policy.Id}}
+		boltztest.RequireReload(ctx, loaded)
+		ctx.Equal(PolicyTypeBind, loaded.PolicyType)
+		ctx.ElementsMatch(roles, loaded.PostureCheckRoles, "a type change should keep the stored posture check roles")
+	}
+
+	later := newTestPostureCheck(attr)
+	boltztest.RequireCreate(ctx, later)
+	ctx.validateServicePolicyPostureChecks([]*PostureCheck{byAttr, byId, later}, []*ServicePolicy{updated, patched})
 }
 
 // testServicePolicyEnforcerTypeQuery guards the predicate the ServicePolicyEnforcer uses to decide

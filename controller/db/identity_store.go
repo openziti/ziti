@@ -558,21 +558,23 @@ func (store *identityStoreImpl) persistServiceConfigs(entity *Identity, ctx *bol
 
 func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.edgeRouterPolicy.symbolIdentityRoles,
-		linkCollection:        store.stores.edgeRouterPolicy.identityCollection,
-		relatedLinkCollection: store.stores.edgeRouterPolicy.edgeRouterCollection,
-		denormLinkCollection:  store.edgeRoutersCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.edgeRouterPolicy.symbolIdentityRoles,
+		policyRoleAttributesIndex: store.stores.edgeRouterPolicy.indexIdentityRoleAttributes,
+		entityPoliciesSymbol:      store.symbolEdgeRouterPolicies,
+		linkCollection:            store.stores.edgeRouterPolicy.identityCollection,
+		pairs:                     []denormPair{{related: store.stores.edgeRouterPolicy.edgeRouterCollection, counts: store.edgeRoutersCollection}},
+		ErrorHolder:               holder,
 	}
 	UpdateRelatedRoles(ctx, rowId, new, store.stores.edgeRouterPolicy.symbolSemantic)
 
 	ctx = &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.servicePolicy.symbolIdentityRoles,
-		linkCollection:        store.stores.servicePolicy.identityCollection,
-		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.servicePolicy.symbolIdentityRoles,
+		policyRoleAttributesIndex: store.stores.servicePolicy.indexIdentityRoleAttributes,
+		entityPoliciesSymbol:      store.symbolServicePolicies,
+		linkCollection:            store.stores.servicePolicy.identityCollection,
+		ErrorHolder:               holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 }

@@ -21,6 +21,7 @@ import (
 	edge_apis "github.com/openziti/sdk-golang/v2/edge-apis"
 	"github.com/openziti/sdk-golang/v2/ziti"
 	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
@@ -139,7 +140,7 @@ type perfScenarioSpec struct {
 	edgeRouterAttrs   [][]string
 	edgeRouterAttrSet []string
 
-	services    []*model.Service
+	services    []*model.EdgeService
 	identities  []*model.Identity
 	edgeRouters []*model.EdgeRouter
 
@@ -238,14 +239,14 @@ func (ctx *modelPerf) createServices(spec *perfScenarioSpec) {
 		if i == 0 {
 			id = "zzzzzzzzzzzzzz"
 		}
-		service := &model.Service{
+		service := &model.EdgeService{
 			BaseEntity: models.BaseEntity{
 				Id: id,
 			},
 			Name:           id,
 			RoleAttributes: spec.serviceAttrs[i],
 		}
-		ctx.Req.NoError(serviceHandler.Create(service))
+		ctx.Req.NoError(serviceHandler.Create(service, change.New()))
 		spec.services = append(spec.services, service)
 		if (i+1)%100 == 0 {
 			pfxlog.Logger().Tracef("created %v services\n", i)
@@ -280,7 +281,7 @@ func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
 			},
 		}
 
-		ctx.Req.NoError(identityHandler.CreateWithEnrollments(identity, enrollments))
+		ctx.Req.NoError(identityHandler.CreateWithEnrollments(identity, enrollments, change.New()))
 		spec.identities = append(spec.identities, identity)
 
 		if i == 0 {
@@ -306,7 +307,7 @@ func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
 			RoleAttributes: spec.edgeRouterAttrs[i],
 			IsVerified:     false,
 		}
-		ctx.Req.NoError(edgeRouterHandler.Create(edgeRouter))
+		ctx.Req.NoError(edgeRouterHandler.Create(edgeRouter, change.New()))
 		spec.edgeRouters = append(spec.edgeRouters, edgeRouter)
 		if (i+1)%100 == 0 {
 			pfxlog.Logger().Tracef("created %v edge routers\n", i+1)
@@ -361,7 +362,7 @@ func (ctx *modelPerf) createServicePolicy(policyType string, identityRoles, serv
 		ServiceRoles:  serviceRoles,
 		Semantic:      db.SemanticAnyOf,
 	}
-	ctx.Req.NoError(policyHandler.Create(policy))
+	ctx.Req.NoError(policyHandler.Create(policy, change.New()))
 }
 
 func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) {
@@ -374,7 +375,7 @@ func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []st
 		EdgeRouterRoles: edgeRouterRoles,
 		Semantic:        db.SemanticAnyOf,
 	}
-	ctx.NoError(policyHandler.Create(policy))
+	ctx.NoError(policyHandler.Create(policy, change.New()))
 }
 
 func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRoles []string) {
@@ -387,7 +388,7 @@ func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRole
 		ServiceRoles:    serviceRoles,
 		Semantic:        db.SemanticAnyOf,
 	}
-	ctx.NoError(policyHandler.Create(policy))
+	ctx.NoError(policyHandler.Create(policy, change.New()))
 }
 
 func (ctx *modelPerf) firstNPermuations(n int, v []string) [][]string {
@@ -444,7 +445,7 @@ func newPerfStats(ctx *TestContext, config *ziti.Config, description string, ser
 
 	ctx.Req.NoError(err)
 
-	client := edge_apis.NewClientApiClient(zitiUrl, caPool)
+	client := edge_apis.NewClientApiClient([]*url.URL{zitiUrl}, caPool, nil)
 
 	return &perfStats{
 		TestContext:       ctx,
@@ -523,7 +524,7 @@ func (s *perfStats) time(h metrics.Histogram, f func()) {
 
 func (s *perfStats) timeCreateApiSession() {
 	s.time(s.createApiSession, func() {
-		_, err := s.client.Authenticate(s.credentials)
+		_, err := s.client.Authenticate(s.credentials, []string{"all"})
 		s.Req.NoError(err)
 	})
 }
@@ -539,7 +540,7 @@ func (s *perfStats) timeRefreshApiSession() {
 func (s *perfStats) timeGetServices() {
 	s.time(s.getServices, func() {
 		params := service2.NewListServicesParams()
-		params.Limit = ToPtr(500)
+		params.Limit = ToPtr(int64(500))
 		_, err := s.client.API.Service.ListServices(params, nil)
 		s.Req.NoError(err)
 	})

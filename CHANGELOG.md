@@ -15,6 +15,7 @@
 * [Multiple Resolver Addresses for tproxy](#multiple-resolver-addresses-for-tproxy) - `resolver` now accepts a single address or a list of addresses
 * [DNS Upstream Query Modes](#dns-upstream-query-modes) - choose how multiple DNS upstreams are queried: parallel fan-out (default) or serial fail-through
 * [Controller Read Throughput Under Load](#controller-read-throughput-under-load) - a bbolt upgrade lifts a ceiling on concurrent read transactions that could stall a busy controller
+* [Policy Evaluation Without Store Scans](#policy-evaluation-without-store-scans) - creating, updating or deleting a policy or a policy target no longer scans every entity or policy in the store
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
 * [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
@@ -632,6 +633,38 @@ The same release also coalesces contiguous page ranges when a transaction's free
 pages are merged back into the freelist, instead of merging one page at a time.
 This mostly benefits transactions that free a large amount of data at once.
 
+## Policy Evaluation Without Store Scans
+
+Every write to a service, identity, edge router, posture check or policy re-evaluates which
+policies link to which entities, so the denormalized access tables stay current. Until now that
+evaluation scanned. Creating a service, or changing its role attributes, walked every service
+policy and every service edge router policy; creating or deleting a service policy walked every
+service and every identity, three times over on delete. None of that work found anything for a
+policy that names its targets
+by `@id`, which is how automation typically builds policies, but it ran inside the single bbolt
+write transaction all the same. On a network with a few hundred thousand policies, each of those
+writes took seconds, the command queue filled, and the controller answered with 429s and 503s while
+mostly idle.
+
+Evaluation now visits only the entities and policies that can be affected by a change: the ones
+already linked, the ones named by id, the ones named by a role attribute the entity carries, and
+the policies that name `#all`. A policy that names `#all` still visits every target entity, since
+every entity is affected. The cost of a write is now proportional to what it touches, not to the
+size of the store.
+
+To find policies by what they reference, evaluation uses the role-attribute index each policy
+store already keeps for the role-attribute usage queries, which now also records the `#all`
+wildcard under the key `all`. The usage queries skip that key: a policy cannot reference an
+attribute named `all`, since `#all` is always the wildcard. Policies that name an entity by `@id`
+need no index: such a policy is linked to the entity for as long as it exists, so the entity's own
+links already lead to it. This is database version 50; the first start of an upgraded controller
+adds the wildcard entries to the existing indexes and logs a `policy role-attribute index rebuild
+summary` line per index. The same migration rebuilds the posture check to service tables that drive
+service-updated events when a posture check changes. They were only maintained when a policy's
+posture checks changed, not when its services did, and their service-side entries had been written
+into the services' identity tables. The rebuild logs a `rebuilt posture check to service links`
+line. No configuration changes.
+
 ## Logging Now Uses slog with an Async Handler
 
 The controller, router, and `ziti tunnel` now log through Go's standard
@@ -838,6 +871,10 @@ Thanks to the community members who contributed to this release.
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.5](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.5)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4513](https://github.com/openziti/ziti/issues/4513) - Policy evaluation scans every entity or policy on each write
+    * [Issue #4514](https://github.com/openziti/ziti/issues/4514) - Changing a policy's semantic without changing its roles does not re-evaluate its links
+    * [Issue #4515](https://github.com/openziti/ziti/issues/4515) - Posture check to service reference counts are only maintained from the posture check side
+    * [Issue #4726](https://github.com/openziti/ziti/issues/4726) - Changing a service policy's type clears its posture check roles
     * [Issue #4596](https://github.com/openziti/ziti/issues/4596) - ER/T terminator re-create reverts health check cost and precedence
     * [Issue #4580](https://github.com/openziti/ziti/issues/4580) - Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
     * [Issue #4489](https://github.com/openziti/ziti/issues/4489) - Router panics sending a link state update to a controller it has unregistered

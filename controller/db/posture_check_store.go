@@ -179,8 +179,8 @@ func (store *postureCheckStoreImpl) initializeLocal() {
 func (store *postureCheckStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolPostureChecks)
 
-	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.service.symbolBindIdentities)
-	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.service.symbolDialIdentities)
+	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.service.symbolBindPostureChecks)
+	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.service.symbolDialPostureChecks)
 }
 
 func (store *postureCheckStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -229,11 +229,12 @@ func (store *postureCheckStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, id s
 
 func (store *postureCheckStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
-		mutateCtx:             mutateCtx,
-		rolesSymbol:           store.stores.servicePolicy.symbolPostureCheckRoles,
-		linkCollection:        store.stores.servicePolicy.postureCheckCollection,
-		relatedLinkCollection: store.stores.servicePolicy.serviceCollection,
-		ErrorHolder:           holder,
+		mutateCtx:                 mutateCtx,
+		rolesSymbol:               store.stores.servicePolicy.symbolPostureCheckRoles,
+		policyRoleAttributesIndex: store.stores.servicePolicy.indexPostureCheckRoleAttributes,
+		entityPoliciesSymbol:      store.symbolServicePolicies,
+		linkCollection:            store.stores.servicePolicy.postureCheckCollection,
+		ErrorHolder:               holder,
 	}
 	store.updateServicePolicyRelatedRoles(ctx, rowId, new)
 }

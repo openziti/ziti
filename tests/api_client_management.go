@@ -247,6 +247,24 @@ func (helper *ManagementHelperClient) CreateServiceEdgeRouterPolicy(edgeRouterRo
 	return resp.Payload.Data, nil
 }
 
+// DeleteService deletes the service with the given id.
+func (helper *ManagementHelperClient) DeleteService(id string) error {
+	_, err := helper.API.Service.DeleteService(&managementService.DeleteServiceParams{ID: id}, nil)
+	return rest_util.WrapErr(err)
+}
+
+// DeleteServicePolicy deletes the service policy with the given id.
+func (helper *ManagementHelperClient) DeleteServicePolicy(id string) error {
+	_, err := helper.API.ServicePolicy.DeleteServicePolicy(&managementServicePolicy.DeleteServicePolicyParams{ID: id}, nil)
+	return rest_util.WrapErr(err)
+}
+
+// DeleteServiceEdgeRouterPolicy deletes the service edge router policy with the given id.
+func (helper *ManagementHelperClient) DeleteServiceEdgeRouterPolicy(id string) error {
+	_, err := helper.API.ServiceEdgeRouterPolicy.DeleteServiceEdgeRouterPolicy(&managementServiceEdgeRouterPolicy.DeleteServiceEdgeRouterPolicyParams{ID: id}, nil)
+	return rest_util.WrapErr(err)
+}
+
 // CreateTerminator creates a terminator for the service on the router, which dials address with
 // the given xgress binding when a circuit is created.
 func (helper *ManagementHelperClient) CreateTerminator(serviceId, routerId, binding, address string) (*rest_model.CreateLocation, error) {
