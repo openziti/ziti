@@ -23,8 +23,54 @@ import (
 	"time"
 
 	"github.com/openziti/ziti/v2/controller/rest_client/terminator"
+	"github.com/openziti/ziti/zititest/models/smoke"
 	"github.com/openziti/ziti/zititest/zitirest"
 )
+
+// sdkClientSupport reports whether the client routers can carry SDK clients' connections.
+func sdkClientSupport() smoke.Support {
+	return smoke.RoutersSupport(run.GetModel(), ".client", smoke.CapOidc)
+}
+
+// sdkHostingSupport reports whether the hosting routers can carry SDK-hosted services.
+func sdkHostingSupport() smoke.Support {
+	return smoke.RoutersSupport(run.GetModel(), ".host", smoke.CapSdkHosting, smoke.CapOidc)
+}
+
+// clientSupport reports whether the client routers can carry connections from clients of clientType.
+// Every client type but the router's own tunneler, "ert", connects through the SDK.
+func clientSupport(clientType string) smoke.Support {
+	if clientType == "ert" {
+		return smoke.Support{Supported: true}
+	}
+	return sdkClientSupport()
+}
+
+// hostingSupport reports whether the hosting routers can carry services hosted by hostType. Every host
+// type but the router's own tunneler, "ert", hosts through the SDK.
+func hostingSupport(hostType string) smoke.Support {
+	if hostType == "ert" {
+		return smoke.Support{Supported: true}
+	}
+	return sdkHostingSupport()
+}
+
+// pathSupport reports whether clients of clientType can reach services hosted by hostType.
+func pathSupport(clientType, hostType string) smoke.Support {
+	return clientSupport(clientType).And(hostingSupport(hostType))
+}
+
+// hostedServices returns the encrypted and unencrypted kind services of each of hostTypes that the
+// hosting routers can carry.
+func hostedServices(kind string, hostTypes ...string) []string {
+	var result []string
+	for _, hostType := range hostTypes {
+		if hostingSupport(hostType).Supported {
+			result = append(result, hostType+"-"+kind, hostType+"-"+kind+"-unencrypted")
+		}
+	}
+	return result
+}
 
 func waitForTerminators(t *testing.T, timeout time.Duration, services ...string) {
 	t.Helper()

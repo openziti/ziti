@@ -1,0 +1,46 @@
+name: Fablab CI Sweeper
+
+# Removes AWS resources CI fablab runs left behind, such as a run cancelled while its environment
+# was being created. Every resource it finds is reported as a warning, since each one is a leak.
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Report what would be removed without removing anything'
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: Sweep CI Fablab Resources
+    if: github.repository_owner == 'openziti'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: zititest/scripts
+
+      - name: Sweep
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "us-east-1"
+          DRY_RUN: ${{ inputs.dryRun }}
+        shell: bash
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          zititest/scripts/sweep-ci-fablab.bash "${args[@]}"
