@@ -176,8 +176,7 @@ func (ctx *TestContext) CleanupAll() {
 				return err
 			}
 		}
-		root, err := tx.CreateBucketIfNotExists([]byte(RootBucket))
-		if err != nil {
+		if _, err := tx.CreateBucketIfNotExists([]byte(RootBucket)); err != nil {
 			return err
 		}
 
@@ -197,21 +196,7 @@ func (ctx *TestContext) CleanupAll() {
 			return errorHolder.GetError()
 		}
 
-		// the db is fresh, so we can run the migration initialize step directly instead
-		// of going through the migration manager
-		migrations := &Migrations{stores: ctx.stores}
-		step := &boltz.MigrationStep{
-			Component: "edge",
-			Ctx:       mutateCtx,
-		}
-		version := migrations.initialize(step)
-		if step.HasError() {
-			return step.GetError()
-		}
-
-		versionsBucket := boltz.NewTypedBucket(nil, root).GetOrCreateBucket("versions")
-		versionsBucket.SetInt64(step.Component, int64(version), nil)
-		return versionsBucket.GetError()
+		return newMigrations(ctx.stores, nil).initializeDatastore(mutateCtx)
 	})
 	ctx.NoError(err)
 }

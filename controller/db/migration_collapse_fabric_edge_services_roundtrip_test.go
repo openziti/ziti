@@ -106,9 +106,7 @@ func Test_MigrateCollapseEdgeServices_RoundTrip(t *testing.T) {
 		// its parent's entity type, so the index lives at the unified service path
 		// (ziti/indexes/services/roleAttributes) both pre- and post-collapse (verified against a
 		// real pre-collapse db). The migration must leave it intact (M5).
-		versions := boltz.GetOrCreatePath(tx, RootBucket, "versions")
-		versions.SetInt64("edge", 44, nil)
-		return versions.GetError()
+		return resetToNumberedVersion(ctx, tx, 44)
 	}))
 
 	// The migration must report no anomaly events: nothing for the integrity check to fix, and
