@@ -363,6 +363,14 @@ func NewInvalidMfaTokenError() *errorz.ApiError {
 	}
 }
 
+func NewMfaTooManyAttemptsError() *errorz.ApiError {
+	return &errorz.ApiError{
+		AppCode: MfaTooManyAttemptsCode,
+		Message: MfaTooManyAttemptsMessage,
+		Status:  MfaTooManyAttemptsStatus,
+	}
+}
+
 func NewInvalidBackingTokenTypeError() *errorz.ApiError {
 	return &errorz.ApiError{
 		AppCode: InvalidBackingTokenTypeCode,
