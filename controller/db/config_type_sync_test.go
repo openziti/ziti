@@ -376,7 +376,7 @@ func Test_RunMigrationsSnapshots(t *testing.T) {
 		ctx.NoError(ctx.GetDb().Update(nil, func(mc boltz.MutateContext) error {
 			root := boltz.NewTypedBucket(nil, mc.Tx().Bucket([]byte(RootBucket)))
 			versions := root.GetOrCreateBucket("versions")
-			versions.SetInt64("edge", CurrentDbVersion-1, nil)
+			versions.SetInt64("edge", maxLegacyDbVersion, nil)
 			return versions.GetError()
 		}))
 

@@ -137,7 +137,7 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 		step := &boltz.MigrationStep{
 			Component:      "edge",
 			Ctx:            mctx,
-			CurrentVersion: CurrentDbVersion - 1,
+			CurrentVersion: LegacyDbVersion,
 		}
 		migrations.backfillPolicyRoleAttributeIndexes(step)
 		return step.GetError()
@@ -206,7 +206,7 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 		step := &boltz.MigrationStep{
 			Component:      "edge",
 			Ctx:            mctx,
-			CurrentVersion: CurrentDbVersion - 1,
+			CurrentVersion: LegacyDbVersion,
 		}
 		migrations.backfillPolicyRoleAttributeIndexes(step)
 		return step.GetError()
@@ -275,7 +275,7 @@ func Test_BackfillPolicyRoleAttributeIndexes_AddsWildcardKey(t *testing.T) {
 		step := &boltz.MigrationStep{
 			Component:      "edge",
 			Ctx:            mctx,
-			CurrentVersion: CurrentDbVersion - 1,
+			CurrentVersion: maxLegacyDbVersion - 1,
 		}
 		migrations.backfillPolicyRoleAttributeIndexes(step)
 		return step.GetError()

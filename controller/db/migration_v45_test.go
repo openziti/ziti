@@ -43,7 +43,7 @@ func Test_Migration_V45_SetConfigTypeTargets(t *testing.T) {
 	boltztest.RequireCreate(ctx, preserved)
 
 	// Simulate a pre-v45 datastore: remove the target value from `needsMigration`
-	// and roll the edge component's version back to 44 so that re-running
+	// and reset the datastore to numbered version 44 so that re-running
 	// migrations will exercise setConfigTypeTargets.
 	err := ctx.GetDb().Update(nil, func(mc boltz.MutateContext) error {
 		bucket := ctx.stores.ConfigType.GetEntityBucket(mc.Tx(), []byte(needsMigration.Id))
@@ -53,10 +53,7 @@ func Test_Migration_V45_SetConfigTypeTargets(t *testing.T) {
 			return err
 		}
 
-		rootBucket := boltz.NewTypedBucket(nil, mc.Tx().Bucket([]byte(RootBucket)))
-		versionsBucket := rootBucket.GetOrCreateBucket("versions")
-		versionsBucket.SetInt64("edge", 44, nil)
-		return versionsBucket.GetError()
+		return resetToNumberedVersion(ctx, mc.Tx(), 44)
 	})
 	ctx.NoError(err)
 
