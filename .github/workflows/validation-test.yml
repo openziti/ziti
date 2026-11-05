@@ -78,9 +78,20 @@ jobs:
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/${TEST_TYPE} exec-loop ${TEST_DURATION} testIteration
 
+      - name: Stop Fablab
+        # a cancelled step leaves fablab and terraform running, and teardown needs terraform's final state
+        if: always()
+        timeout-minutes: 15
+        uses: ./.github/actions/stop-fablab
+        with:
+          model: ${{ env.TEST_TYPE }}
+
       - name: Create Logs Archive
         if: always()
         run: |
+          # compress large logs on the hosts, so fetching them can't fill the runner's disk
+          $(go env GOPATH)/bin/${TEST_TYPE} sshexec '*' 'find logs -type f -name "*.log" -size +10M -exec gzip -f {} +' -c 10 \
+            || echo "::warning::compressing logs on the hosts failed; fetching them uncompressed"
           $(go env GOPATH)/bin/${TEST_TYPE} get files '*' "./logs/{{ .Id }}/" ./logs
 
       - name: Upload artifacts

@@ -27,6 +27,10 @@ import (
 )
 
 func TestSdkEcho(t *testing.T) {
+	if support := sdkClientSupport().And(sdkHostingSupport()); !support.Supported {
+		t.Skip(support.Reason)
+	}
+
 	components := run.GetModel().SelectComponents("#zcat")
 
 	req := require.New(t)

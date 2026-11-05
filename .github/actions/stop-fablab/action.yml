@@ -1,0 +1,66 @@
+name: 'Stop Fablab'
+description: 'Stop the fablab command and terraform a cancelled step left running, letting terraform save its state'
+inputs:
+  model:
+    description: 'Name of the fablab model binary the job runs'
+    required: true
+  terraform-timeout-seconds:
+    description: 'How long to wait for terraform to save its state and exit'
+    default: '600'
+runs:
+  using: "composite"
+  steps:
+    - name: Stop Fablab
+      # a composite step defaults to success(), which skips it after a failed or cancelled step
+      if: always()
+      shell: bash
+      env:
+        MODEL: ${{ inputs.model }}
+        TERRAFORM_TIMEOUT_SECONDS: ${{ inputs.terraform-timeout-seconds }}
+      run: |
+        # The runner signals only a cancelled step's shell, so the fablab command and the terraform it
+        # started outlive the step. A terraform still applying creates resources that its saved state
+        # doesn't list yet. The fablab command goes first, so it can't start another terraform.
+        # Terraform gets one interrupt, which makes it finish its in-flight operations and save state;
+        # a second would make it exit without saving.
+
+        # pids prints the PIDs pgrep matches, which may be none, and fails only if pgrep does.
+        function pids() {
+          pgrep "$@" || [ $? -eq 1 ]
+        }
+
+        # wait_gone waits up to $1 seconds for every PID that follows it to exit.
+        function wait_gone() {
+          local seconds=$1
+          shift
+          for (( i = 0; i < seconds; i++ )); do
+            if ! kill -0 "$@" 2> /dev/null; then
+              return 0
+            fi
+            sleep 1
+          done
+          return 1
+        }
+
+        model_pids=$(pids -f "^([^ ]*/)?${MODEL}( |\$)")
+        if [ -n "$model_pids" ]; then
+          echo "Interrupting the ${MODEL} command a cancelled step left running"
+          kill -INT $model_pids 2> /dev/null || true
+          if ! wait_gone 30 $model_pids; then
+            echo "::warning::${MODEL} was still running 30s after an interrupt; killing it"
+            kill -KILL $model_pids 2> /dev/null || true
+          fi
+        fi
+
+        # setup-terraform's wrapper runs the real binary as terraform-bin
+        terraform_pids=$(pids -x terraform)
+        terraform_bin_pids=$(pids -x terraform-bin)
+        if [ -n "${terraform_pids}${terraform_bin_pids}" ]; then
+          echo "Interrupting the terraform a cancelled step left running; waiting for it to save its state"
+          kill -INT $terraform_pids $terraform_bin_pids 2> /dev/null || true
+          if ! wait_gone "$TERRAFORM_TIMEOUT_SECONDS" $terraform_pids $terraform_bin_pids; then
+            echo "::error::terraform was still running after ${TERRAFORM_TIMEOUT_SECONDS}s; its saved state may not list everything it created"
+            exit 1
+          fi
+          echo "terraform exited"
+        fi
