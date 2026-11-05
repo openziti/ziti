@@ -32,7 +32,6 @@ import (
 func Test_PolicyRoleAttributeIndexes(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("service policy role-attribute indexes", ctx.testServicePolicyRoleAttributeIndexes)
 	t.Run("edge-router policy role-attribute indexes", ctx.testEdgeRouterPolicyRoleAttributeIndexes)

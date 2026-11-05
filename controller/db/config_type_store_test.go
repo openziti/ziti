@@ -30,7 +30,6 @@ import (
 func Test_ConfigTypeStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test config type CRUD", ctx.testConfigTypeCrud)
 	t.Run("test config type target immutability", ctx.testConfigTypeTargetImmutability)
@@ -85,7 +84,6 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 func Test_RouterLinkV1Builtin(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	var stored *ConfigType
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {

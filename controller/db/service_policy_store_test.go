@@ -18,7 +18,6 @@ import (
 func Test_ServicePolicyStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test create service policies", ctx.testCreateServicePolicy)
 	t.Run("test create/update service policies with invalid entity refs", ctx.testServicePolicyInvalidValues)

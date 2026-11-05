@@ -32,7 +32,6 @@ import (
 func TestQueryRoleAttributeUsage_Identity(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	idBoth := ctx.requireNewIdentity(false)
 	idBoth.RoleAttributes = []string{"sales"}
@@ -92,7 +91,6 @@ func TestQueryRoleAttributeUsage_Identity(t *testing.T) {
 func TestQueryRoleAttributeUsage_WithoutIds(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	id := ctx.requireNewIdentity(false)
 	id.RoleAttributes = []string{"ops"}
@@ -121,7 +119,6 @@ func TestQueryRoleAttributeUsage_WithoutIds(t *testing.T) {
 func TestQueryRoleAttributeUsage_Empty(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	results, qmd, err := QueryRoleAttributeUsage(ctx, RoleAttributeKindPostureCheck, "true", true)
 	ctx.NoError(err)
@@ -135,7 +132,6 @@ func TestQueryRoleAttributeUsage_Empty(t *testing.T) {
 func TestQueryRoleAttributeUsage_EdgeRouter(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	er := ctx.requireNewEdgeRouter()
 	er.RoleAttributes = []string{"edge-" + eid.New()}
@@ -162,7 +158,6 @@ func TestQueryRoleAttributeUsage_EdgeRouter(t *testing.T) {
 func TestQueryRoleAttributeUsage_Filter_Paging(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	// Install a fixed set of identity attributes spanning multiple "groups"
 	// so we can exercise filter + sort + limit/offset together.
@@ -207,7 +202,6 @@ func TestQueryRoleAttributeUsage_Filter_Paging(t *testing.T) {
 func TestQueryRoleAttributeUsage_WildcardIsNotAnAttribute(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	ctx.requireNewServicePolicy(db.PolicyTypeDialName, ss("#all"), ss("#public"))
 

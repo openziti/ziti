@@ -32,7 +32,6 @@ import (
 func Test_DeleteExistence(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("edge router delete with a transit router id is not found", ctx.testEdgeRouterDeleteOfTransitRouter)
 	t.Run("transit router delete with an edge router id is not found", ctx.testTransitRouterDeleteOfEdgeRouter)

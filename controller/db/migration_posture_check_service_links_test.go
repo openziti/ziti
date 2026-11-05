@@ -34,7 +34,6 @@ import (
 func Test_RebuildPostureCheckServiceLinks(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 	ctx.CleanupAll()
 
 	identity := ctx.RequireNewIdentity(eid.New(), false)
@@ -79,7 +78,7 @@ func Test_RebuildPostureCheckServiceLinks(t *testing.T) {
 	rebuild := func() {
 		migrations := &Migrations{stores: ctx.stores}
 		err := ctx.GetDb().Update(change.New().NewMutateContext(), func(mctx boltz.MutateContext) error {
-			step := &boltz.MigrationStep{Component: "edge", Ctx: mctx, CurrentVersion: CurrentDbVersion - 1}
+			step := &boltz.MigrationStep{Component: "edge", Ctx: mctx, CurrentVersion: MaxLegacyDbVersion - 1}
 			migrations.rebuildPostureCheckServiceLinks(step)
 			return step.GetError()
 		})
