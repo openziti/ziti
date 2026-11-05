@@ -325,6 +325,12 @@ func (helper *ManagementHelperClient) GetIdentity(identityId string) (*rest_mode
 	return resp.Payload.Data, nil
 }
 
+// RemoveIdentityMfa removes the MFA enrollment of an identity, as an administrator.
+func (helper *ManagementHelperClient) RemoveIdentityMfa(identityId string) error {
+	_, err := helper.API.Identity.RemoveIdentityMfa(&managementIdentity.RemoveIdentityMfaParams{ID: identityId}, nil)
+	return rest_util.WrapErr(err)
+}
+
 // ListIdentitiesByFilter returns all identities matching the supplied ziti filter expression.
 func (helper *ManagementHelperClient) ListIdentitiesByFilter(filter string) ([]*rest_model.IdentityDetail, error) {
 	resp, err := helper.API.Identity.ListIdentities(&managementIdentity.ListIdentitiesParams{

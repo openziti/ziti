@@ -166,6 +166,9 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 			rc.RespondWithError(err)
 			return
 		}
+	} else {
+		// OIDC sessions are not stored, only their MFA posture: the code that completed the enrollment passes MFA
+		ae.Managers.PostureResponse.SetMfaPosture(identity.Id, apiSession.Id, true)
 	}
 
 	rc.RespondWithEmptyOk()
