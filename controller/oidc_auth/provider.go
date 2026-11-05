@@ -131,7 +131,7 @@ func newHttpRouter(provider op.OpenIDProvider, config Config) (*mux.Router, erro
 	}
 
 	endpoints := *op.DefaultEndpoints
-	srv := newServer(provider, endpoints)
+	srv := newServer(provider, endpoints, config.AuthRequestDuration)
 	serverHandler := op.RegisterLegacyServer(srv, op.AuthorizeCallbackHandler(provider))
 
 	router := mux.NewRouter()
