@@ -62,7 +62,9 @@ type RouterEnv interface {
 	GetAlerter() Alerter
 	GetXgressRegistry() *Registry
 
-	UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail)
+	// UpdateCtrlEndpointDetails replaces the controller set and saves it. authoritative is as for
+	// NetworkControllers.UpdateControllerDetails.
+	UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool)
 	UpdateLeader(leaderId string)
 	GetXgressListeners() []xgress_router.Listener
 	GetInspectHandler() channel.TypedReceiveHandler
