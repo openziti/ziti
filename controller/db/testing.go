@@ -5,11 +5,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/command"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/openziti/ziti/v2/controller/xt_smartrouting"
 	"github.com/pkg/errors"
@@ -38,6 +38,8 @@ func (ctx *TestContext) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	return ctx.stores.GetStoreForEntity(entity)
 }
 
+// Init opens a new datastore and runs the migrations on it. NewTestContext calls it; calling it again
+// fails the test.
 func (ctx *TestContext) Init() {
 	ctx.InitDb(Open)
 

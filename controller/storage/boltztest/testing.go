@@ -18,14 +18,15 @@ package boltztest
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -45,6 +46,7 @@ type BaseTestContext struct {
 	require.Assertions
 	t             testing.TB
 	ReferenceTime time.Time
+	dbDir         string
 	dbFile        *os.File
 	db            boltz.Db
 	storeF        StoreFunc
@@ -72,9 +74,19 @@ func (ctx *BaseTestContext) GetReferenceTime() time.Time {
 	return ctx.ReferenceTime
 }
 
+// InitDb opens a datastore with openF in a new temp dir, which also receives the datastore's default
+// snapshots. It fails the test if the context already has a datastore, which would otherwise be left
+// open and on disk.
 func (ctx *BaseTestContext) InitDb(openF func(name string) (boltz.Db, error)) {
+	if ctx.db != nil {
+		ctx.Fail("the test context already has a datastore")
+	}
+
 	var err error
-	ctx.dbFile, err = os.CreateTemp("", "query-bolt-ctx-db")
+	ctx.dbDir, err = os.MkdirTemp("", "query-bolt-ctx-")
+	ctx.NoError(err)
+
+	ctx.dbFile, err = os.Create(filepath.Join(ctx.dbDir, "ctrl.db"))
 	ctx.NoError(err)
 
 	err = ctx.dbFile.Close()
@@ -84,6 +96,7 @@ func (ctx *BaseTestContext) InitDb(openF func(name string) (boltz.Db, error)) {
 	ctx.NoError(err)
 }
 
+// Cleanup closes the datastore and removes the dir InitDb created, with everything in it.
 func (ctx *BaseTestContext) Cleanup() {
 	if ctx.GetDb() != nil {
 		if err := ctx.GetDb().Close(); err != nil {
@@ -91,9 +104,9 @@ func (ctx *BaseTestContext) Cleanup() {
 		}
 	}
 
-	if ctx.dbFile != nil {
-		if err := os.Remove(ctx.dbFile.Name()); err != nil {
-			fmt.Printf("error deleting bolt db file: %v", err)
+	if ctx.dbDir != "" {
+		if err := os.RemoveAll(ctx.dbDir); err != nil {
+			fmt.Printf("error deleting bolt db dir: %v", err)
 		}
 	}
 }

@@ -3,17 +3,16 @@ package model
 import (
 	"testing"
 
-	"github.com/openziti/ziti/v2/controller/storage/ast"
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
 	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/storage/ast"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 )
 
 func TestIdentityManager(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test identity config overrides service delete", ctx.testIdentityConfigOverridesServiceDelete)
 	t.Run("test identity config overrides identity delete", ctx.testIdentityConfigOverridesIdentityDelete)
