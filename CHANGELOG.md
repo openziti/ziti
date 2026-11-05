@@ -33,6 +33,7 @@
 
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4617](https://github.com/openziti/ziti/issues/4617) - [Backport-1.6] Router control-channel connect/disconnect race can leave a reconnected router de-registered
     * [Issue #4618](https://github.com/openziti/ziti/issues/4618) - [Backport-1.6] Router can drop controllers on a follower's stale controller list and never re-add them
     * [Issue #4587](https://github.com/openziti/ziti/issues/4587) - [Backport-1.6] Terminator cost, precedence and peer data don't converge at the controller after a takeover or update
     * [Issue #4600](https://github.com/openziti/ziti/issues/4600) - [Backport-1.6] ER/T terminator re-create reverts health check cost and precedence
