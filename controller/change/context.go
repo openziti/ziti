@@ -18,9 +18,10 @@ package change
 
 import (
 	"context"
+	"errors"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common/pb/cmd_pb"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 type ContextKeyType string
@@ -65,6 +66,29 @@ func New() *Context {
 type Context struct {
 	Attributes map[string]string
 	RaftIndex  uint64
+
+	requestCtx context.Context
+}
+
+// SetRequestContext associates the change with the context of the request that initiated it. Command dispatchers
+// refuse to start a command once that context's deadline has passed. The request context is local to this node
+// and is not replicated.
+func (self *Context) SetRequestContext(ctx context.Context) *Context {
+	self.requestCtx = ctx
+	return self
+}
+
+// RequestDeadlineErr returns a non-nil error if the change's request context ended because its deadline passed.
+// A request context cancelled before its deadline, for example because the request completed, does not count, so
+// work a request leaves running after it returns is unaffected.
+func (self *Context) RequestDeadlineErr() error {
+	if self == nil || self.requestCtx == nil {
+		return nil
+	}
+	if err := self.requestCtx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return nil
 }
 
 type Author struct {

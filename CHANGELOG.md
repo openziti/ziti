@@ -60,7 +60,10 @@ change goes through once the leader is upgraded.
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4729](https://github.com/openziti/ziti/issues/4729) - [Backport-2.0] API request timeouts surface as TLS 'bad record MAC' errors instead of a 503
+    * [Issue #4479](https://github.com/openziti/ziti/issues/4479) - [Backport-2.0] Router never reconnects to a standalone controller after the heartbeat check closes the control channel
     * [Issue #4574](https://github.com/openziti/ziti/issues/4574) - [Backport-2.0] Router can drop controllers on a follower's stale controller list and never re-add them
+    * [Issue #4735](https://github.com/openziti/ziti/issues/4735) - [Backport-2.0] JWKS peer signer kid is undecodable raw bytes (should be hex) -- %s vs %x on sha1.Sum in oidc_auth/storage.go KeySet()
     * [Issue #4389](https://github.com/openziti/ziti/issues/4389) - [Backport-2.0] Router applies posture responses out of order and without bound
     * [Issue #4392](https://github.com/openziti/ziti/issues/4392) - Router posture access checks read posture data without synchronization
     * [Issue #4390](https://github.com/openziti/ziti/issues/4390) - [Backport-2.0] Circuit endpoint faults are sent inline from arbitrary goroutines and lost on failure
