@@ -38,6 +38,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_client/terminator"
 	"github.com/openziti/edge-api/rest_util"
 	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/ziti/v2/controller/rest_client/cluster"
 	"github.com/openziti/ziti/v2/ziti/cmd"
 	"github.com/openziti/ziti/v2/ziti/cmd/api"
 	"github.com/openziti/ziti/v2/ziti/cmd/common"
@@ -604,6 +605,64 @@ func (o *Overlay) WaitForControllerReady(timeout time.Duration) error {
 			return fmt.Errorf("timeout waiting for controller to become ready at %s", o.ControllerHostPort())
 		}
 	}
+}
+
+// WaitForLeader waits until one of the controller's cluster members reports itself the raft leader. A
+// controller serves HTTP and accepts logins before raft has elected a leader, and model updates fail with
+// CLUSTER_NO_LEADER until it has.
+//
+// It logs in as the overlay's admin, through the overlay when NetworkDialingIdFile is set, so it replaces the
+// cached login in the current ZITI_CONFIG_DIR.
+func (o *Overlay) WaitForLeader(timeout time.Duration) error {
+	fmt.Printf("[%s] Waiting up to %s for a raft leader\n", o.Name, timeout)
+	start := time.Now()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	timeoutCh := time.After(timeout)
+
+	for {
+		select {
+		case <-ticker.C:
+			elapsed := time.Since(start).Truncate(time.Second)
+			leader, err := o.raftLeader()
+			if err != nil {
+				fmt.Printf("[%s] [%s] can't list cluster members: %v\n", o.Name, elapsed, err)
+				continue
+			}
+			if leader != "" {
+				fmt.Printf("[%s] [%s] raft leader is %s\n", o.Name, elapsed, leader)
+				return nil
+			}
+			fmt.Printf("[%s] [%s] no raft leader yet\n", o.Name, elapsed)
+		case <-timeoutCh:
+			return fmt.Errorf("[%s] timeout waiting for a raft leader after %s", o.Name, timeout)
+		}
+	}
+}
+
+// raftLeader returns the id of the cluster member that reports itself the leader, or "" if none does.
+func (o *Overlay) raftLeader() (string, error) {
+	if _, err := o.Login(); err != nil {
+		return "", err
+	}
+	opts := commonOpts
+	client, err := util.NewFabricManagementClient(&opts)
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	members, err := client.Cluster.ClusterListMembers(&cluster.ClusterListMembersParams{Context: ctx}, nil)
+	if err != nil {
+		return "", err
+	}
+	for _, member := range members.Payload.Data {
+		if member.Leader != nil && *member.Leader && member.ID != nil {
+			return *member.ID, nil
+		}
+	}
+	return "", nil
 }
 
 func (o *Overlay) WaitForServiceTerminator(serviceName string, timeout time.Duration) error {
