@@ -88,7 +88,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		DNSNames:       serverCsr.DNSNames,
 		EmailAddresses: serverCsr.EmailAddresses,
 		IPAddresses:    serverCsr.IPAddresses,
-		URIs:           serverCsr.URIs,
+		URIs:           dropSpiffeIds(serverCsr.URIs),
 	}
 
 	srvCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, signingOpts)
@@ -113,7 +113,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		DNSNames:       clientCsr.DNSNames,
 		EmailAddresses: clientCsr.EmailAddresses,
 		IPAddresses:    clientCsr.IPAddresses,
-		URIs:           clientCsr.URIs,
+		URIs:           dropSpiffeIds(clientCsr.URIs),
 	}
 
 	clientCsr.Subject.CommonName = txRouter.Id
