@@ -65,7 +65,7 @@ type CertExpirationChecker struct {
 	extender CertExtender
 }
 
-func NewCertExpirationChecker(env CertEnv) *CertExpirationChecker {
+func NewCertExpirationChecker(env CertEnv, start bool) *CertExpirationChecker {
 	ret := &CertExpirationChecker{
 		id:              env.GetRouterId(),
 		closeNotify:     env.GetCloseNotify(),
@@ -77,11 +77,13 @@ func NewCertExpirationChecker(env CertEnv) *CertExpirationChecker {
 
 	ret.extender = ret
 
-	go func() {
-		if err := ret.Run(); err != nil {
-			pfxlog.Logger().WithError(err).Error("error while running certchecker")
-		}
-	}()
+	if start {
+		go func() {
+			if err := ret.Run(); err != nil {
+				pfxlog.Logger().WithError(err).Error("error while running certchecker")
+			}
+		}()
+	}
 
 	return ret
 }
