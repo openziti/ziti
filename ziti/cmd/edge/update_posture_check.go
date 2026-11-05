@@ -113,7 +113,7 @@ func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 
 // runUpdatePostureCheckMac update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("posture-checks", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func newUpdatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command
 }
 
 func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("posture-checks", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
 
 // runUpdatePostureCheckDomain update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("posture-checks", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
@@ -374,7 +374,7 @@ func newUpdatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Com
 
 // runUpdatePostureCheckProcess update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("posture-checks", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}
@@ -478,7 +478,7 @@ func newUpdatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command 
 
 // runUpdatePostureCheckOs update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
+	id, err := api.MapEdgeNameToID("posture-checks", &o.Options, o.Args[0])
 	if err != nil {
 		return err
 	}

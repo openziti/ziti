@@ -893,7 +893,7 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	if len(configTypes) == 1 && strings.EqualFold("all", configTypes[0]) {
 		params.Add("configTypes", "all")
 	} else {
-		if configTypes, err := mapNamesToIDs("config-types", *options, false, configTypes...); err != nil {
+		if configTypes, err := api.MapEdgeNamesToIDs("config-types", options, false, configTypes...); err != nil {
 			return err
 		} else {
 			for _, configType := range configTypes {
@@ -1722,7 +1722,7 @@ func runListRoleAttributes(entityType string, o *api.Options) error {
 
 func runListChildren(parentType, childType string, o *api.Options, outputF outputFunction) error {
 	idOrName := o.Args[0]
-	parentId, err := mapNameToID(parentType, idOrName, *o)
+	parentId, err := api.MapEdgeNameToID(parentType, o, idOrName)
 	if err != nil {
 		return err
 	}

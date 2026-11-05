@@ -81,7 +81,7 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 		return errors.New("an identity must be specified")
 	}
 
-	identityId, err := mapIdentityNameToID(options.idOrName, options.Options)
+	identityId, err := api.MapEdgeNameToID("identities", &options.Options, options.idOrName)
 
 	if err != nil {
 		return err

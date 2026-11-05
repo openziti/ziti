@@ -156,7 +156,7 @@ func runCreateIdentity(o *createIdentityOptions) error {
 		if v < 0 || v > math.MaxUint16 {
 			return errors.Errorf("hosting costs must be in the range %v-%v", 0, math.MaxUint16)
 		}
-		id, err := mapNameToID("services", k, o.Options)
+		id, err := api.MapEdgeNameToID("services", &o.Options, k)
 		if err != nil {
 			return err
 		}
@@ -166,7 +166,7 @@ func runCreateIdentity(o *createIdentityOptions) error {
 	api.SetJSONValue(entityData, o.serviceCosts, "serviceHostingCosts")
 
 	for k, v := range o.servicePrecedences {
-		id, err := mapNameToID("services", k, o.Options)
+		id, err := api.MapEdgeNameToID("services", &o.Options, k)
 		if err != nil {
 			return err
 		}
@@ -182,7 +182,7 @@ func runCreateIdentity(o *createIdentityOptions) error {
 
 	api.SetJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
 
-	authPolicyId, err := mapNameToID("auth-policies", o.authPolicyNameOrId, o.Options)
+	authPolicyId, err := api.MapEdgeNameToID("auth-policies", &o.Options, o.authPolicyNameOrId)
 
 	if err != nil {
 		return fmt.Errorf("could not fetch auth policy by name or id: %w", err)
