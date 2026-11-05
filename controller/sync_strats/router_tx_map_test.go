@@ -47,6 +47,7 @@ func (*stubCtrlChannel) GetHighPrioritySender() channel.Sender { return nil }
 func (*stubCtrlChannel) GetLowPrioritySender() channel.Sender  { return nil }
 func (*stubCtrlChannel) IsConnected() bool                     { return true }
 func (*stubCtrlChannel) Close() error                          { return nil }
+func (*stubCtrlChannel) Reconnect() error                      { return nil }
 func (s *stubCtrlChannel) IsClosed() bool                      { return s.closed }
 
 func newRouterTxMap() *routerTxMap {

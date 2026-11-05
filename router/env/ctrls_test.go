@@ -92,6 +92,7 @@ func (self *ctrlsTestCtrlChannel) GetChannel() channel.Channel { return self.ch 
 func (self *ctrlsTestCtrlChannel) IsClosed() bool              { return self.ch.IsClosed() }
 func (self *ctrlsTestCtrlChannel) IsConnected() bool           { return self.ch.IsConnected() }
 func (self *ctrlsTestCtrlChannel) Close() error                { return self.ch.Close() }
+func (self *ctrlsTestCtrlChannel) Reconnect() error            { return nil }
 
 // ctrlsTestUnderlay is a channel.Underlay double supplying only the hello headers Add reads.
 type ctrlsTestUnderlay struct {
@@ -261,7 +262,7 @@ func TestUpdateControllerDetails_ReconnectsWhenRegistrationUnusable(t *testing.T
 	nc.ctrls.Put("ctrl1", stale)
 
 	// The detail carries no endpoints, so the reconnect gives up before reaching the network.
-	require.True(t, nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl1"}}),
+	require.True(t, nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl1"}}, true),
 		"an unusable registration must not suppress the reconnect")
 }
 
@@ -273,7 +274,7 @@ func TestUpdateControllerDetails_LeavesUsableRegistrationAlone(t *testing.T) {
 	current, _ := newTestNetworkCtrl(nc, "ctrl1", "current")
 	nc.ctrls.Put("ctrl1", current)
 
-	require.False(t, nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl1"}}),
+	require.False(t, nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl1"}}, true),
 		"a usable registration must not be redialed")
 	require.Same(t, current, nc.ctrls.Get("ctrl1"))
 }
@@ -542,4 +543,193 @@ func TestNotifyOfConnectivityChange_ReportsEachEdgeOnce(t *testing.T) {
 	require.Equal(t, ControllerDisconnected, events[0].Type)
 	require.Equal(t, ControllerReconnected, events[1].Type)
 	require.Equal(t, 1, reconnectNotifications)
+}
+
+// TestLearnControllerDetail_RecordsDialEndpoint: a controller that never advertises a cluster is known
+// only by the endpoint it was dialed on, and the close handler redials only controllers it has a detail
+// for. The dial path must therefore record one, keyed by the id the hello supplied.
+func TestLearnControllerDetail_RecordsDialEndpoint(t *testing.T) {
+	nc := newTestNetworkControllers()
+
+	require.Nil(t, nc.getControllerDetail("ctrl1"))
+
+	nc.learnControllerDetail("ctrl1", "tls:ctrl1:6262")
+
+	detail := nc.getControllerDetail("ctrl1")
+	require.NotNil(t, detail, "connecting to a controller with no advertised detail must record one")
+	require.Equal(t, "ctrl1", detail.Id)
+	require.Len(t, detail.Endpoints, 1)
+	require.Equal(t, "tls:ctrl1:6262", detail.Endpoints[0].Address)
+}
+
+// TestLearnControllerDetail_KnownEndpointLeavesDetailAlone: a known detail may carry endpoints the router
+// did not dial, so learning an endpoint already in it must not replace it with the single address used.
+func TestLearnControllerDetail_KnownEndpointLeavesDetailAlone(t *testing.T) {
+	nc := newTestNetworkControllers()
+
+	advertised := &ctrl_pb.CtrlDetail{
+		Id: "ctrl1",
+		Endpoints: []*ctrl_pb.CtrlEndpoint{
+			{Address: "tls:ctrl1:6262"},
+			{Address: "tls:ctrl1-alt:6262"},
+		},
+	}
+	nc.controllerDetails.Store(map[string]*ctrl_pb.CtrlDetail{"ctrl1": advertised})
+
+	nc.learnControllerDetail("ctrl1", "tls:ctrl1:6262")
+
+	require.Same(t, advertised, nc.getControllerDetail("ctrl1"),
+		"a connection must not replace the detail the controller advertised")
+}
+
+// TestLearnControllerDetail_AddsEndpointToKnownDetail: each endpoint that reaches a controller is kept, so
+// when one stops working the redial can use another. The detail in place is never modified, since readers
+// hold it without the lock.
+func TestLearnControllerDetail_AddsEndpointToKnownDetail(t *testing.T) {
+	nc := newTestNetworkControllers()
+
+	nc.learnControllerDetail("ctrl1", "tls:ctrl1:6262")
+	first := nc.getControllerDetail("ctrl1")
+
+	nc.learnControllerDetail("ctrl1", "tls:ctrl1-alt:6262")
+	nc.learnControllerDetail("ctrl1", "tls:ctrl1:6262")
+
+	var addresses []string
+	for _, ep := range nc.getControllerDetail("ctrl1").Endpoints {
+		addresses = append(addresses, ep.Address)
+	}
+	require.Equal(t, []string{"tls:ctrl1:6262", "tls:ctrl1-alt:6262"}, addresses)
+	require.Len(t, first.Endpoints, 1, "the detail in place must not be modified")
+}
+
+// TestAddDialed_DuplicateRecordsEndpoint: a second endpoint that reaches an already connected controller is
+// refused as a duplicate, but it still reaches that controller and must be recorded as one of its endpoints.
+func TestAddDialed_DuplicateRecordsEndpoint(t *testing.T) {
+	nc := newTestNetworkControllers()
+	underlay := newTestUnderlay(t)
+
+	established := &ctrlsTestChannel{id: "ctrl1", label: "established"}
+	_, err := nc.addDialed("tls:127.0.0.1:6262", &ctrlsTestCtrlChannel{ch: established}, established, underlay)
+	require.NoError(t, err)
+
+	duplicate := &ctrlsTestChannel{id: "ctrl1", label: "duplicate"}
+	_, err = nc.addDialed("tls:localhost:6262", &ctrlsTestCtrlChannel{ch: duplicate}, duplicate, underlay)
+	var dupErr *errDuplicateChannel
+	require.ErrorAs(t, err, &dupErr)
+
+	var addresses []string
+	for _, ep := range nc.getControllerDetail("ctrl1").Endpoints {
+		addresses = append(addresses, ep.Address)
+	}
+	require.Equal(t, []string{"tls:127.0.0.1:6262", "tls:localhost:6262"}, addresses)
+}
+
+// TestLearnControllerDetail_NotAfterAuthoritativeUpdate: once the controller set is authoritative, a dial
+// that started from a bare endpoint and binds afterward must not add the controller it reached to that
+// set, or every later close would redial a controller the cluster removed.
+func TestLearnControllerDetail_NotAfterAuthoritativeUpdate(t *testing.T) {
+	nc := newTestNetworkControllers()
+	// closed stops the update at its dial guard, so it records the set without a network dial
+	nc.closed.Store(true)
+
+	nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl2", Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:ctrl2:6262"}}}}, true)
+	require.Nil(t, nc.getControllerDetail("ctrl1"))
+
+	nc.learnControllerDetail("ctrl1", "tls:ctrl1:6262")
+
+	require.Nil(t, nc.getControllerDetail("ctrl1"),
+		"a controller omitted from the advertised set must not be learned from a late dial")
+	require.NotNil(t, nc.getControllerDetail("ctrl2"))
+}
+
+// TestAdd_RefusesControllerAbsentFromAuthoritativeSet: once the cluster's controller set is known, a channel
+// to a controller outside it is refused however it came about. The bind for a dial that started from a bare
+// endpoint before the set arrived, or a controller dialing in, must not leave a live registration the set
+// says was removed.
+func TestAdd_RefusesControllerAbsentFromAuthoritativeSet(t *testing.T) {
+	nc := newTestNetworkControllers()
+	nc.closed.Store(true) // stops the update at its dial guard, so it records the set without a network dial
+	underlay := newTestUnderlay(t)
+
+	nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl2", Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:ctrl2:6262"}}}}, true)
+
+	ch := &ctrlsTestChannel{id: "ctrl1", label: "late"}
+	_, err := nc.Add("tls:ctrl1:6262", &ctrlsTestCtrlChannel{ch: ch}, ch, underlay)
+	var notInCluster *errControllerNotInCluster
+	require.ErrorAs(t, err, &notInCluster, "a controller the cluster does not advertise must be refused")
+	require.Nil(t, nc.ctrls.Get("ctrl1"), "a refused controller must not be registered")
+
+	advertised := &ctrlsTestChannel{id: "ctrl2", label: "advertised"}
+	_, err = nc.Add("tls:ctrl2:6262", &ctrlsTestCtrlChannel{ch: advertised}, advertised, underlay)
+	require.NoError(t, err, "a controller in the advertised set is registered")
+}
+
+// TestUpdateControllerDetails_NonAuthoritativeSetDoesNotRefuse: a set that isn't the cluster's complete one,
+// such as the endpoints file at startup or a follower's list, may omit a controller or name it by an id that
+// no longer matches what is at that address. The controller actually reached must still be registered, or
+// the router can never connect to it. Only an authoritative set refuses controllers it omits.
+func TestUpdateControllerDetails_NonAuthoritativeSetDoesNotRefuse(t *testing.T) {
+	nc := newTestNetworkControllers()
+	nc.closed.Store(true) // stops the updates at their dial guard, so they record the set without a network dial
+	underlay := newTestUnderlay(t)
+
+	nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "stale", Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:ctrl:6262"}}}}, false)
+	require.NotNil(t, nc.getControllerDetail("stale"), "the set is installed")
+
+	reached := &ctrlsTestChannel{id: "ctrl1", label: "reached"}
+	_, err := nc.Add("tls:ctrl:6262", &ctrlsTestCtrlChannel{ch: reached}, reached, underlay)
+	require.NoError(t, err, "a controller outside a non-authoritative set must still be registered")
+
+	nc.learnControllerDetail("ctrl1", "tls:ctrl:6262")
+	require.NotNil(t, nc.getControllerDetail("ctrl1"), "a non-authoritative set does not stop learning either")
+
+	nc.UpdateControllerDetails([]*ctrl_pb.CtrlDetail{{Id: "ctrl1", Endpoints: []*ctrl_pb.CtrlEndpoint{{Address: "tls:ctrl:6262"}}}}, true)
+	other := &ctrlsTestChannel{id: "ctrl9", label: "other"}
+	_, err = nc.Add("tls:ctrl9:6262", &ctrlsTestCtrlChannel{ch: other}, other, underlay)
+	require.Error(t, err, "once the set is authoritative, a controller outside it is refused")
+}
+
+// TestAdd_AllowsAnyControllerBeforeAuthoritativeSet: until a controller has advertised the cluster, the
+// router knows controllers only by the endpoints it was configured with, and registers whatever they reach.
+func TestAdd_AllowsAnyControllerBeforeAuthoritativeSet(t *testing.T) {
+	nc := newTestNetworkControllers()
+	underlay := newTestUnderlay(t)
+
+	ch := &ctrlsTestChannel{id: "ctrl1", label: "first"}
+	_, err := nc.Add("tls:ctrl1:6262", &ctrlsTestCtrlChannel{ch: ch}, ch, underlay)
+	require.NoError(t, err)
+	require.NotNil(t, nc.ctrls.Get("ctrl1"))
+}
+
+// TestHandleChannelClose_ReconnectsWithLearnedDetail is the failure this guards against: a router on a
+// standalone network loses its only control channel and never dials again, because the redial needed a
+// controller detail nothing had ever sent. The detail Add learned must be enough to start the reconnect.
+func TestHandleChannelClose_ReconnectsWithLearnedDetail(t *testing.T) {
+	nc := newTestNetworkControllers()
+	underlay := newTestUnderlay(t)
+
+	ch := &ctrlsTestChannel{id: "ctrl1", label: "first"}
+	ctrl, err := nc.Add("tls:ctrl1:6262", &ctrlsTestCtrlChannel{ch: ch}, ch, underlay)
+	require.NoError(t, err)
+	nc.learnControllerDetail("ctrl1", "tls:ctrl1:6262")
+
+	// closed stops the reconnect at its first guard, so this observes the decision without a network dial
+	nc.closed.Store(true)
+	require.True(t, nc.handleChannelClose("ctrl1", ctrl, 0),
+		"the close of the only channel to a controller must start a reconnect")
+	require.Nil(t, nc.ctrls.Get("ctrl1"))
+}
+
+// TestHandleChannelClose_NoDetailDoesNotReconnect: a controller with no detail, such as one the cluster
+// has since dropped from its advertised set, must not be redialed when its channel closes.
+func TestHandleChannelClose_NoDetailDoesNotReconnect(t *testing.T) {
+	nc := newTestNetworkControllers()
+	underlay := newTestUnderlay(t)
+
+	ch := &ctrlsTestChannel{id: "ctrl1", label: "first"}
+	ctrl, err := nc.Add("tls:ctrl1:6262", &ctrlsTestCtrlChannel{ch: ch}, ch, underlay)
+	require.NoError(t, err)
+
+	require.False(t, nc.handleChannelClose("ctrl1", ctrl, 0),
+		"a controller with no detail must not be redialed")
 }

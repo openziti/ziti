@@ -129,6 +129,36 @@ func Test_updateCtrlAddressesHandler_ControllerLists(t *testing.T) {
 		})
 	})
 
+	t.Run("only a newer leader's list is the complete controller set", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		ctrls := newCtrlListControllers("ctrl1", "ctrl2")
+		handler := newCtrlListHandler(t, ctrls)
+
+		// act and assert: every other update only adds, so a controller it omits must still be accepted
+		// when it connects
+		receive(t, handler, "ctrl2", followerList(5, "ctrl1", "ctrl3"))
+		flush(t, handler)
+		req.Equal([]bool{false}, ctrls.updates(), "a follower's list is not the complete set")
+
+		receive(t, handler, "ctrl1", leaderList(10, 0, "ctrl1", "ctrl2"))
+		flush(t, handler)
+		req.Equal([]bool{false, true}, ctrls.updates(), "a newer leader's list is the complete set")
+
+		receive(t, handler, "ctrl1", leaderList(10, 0, "ctrl1", "ctrl2", "ctrl4"))
+		flush(t, handler)
+		req.Equal([]bool{false, true, false}, ctrls.updates(), "a leader's list at the recorded version only adds")
+
+		receive(t, handler, "ctrl2", followerList(11, "ctrl1", "ctrl5"))
+		flush(t, handler)
+		req.Equal([]bool{false, true, false, false}, ctrls.updates(), "a follower's list after the leader's only adds")
+
+		receive(t, newSettingsHandler(handler), "ctrl1", newCtrlAddressSetting("tls:ctrl1-new:6262"))
+		flush(t, handler)
+		req.Equal([]bool{false, true, false, false, false}, ctrls.updates(), "a new address is not the complete set")
+	})
+
 	t.Run("after an index reset a leader's list at a lower index replaces the set", func(t *testing.T) {
 		req := require.New(t)
 
@@ -1014,6 +1044,8 @@ type ctrlListControllers struct {
 	readGate  *gate
 	// leaderCtrl is what GetLeader returns.
 	leaderCtrl env.NetworkController
+	// authoritative records the authoritative flag of each UpdateControllerDetails, in order.
+	authoritative []bool
 }
 
 // newCtrlListControllers returns a controller set with a detail for each of ids and nothing connected.
@@ -1042,9 +1074,10 @@ func (c *ctrlListControllers) GetControllerDetails() map[string]*ctrl_pb.CtrlDet
 	return maps.Clone(c.details)
 }
 
-func (c *ctrlListControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail) bool {
+func (c *ctrlListControllers) UpdateControllerDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	c.authoritative = append(c.authoritative, authoritative)
 	c.details = map[string]*ctrl_pb.CtrlDetail{}
 	for _, ctrl := range controllers {
 		c.details[ctrl.Id] = ctrl
@@ -1093,6 +1126,13 @@ func (c *ctrlListControllers) detail(id string) *ctrl_pb.CtrlDetail {
 	return c.details[id]
 }
 
+// updates returns the authoritative flag of each controller set update so far.
+func (c *ctrlListControllers) updates() []bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return slices.Clone(c.authoritative)
+}
+
 func (c *ctrlListControllers) leader() string {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -1118,8 +1158,8 @@ func (e *ctrlListEnv) GetNetworkControllers() env.NetworkControllers {
 	return e.ctrls
 }
 
-func (e *ctrlListEnv) UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail) {
-	e.ctrls.UpdateControllerDetails(controllers)
+func (e *ctrlListEnv) UpdateCtrlEndpointDetails(controllers []*ctrl_pb.CtrlDetail, authoritative bool) {
+	e.ctrls.UpdateControllerDetails(controllers, authoritative)
 }
 
 func (e *ctrlListEnv) UpdateLeader(leaderId string) {
