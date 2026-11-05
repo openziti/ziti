@@ -148,7 +148,7 @@ func (l *listener) rx() {
 			nowNanos := tick.UnixNano()
 			for _, session := range l.sessions {
 				if session.TimeoutNanos() < nowNanos {
-					_ = session.Close() // always returns nil
+					session.CloseFromEventLoop()
 				}
 			}
 		}
@@ -168,7 +168,7 @@ func (l *listener) handleConnect(initialRequest []byte, session xgress_udp.Sessi
 		response = xgress_router.CreateCircuit(l.ctrl, session, request, l.bindHandler, l.options)
 	}
 
-	l.eventChan <- &sessionResponse{addr: session.Address(), response: response}
+	l.eventChan <- &sessionResponse{session: session, response: response}
 }
 
 func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options) xgress_router.Listener {
@@ -197,13 +197,20 @@ type listener struct {
 func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 	logger := pfxlog.ContextLogger(listener.LogContext())
 
-	sessionId := response.addr.String()
+	sessionId := response.session.SessionId()
 	session, present := listener.GetSession(sessionId)
 	respMsg := response.response
+	if present && session != response.session {
+		// the client has started a new attempt from this address, and a reply carries no attempt id,
+		// so any reply here would read as the answer to the new attempt
+		logger.Debugf("session [%v] replaced before its response was handled, dropping response", sessionId)
+		return
+	}
+
 	if !present {
 		// session timed out or some other unexpected failure
 		respMsg = &xgress_router.Response{Success: false, Message: "timeout"}
-		session = xgress_udp.NewPacketSesssion(listener, response.addr, time.Minute.Nanoseconds())
+		session = xgress_udp.NewPacketSesssion(listener, response.session.Address(), time.Minute.Nanoseconds())
 		logger.Debugf("session [%v] not found for response", sessionId)
 
 	} else if response.response.Success {
@@ -212,7 +219,7 @@ func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 
 	} else {
 		logger.Debugf("session [%v] found for failure response. removing session", sessionId)
-		_ = session.Close() // always returns nil
+		session.CloseFromEventLoop()
 	}
 
 	logger.Debugf("sending response to client for [%v]", sessionId)
@@ -224,6 +231,6 @@ func (response *sessionResponse) Handle(listener xgress_udp.Listener) {
 }
 
 type sessionResponse struct {
-	addr     net.Addr
+	session  xgress_udp.Session
 	response *xgress_router.Response
 }
