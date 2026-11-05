@@ -18,6 +18,7 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/fields"
@@ -83,10 +84,21 @@ func (r *FabricRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext)
 func (r *FabricRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params router.CreateRouterParams) {
 	CreateFabric(rc, FabricRouterLinkFactory, func() (string, error) {
 		modelEntity := MapCreateFabricRouterToModel(params.Router)
+		idSupplied := modelEntity.Id != ""
+
 		err := ae.Managers.Router.Create(modelEntity, rc.NewChangeContext())
 		if err != nil {
 			return "", err
 		}
+
+		// Logged rather than only warned about in the CLI, because anyone driving the management API
+		// directly never sees the CLI. This is how we find out whether the deprecated path is in use.
+		pfxlog.Logger().WithField("routerId", modelEntity.Id).
+			WithField("idSupplied", idSupplied).
+			Warn("router created outside enrollment. This is deprecated and will be removed in a future " +
+				"release; enroll routers instead. If you rely on this, please open an issue describing " +
+				"your use case")
+
 		return modelEntity.Id, nil
 	})
 }

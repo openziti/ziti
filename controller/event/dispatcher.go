@@ -89,8 +89,6 @@ type Dispatcher interface {
 	AddLinkEventHandler(handler LinkEventHandler)
 	RemoveLinkEventHandler(handler LinkEventHandler)
 
-	AddMetricsMapper(mapper MetricsMapper)
-
 	AddMetricsEventHandler(handler MetricsEventHandler)
 	RemoveMetricsEventHandler(handler MetricsEventHandler)
 
