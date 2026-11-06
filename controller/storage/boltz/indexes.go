@@ -124,6 +124,35 @@ func (indexer *Indexer) AddSetIndex(symbol EntitySetSymbol) SetReadIndex {
 	return index
 }
 
+// SetIndexValueTransform filters and/or rewrites a symbol value as the index is
+// maintained: it is applied on writes (insert/update/delete) and during
+// integrity checks, NOT on reads. Returning include=false causes the value to
+// be skipped entirely.
+//
+// The lookup key is the returned outValue bytes alone: that is what gets stored
+// as the index bucket key, so the lookup methods (Read, OpenValueCursor) take
+// that already-derived value, not the raw symbol value. The returned outType
+// only feeds change-state comparisons and listeners; it does not participate in
+// the physical key, so callers must not rely on it to disambiguate keys that
+// share the same value bytes.
+//
+// Callers use this to index only a subset of a set field (e.g. role-attribute
+// refs in a mixed roles-and-ids list) without persisting a separate derived
+// field on the entity.
+type SetIndexValueTransform func(fieldType FieldType, value []byte) (include bool, outType FieldType, outValue []byte)
+
+// AddSetIndexWithTransform creates a SetIndex whose keys are derived from the
+// symbol's values via transform. See SetIndexValueTransform.
+func (indexer *Indexer) AddSetIndexWithTransform(symbol EntitySetSymbol, transform SetIndexValueTransform) SetReadIndex {
+	index := &setIndex{
+		symbol:    symbol,
+		indexPath: indexer.getIndexPath(symbol),
+		transform: transform,
+	}
+	indexer.constraints = append(indexer.constraints, index)
+	return index
+}
+
 func (indexer *Indexer) AddFkIndex(symbol EntitySymbol, fkSymbol EntitySetSymbol) {
 	indexer.addFkIndex(symbol, fkSymbol, false)
 }
@@ -432,6 +461,16 @@ type setIndex struct {
 	symbol    EntitySetSymbol
 	indexPath []string
 	listeners []SetChangeListener
+	transform SetIndexValueTransform
+}
+
+// applyTransform runs the index's value transform, if configured. When no
+// transform is set the value passes through unchanged and is always included.
+func (index *setIndex) applyTransform(fieldType FieldType, value []byte) (bool, FieldType, []byte) {
+	if index.transform == nil {
+		return true, fieldType, value
+	}
+	return index.transform(fieldType, value)
 }
 
 func (index *setIndex) Label() string {
@@ -503,7 +542,9 @@ func (index *setIndex) visitCurrent(ctx *IndexingContext, f func(fieldType Field
 	cursor := rtSymbol.OpenCursor(ctx.Tx(), ctx.RowId)
 	for cursor.IsValid() {
 		fieldType, value := rtSymbol.Eval(ctx.Tx(), ctx.RowId)
-		f(fieldType, value)
+		if include, outType, outValue := index.applyTransform(fieldType, value); include {
+			f(outType, outValue)
+		}
 		cursor.Next()
 	}
 }
@@ -629,8 +670,8 @@ func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink fun
 						rtSymbol := index.symbol.GetRuntimeSymbol()
 						found := false
 						for setCursor := rtSymbol.OpenCursor(tx, id); setCursor.IsValid(); setCursor.Next() {
-							_, value := rtSymbol.Eval(tx, id)
-							if bytes.Equal(value, key) {
+							fieldType, value := rtSymbol.Eval(tx, id)
+							if include, _, transformed := index.applyTransform(fieldType, value); include && bytes.Equal(transformed, key) {
 								found = true
 								break
 							}
@@ -681,8 +722,12 @@ func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink fun
 		}
 		valuesCursor := setBucket.Cursor()
 		for val, _ := valuesCursor.First(); val != nil; val, _ = valuesCursor.Next() {
-			_, value := GetTypeAndValue(val)
-			idxBucket := index.getIndexBucket(tx, value)
+			fieldType, value := GetTypeAndValue(val)
+			include, _, transformed := index.applyTransform(fieldType, value)
+			if !include {
+				continue
+			}
+			idxBucket := index.getIndexBucket(tx, transformed)
 			key := PrependFieldType(TypeString, id)
 			if !idxBucket.IsKeyPresent(key) {
 				if fix {
@@ -691,7 +736,7 @@ func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink fun
 					}
 				}
 				errorSink(errors.Errorf("for index on %v.%v, id %v has val %v, but is not in the index",
-					index.symbol.GetStore().GetEntityType(), index.GetSymbol().GetName(), string(id), string(value)), fix)
+					index.symbol.GetStore().GetEntityType(), index.GetSymbol().GetName(), string(id), string(transformed)), fix)
 			}
 		}
 	}

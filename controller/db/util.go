@@ -67,6 +67,26 @@ func splitRolesAndIds(values []string) ([]string, []string, error) {
 	return roles, ids, nil
 }
 
+// roleAttributeOnlyTransform is a boltz SetIndex value transform that keeps
+// only role-attribute entries (values prefixed with RolePrefix, with a
+// non-empty suffix) and strips the prefix. It's used to build derived set
+// indexes over policy role fields that mix role-attribute refs ("#attr")
+// and entity refs ("@id").
+//
+// The "#all" wildcard is excluded: it is not a reference to a role attribute
+// named "all" but a policy-level "match everything" marker, so indexing it
+// would surface a phantom "all" attribute and miscount any real entity
+// attribute that happens to be named "all".
+var roleAttributeOnlyTransform boltz.SetIndexValueTransform = func(ft boltz.FieldType, v []byte) (bool, boltz.FieldType, []byte) {
+	if ft != boltz.TypeString || len(v) < 2 || v[0] != RolePrefix[0] {
+		return false, ft, v
+	}
+	if string(v) == AllRole {
+		return false, ft, v
+	}
+	return true, ft, v[1:]
+}
+
 func FieldValuesToIds(new []boltz.FieldTypeAndValue) []string {
 	var entityRoles []string
 	for _, fv := range new {
