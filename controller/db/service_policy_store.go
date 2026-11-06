@@ -100,6 +100,9 @@ var _ ServicePolicyStore = (*servicePolicyStoreImpl)(nil)
 type ServicePolicyStore interface {
 	NameIndexed
 	Store[*ServicePolicy]
+	GetIdentityRoleAttributesIndex() boltz.SetReadIndex
+	GetServiceRoleAttributesIndex() boltz.SetReadIndex
+	GetPostureCheckRoleAttributesIndex() boltz.SetReadIndex
 }
 
 func newServicePolicyStore(stores *stores) *servicePolicyStoreImpl {
@@ -120,6 +123,10 @@ type servicePolicyStoreImpl struct {
 	symbolServiceRoles      boltz.EntitySetSymbol
 	symbolPostureCheckRoles boltz.EntitySetSymbol
 
+	indexIdentityRoleAttributes     boltz.SetReadIndex
+	indexServiceRoleAttributes      boltz.SetReadIndex
+	indexPostureCheckRoleAttributes boltz.SetReadIndex
+
 	symbolIdentities    boltz.EntitySetSymbol
 	symbolServices      boltz.EntitySetSymbol
 	symbolPostureChecks boltz.EntitySetSymbol
@@ -127,6 +134,24 @@ type servicePolicyStoreImpl struct {
 	identityCollection     boltz.LinkCollection
 	serviceCollection      boltz.LinkCollection
 	postureCheckCollection boltz.LinkCollection
+}
+
+// GetIdentityRoleAttributesIndex returns the derived set index of identity
+// role-attribute references declared on service policies.
+func (store *servicePolicyStoreImpl) GetIdentityRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexIdentityRoleAttributes
+}
+
+// GetServiceRoleAttributesIndex returns the derived set index of service
+// role-attribute references declared on service policies.
+func (store *servicePolicyStoreImpl) GetServiceRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexServiceRoleAttributes
+}
+
+// GetPostureCheckRoleAttributesIndex returns the derived set index of posture
+// check role-attribute references declared on service policies.
+func (store *servicePolicyStoreImpl) GetPostureCheckRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexPostureCheckRoleAttributes
 }
 
 func (store *servicePolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -148,6 +173,10 @@ func (store *servicePolicyStoreImpl) initializeLocal() {
 	store.symbolIdentityRoles = store.AddPublicSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
 	store.symbolServiceRoles = store.AddPublicSetSymbol(FieldServiceRoles, ast.NodeTypeString)
 	store.symbolPostureCheckRoles = store.AddPublicSetSymbol(FieldPostureCheckRoles, ast.NodeTypeString)
+
+	store.indexIdentityRoleAttributes = store.AddSetIndexWithTransform(store.symbolIdentityRoles, roleAttributeOnlyTransform)
+	store.indexServiceRoleAttributes = store.AddSetIndexWithTransform(store.symbolServiceRoles, roleAttributeOnlyTransform)
+	store.indexPostureCheckRoleAttributes = store.AddSetIndexWithTransform(store.symbolPostureCheckRoles, roleAttributeOnlyTransform)
 
 	store.symbolIdentities = store.AddFkSetSymbol(EntityTypeIdentities, store.stores.identity)
 	store.symbolServices = store.AddFkSetSymbol(EntityTypeServices, store.stores.edgeService)

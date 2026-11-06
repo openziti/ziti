@@ -73,6 +73,7 @@ func newMigrations(stores *Stores, signingCert *x509.Certificate) *Migrations {
 // the migrations that line has.
 func (m *Migrations) registerMigrations() {
 	m.migrate("session.clear-pre-1.7", "1.7", m.clearLegacySessions)
+	m.migrate("policy.role-attribute-indexes", "2.1", m.backfillPolicyRoleAttributeIndexes)
 }
 
 // migrate registers a named migration. version is the major.minor of the release line it originated on.

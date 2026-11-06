@@ -18,6 +18,7 @@ snapshot the controller saves alongside the database file before converting it.
 
 * github.com/openziti/ziti/v2: [v2.0.9 -> v2.0.10](https://github.com/openziti/ziti/compare/v2.0.9...v2.0.10)
     * [Issue #4747](https://github.com/openziti/ziti/issues/4747) - [Backport-2.0] Track edge datastore migrations by name instead of a single version
+    * [Issue #4751](https://github.com/openziti/ziti/issues/4751) - [Backport-2.0] Expanded attribute query support in management API; add policy attribute support and usage count
 
 
 # Release 2.0.9
