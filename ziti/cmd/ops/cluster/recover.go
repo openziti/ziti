@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
@@ -45,9 +46,9 @@ The controller process MUST be stopped before running this command. The
 operation is destructive: the existing peer membership recorded in the raft log
 is discarded.`
 
-// NewCmdRecover builds the 'ziti ops cluster recover' command, which calls
-// raft.RecoverCluster on a stopped controller's data directory to force the
-// configuration to a single local node.
+// NewCmdRecover builds the 'ziti ops cluster recover' command, which forces the
+// raft configuration in a stopped controller's data directory to a single
+// local node.
 func NewCmdRecover(out io.Writer, errOut io.Writer) *cobra.Command {
 	var skipConfirm bool
 
@@ -115,9 +116,9 @@ func runRecover(out io.Writer, in io.Reader, configPath string, skipConfirm bool
 	return nil
 }
 
-// recoverDataDir opens the raft stores under dataDir and calls
-// raft.RecoverCluster to force the configuration to a single server matching
-// localID and localAddr. The data directory must belong to a stopped
+// recoverDataDir opens the raft stores under dataDir and forces the configuration to a single server
+// matching localID and localAddr: raft.RecoverCluster replaces the raft state, then appendConfiguration
+// logs the configuration as a membership change. The data directory must belong to a stopped
 // controller — BoltDB takes an exclusive file lock.
 func recoverDataDir(dataDir string, localID raft.ServerID, localAddr raft.ServerAddress) error {
 	boltPath := filepath.Join(dataDir, "raft.db")
@@ -162,5 +163,45 @@ func recoverDataDir(dataDir string, localID raft.ServerID, localAddr raft.Server
 	if err = raft.RecoverCluster(raftConf, fsm, boltStore, boltStore, snapshotStore, transport, configuration); err != nil {
 		return fmt.Errorf("raft.RecoverCluster failed: %w", err)
 	}
+
+	if err = appendConfiguration(boltStore, snapshotStore, configuration); err != nil {
+		return fmt.Errorf("failed to log the recovered configuration: %w", err)
+	}
 	return nil
+}
+
+// appendConfiguration appends configuration to logs as a configuration entry, after the last index and
+// in the last term that logs and snaps hold, as a leader appends a membership change. Its index is above
+// every configuration index the stores hold, including the index 1 at which raft.RecoverCluster records
+// its configuration. Raft commits the entry once a quorum of configuration's voters elects a leader.
+func appendConfiguration(logs raft.LogStore, snaps raft.SnapshotStore, configuration raft.Configuration) error {
+	var lastIndex, lastTerm uint64
+
+	snapshots, err := snaps.List()
+	if err != nil {
+		return fmt.Errorf("failed to list snapshots: %w", err)
+	}
+	if len(snapshots) > 0 {
+		lastIndex, lastTerm = snapshots[0].Index, snapshots[0].Term
+	}
+
+	lastLogIndex, err := logs.LastIndex()
+	if err != nil {
+		return fmt.Errorf("failed to find last log: %w", err)
+	}
+	if lastLogIndex > lastIndex {
+		entry := &raft.Log{}
+		if err = logs.GetLog(lastLogIndex, entry); err != nil {
+			return fmt.Errorf("failed to get log at index %d: %w", lastLogIndex, err)
+		}
+		lastIndex, lastTerm = entry.Index, entry.Term
+	}
+
+	return logs.StoreLog(&raft.Log{
+		Index:      lastIndex + 1,
+		Term:       lastTerm,
+		Type:       raft.LogConfiguration,
+		Data:       raft.EncodeConfiguration(configuration),
+		AppendedAt: time.Now(),
+	})
 }
