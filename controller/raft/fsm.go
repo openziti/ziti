@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -92,6 +93,9 @@ type BoltDbFsm struct {
 	restartSelf      bool
 	stateInitialized atomic.Bool
 	halt             func(err error)
+
+	// configLock serializes changes to currentState, so each is checked against the state it replaces.
+	configLock sync.Mutex
 }
 
 // haltOnUnappliableEntry ends the process. Reached only from BoltDbFsm.Apply, on the raft FSM
@@ -146,6 +150,9 @@ func (self *BoltDbFsm) GetCachedServers() *ServersWithIndex {
 // explicit overwrite the controller would keep advertising stale peers via
 // CtrlAddresses and accept their reconnects via IsPeerMember.
 func (self *BoltDbFsm) OverwriteServers(servers []raft.Server) error {
+	self.configLock.Lock()
+	defer self.configLock.Unlock()
+
 	if err := self.db.Update(nil, func(ctx boltz.MutateContext) error {
 		return self.storeServers(ctx.Tx(), servers)
 	}); err != nil {
@@ -212,10 +219,13 @@ func (self *BoltDbFsm) loadServers() error {
 	return err
 }
 
-func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Server) {
+// storeConfigurationInRaft saves servers, and index as the db's raft index if saveRaftIndex is set.
+func (self *BoltDbFsm) storeConfigurationInRaft(index uint64, servers []raft.Server, saveRaftIndex bool) {
 	err := self.db.Update(nil, func(ctx boltz.MutateContext) error {
-		if err := self.updateIndexInTx(ctx.Tx(), index); err != nil {
-			return err
+		if saveRaftIndex {
+			if err := self.updateIndexInTx(ctx.Tx(), index); err != nil {
+				return err
+			}
 		}
 		return self.storeServers(ctx.Tx(), servers)
 	})
@@ -301,26 +311,62 @@ func (self *BoltDbFsm) initializeCurrentState(raft *raft.Raft) {
 	}
 }
 
+// StoreConfiguration implements raft.ConfigurationStore. It applies and announces a configuration entry
+// newer than the cached member list.
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
-	current := self.currentState.Load()
-	if current == nil || current.Index < index {
-		self.storeConfigurationInRaft(index, configuration.Servers)
-		serversWithIndex := &ServersWithIndex{
-			Servers: configuration.Servers,
-			Index:   index,
-		}
-		self.currentState.Store(serversWithIndex)
-		pfxlog.Logger().WithField("configuration", serversWithIndex).Info("updated servers configuration")
-		evt := event.NewClusterEvent(event.ClusterMembersChanged)
-		evt.Index = index
-		for _, srv := range configuration.Servers {
-			evt.Peers = append(evt.Peers, &event.ClusterPeer{
-				Id:   string(srv.ID),
-				Addr: string(srv.Address),
-			})
-		}
+	if evt := self.applyConfiguration(index, configuration, true); evt != nil {
 		self.eventDispatcher.AcceptClusterEvent(evt)
 	}
+}
+
+// adoptConfiguration applies configuration, from the committed raft log entry at index, if it is newer
+// than the cached member list, and announces it if announce is set. It saves the servers but leaves the
+// db's raft index and the index tracker alone.
+func (self *BoltDbFsm) adoptConfiguration(index uint64, configuration raft.Configuration, announce bool) {
+	if evt := self.applyConfiguration(index, configuration, false); evt != nil && announce {
+		self.eventDispatcher.AcceptClusterEvent(evt)
+	}
+}
+
+// dropConfigurationIndex labels the cached member list with index 0, so the next configuration applied
+// replaces it.
+func (self *BoltDbFsm) dropConfigurationIndex() {
+	self.configLock.Lock()
+	defer self.configLock.Unlock()
+
+	if current := self.currentState.Load(); current != nil {
+		self.currentState.Store(&ServersWithIndex{Servers: current.Servers})
+	}
+}
+
+// applyConfiguration caches configuration and saves its servers if index is newer than the cached member
+// list's, also saving index as the db's raft index if saveRaftIndex is set. It returns the members changed
+// event to announce, or nil if it doesn't apply.
+func (self *BoltDbFsm) applyConfiguration(index uint64, configuration raft.Configuration, saveRaftIndex bool) *event.ClusterEvent {
+	self.configLock.Lock()
+	defer self.configLock.Unlock()
+
+	if current := self.currentState.Load(); current != nil && current.Index >= index {
+		return nil
+	}
+
+	self.storeConfigurationInRaft(index, configuration.Servers, saveRaftIndex)
+	serversWithIndex := &ServersWithIndex{
+		Servers: configuration.Servers,
+		Index:   index,
+	}
+	self.currentState.Store(serversWithIndex)
+	pfxlog.Logger().WithField("configuration", serversWithIndex).Info("updated servers configuration")
+
+	evt := event.NewClusterEvent(event.ClusterMembersChanged)
+	evt.Index = index
+	for _, srv := range configuration.Servers {
+		evt.Peers = append(evt.Peers, &event.ClusterPeer{
+			Id:   string(srv.ID),
+			Addr: string(srv.Address),
+		})
+	}
+	return evt
 }
 
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {

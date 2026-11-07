@@ -651,6 +651,9 @@ func (self *Controller) Init() error {
 		return fmt.Errorf("failed to init FSM (%w)", err)
 	}
 
+	// Before raft starts, so no configuration entry raft applies can interleave with it.
+	adoptWhenCommitted := self.syncFsmConfiguration()
+
 	// Load the cluster id before raft (and the mesh) start, so this node never presents an empty id
 	// that the mesh empty-id bypass would let pair with a different cluster.
 	clusterId, err := db.LoadClusterId(self.Fsm.GetDb())
@@ -680,7 +683,76 @@ func (self *Controller) Init() error {
 
 	self.Raft = r
 
+	if adoptWhenCommitted {
+		go self.adoptConfigurationWhenCommitted()
+	}
+
 	return nil
+}
+
+// configurationCommitCheckInterval is how often adoptConfigurationWhenCommitted checks raft's commit
+// index.
+const configurationCommitCheckInterval = 250 * time.Millisecond
+
+// syncFsmConfiguration gives the FSM the latest raft configuration from the log and snapshot stores when
+// the FSM has applied it, which makes it committed. When the configuration is above the FSM's applied
+// index it returns true, and the FSM keeps the member list it loaded, without a configuration index,
+// for adoptConfigurationWhenCommitted to replace. With no configuration, or stores it can't read, the
+// FSM keeps the list it loaded as it is.
+func (self *Controller) syncFsmConfiguration() bool {
+	configuration, index, err := self.getLatestConfiguration()
+	if errors.Is(err, errNoRaftConfiguration) {
+		pfxlog.Logger().Debug("no raft configuration yet, keeping the cached cluster members")
+		return false
+	}
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to read the raft configuration, keeping the cached cluster members")
+		return false
+	}
+
+	// The loaded list is labeled with the db's raft index, which isn't a configuration index.
+	self.Fsm.dropConfigurationIndex()
+
+	if index <= self.Fsm.GetStartIndex() {
+		self.Fsm.adoptConfiguration(index, configuration, false)
+		return false
+	}
+
+	pfxlog.Logger().WithField("configIndex", index).WithField("appliedIndex", self.Fsm.GetStartIndex()).
+		Info("latest raft configuration is above the applied index, adopting it once it is committed")
+	return true
+}
+
+// adoptConfigurationWhenCommitted calls tryAdoptCommittedConfiguration with raft's commit index until it
+// succeeds or the controller closes.
+func (self *Controller) adoptConfigurationWhenCommitted() {
+	ticker := time.NewTicker(configurationCommitCheckInterval)
+	defer ticker.Stop()
+
+	for !self.tryAdoptCommittedConfiguration(self.Raft.CommitIndex()) {
+		select {
+		case <-ticker.C:
+		case <-self.env.GetCloseNotify():
+			return
+		}
+	}
+}
+
+// tryAdoptCommittedConfiguration gives the FSM the latest raft configuration from the log and snapshot
+// stores, announcing it, if its index is at or below commitIndex, and reports whether it did. commitIndex
+// must be read before the call: an entry at or below it can't be replaced, so a configuration read
+// afterwards at or below it is the committed one.
+func (self *Controller) tryAdoptCommittedConfiguration(commitIndex uint64) bool {
+	configuration, index, err := self.getLatestConfiguration()
+	if err != nil {
+		pfxlog.Logger().WithError(err).Debug("unable to read the raft configuration, will retry")
+		return false
+	}
+	if index > commitIndex {
+		return false
+	}
+	self.Fsm.adoptConfiguration(index, configuration, true)
+	return true
 }
 
 func (self *Controller) StartEventGeneration() {
