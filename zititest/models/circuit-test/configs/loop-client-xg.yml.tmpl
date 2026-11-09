@@ -3,7 +3,6 @@ connectors:
     sdk:
       identity_file: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/cfg/{{ .Component.Id }}.json
       report_sdk_metrics: true
-      ha: {{ .Component.GetFlag "ha"}}
       max_control_underlays: 1
       max_data_underlays: 3
       enable_sdk_xgress: true
