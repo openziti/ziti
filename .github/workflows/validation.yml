@@ -1,7 +1,34 @@
 name: Validation (All)
+run-name: ${{ format('Validation (All, {0}{1})', inputs.cluster_mode, !inputs.oidc && ', OIDC off' || '') }}
 
+# Runs every validation with the controllers in one mode. The Validation (All, ...) workflows call it,
+# one per mode; dispatching it directly picks the mode by hand.
 on:
+  workflow_call:
+    inputs:
+      cluster_mode:
+        description: How the controllers run, cluster-3, cluster-1 or non-ha
+        type: string
+        required: true
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        required: false
+        default: true
   workflow_dispatch:
+    inputs:
+      cluster_mode:
+        description: How the controllers run
+        type: choice
+        options:
+          - cluster-3
+          - cluster-1
+          - non-ha
+        default: cluster-3
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        default: true
 
 # The backward compatibility smoke tests run first, and the soak validations start once they finish,
 # whatever their result. Running everything at once would put ten fablab environments, each with its
@@ -11,6 +38,9 @@ jobs:
     name: Backward Compatibility
     uses: ./.github/workflows/backward-compatibility.yml
     secrets: inherit
+    with:
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}
 
   circuit-validation:
     name: Circuit Validation
@@ -18,6 +48,9 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/validation-circuits.yml
     secrets: inherit
+    with:
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}
 
   ert-terminator-validation:
     name: ER/T Terminator Validation
@@ -25,6 +58,9 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/validation-ert-terminators.yml
     secrets: inherit
+    with:
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}
 
   sdk-terminator-validation:
     name: SDK Terminator Validation
@@ -32,6 +68,9 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/validation-sdk-terminators.yml
     secrets: inherit
+    with:
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}
 
   link-validation:
     name: Link Validation
@@ -39,6 +78,9 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/validation-links.yml
     secrets: inherit
+    with:
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}
 
   router-data-model-validation:
     name: Router Data Model Validation
@@ -46,6 +88,9 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/validation-router-data-model.yml
     secrets: inherit
+    with:
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}
 
   sdk-status-validation:
     name: SDK Status Validation
@@ -53,3 +98,6 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/validation-sdk-status.yml
     secrets: inherit
+    with:
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}

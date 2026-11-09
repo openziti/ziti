@@ -54,6 +54,35 @@ func TestResolveMode(t *testing.T) {
 	}
 }
 
+func TestResolveOidc(t *testing.T) {
+	tests := []struct {
+		name      string
+		mode      Mode
+		oidc      bool
+		oidcFound bool
+		enabled   bool
+		err       string
+	}{
+		{name: "unset in a cluster", mode: Cluster3, enabled: true},
+		{name: "unset without raft", mode: NonHa, enabled: true},
+		{name: "true in a cluster", mode: Cluster1, oidc: true, oidcFound: true, enabled: true},
+		{name: "false without raft", mode: NonHa, oidc: false, oidcFound: true, enabled: false},
+		{name: "false in a cluster", mode: Cluster1, oidc: false, oidcFound: true, err: "oidc is false, but cluster_mode cluster-1 runs raft, which requires OIDC; use non-ha"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			enabled, err := resolveOidc(test.mode, test.oidc, test.oidcFound)
+			if test.err != "" {
+				require.EqualError(t, err, test.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.enabled, enabled)
+		})
+	}
+}
+
 func TestModeShape(t *testing.T) {
 	require.True(t, Cluster3.Clustered())
 	require.True(t, Cluster1.Clustered())

@@ -1,10 +1,33 @@
 name: Backward Compatibility Test
-run-name: ${{ (inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && format('Backward Compatibility Test (ctrl {0}, routers {1} and {2})', inputs.ctrl_version || 'branch', inputs.router_version_a || 'branch', inputs.router_version_b || 'branch') || 'Backward Compatibility Test' }}
+run-name: ${{ format('Backward Compatibility Test ({0}{1}){2}', inputs.cluster_mode, !inputs.oidc && ', OIDC off' || '', (inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && format(' with ctrl {0}, routers {1} and {2}', inputs.ctrl_version || 'branch', inputs.router_version_a || 'branch', inputs.router_version_b || 'branch') || '') }}
 
 on:
   workflow_call:
+    inputs:
+      cluster_mode:
+        description: How the controllers run, cluster-3, cluster-1 or non-ha
+        type: string
+        required: false
+        default: non-ha
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        required: false
+        default: true
   workflow_dispatch:
     inputs:
+      cluster_mode:
+        description: How the controllers run
+        type: choice
+        options:
+          - non-ha
+          - cluster-1
+          - cluster-3
+        default: non-ha
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        default: true
       router_version_a:
         description: 'Router release to compare, such as v1.6.22, or blank for the branch build. Setting any version runs these in place of the release line matrix'
         type: string
@@ -26,7 +49,7 @@ on:
 # names the caller, so the suffix keeps this group distinct from the caller's other jobs. A manual
 # run's inputs are part of the group, so runs comparing different versions don't cancel each other.
 concurrency:
-  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-backward-compatibility-${{ inputs.ctrl_version }}-${{ inputs.router_version_a }}-${{ inputs.router_version_b }}-${{ inputs.labels }}
+  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-backward-compatibility-${{ inputs.cluster_mode }}-${{ inputs.oidc }}-${{ inputs.ctrl_version }}-${{ inputs.router_version_a }}-${{ inputs.router_version_b }}-${{ inputs.labels }}
   cancel-in-progress: true
 
 env:
@@ -48,8 +71,11 @@ jobs:
         # Each release line runs with the old routers on the client side (east) and, separately, on
         # the hosting side (west), against the newest stable (promoted) release of that line. A manual
         # run that pins any version pairs the two router versions both ways: a-east puts A on the
-        # client side and B hosting, b-east the reverse. Two equal versions run once.
-        line: ${{ fromJSON((inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && '["pinned"]' || '["1.5", "1.1"]') }}
+        # client side and B hosting, b-east the reverse. Two equal versions run once. Against a
+        # cluster the routers run in HA mode, where a router before v1.3.0 never gets the router data
+        # model, since it can't send the subscription the controller waits for. So the 1.1 line runs
+        # only against a non-HA controller.
+        line: ${{ fromJSON((inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && '["pinned"]' || inputs.cluster_mode == 'non-ha' && '["1.5", "1.1"]' || '["1.5"]') }}
         side: ${{ fromJSON(!(inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && '["east", "west"]' || inputs.router_version_a == inputs.router_version_b && '["a-east"]' || '["a-east", "b-east"]') }}
 
     steps:
@@ -152,10 +178,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # inputs reach the script through the environment, never interpolated into it
           EXTRA_LABELS: ${{ inputs.labels }}
+          CLUSTER_MODE: ${{ inputs.cluster_mode }}
+          OIDC: ${{ inputs.oidc }}
         shell: bash
         run: |
+          case "$CLUSTER_MODE" in
+            cluster-3|cluster-1|non-ha) ;;
+            *) echo "cluster_mode must be cluster-3, cluster-1 or non-ha, not '$CLUSTER_MODE'" >&2; exit 1 ;;
+          esac
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${VERSION_LABELS},environment=gh-fablab-compat-smoketest${EXTRA_LABELS:+,$EXTRA_LABELS}"
+          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${VERSION_LABELS},environment=gh-fablab-compat-smoketest-${CLUSTER_MODE},cluster_mode=${CLUSTER_MODE},oidc=${OIDC}${EXTRA_LABELS:+,$EXTRA_LABELS}"
           $(go env GOPATH)/bin/smoketest up
 
       - name: Validate Links
