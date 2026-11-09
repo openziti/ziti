@@ -864,7 +864,7 @@ EOF
         local -a _traefik_cmd=(upgrade --install traefik traefik/traefik
             --namespace traefik --create-namespace
             --set providers.kubernetesCRD.enabled=true
-            --set service.type=LoadBalancer
+            --set service.spec.type=LoadBalancer
         )
         helmWrapper "${_traefik_cmd[@]}" >&3
     fi
