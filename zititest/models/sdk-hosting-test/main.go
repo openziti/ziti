@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
 	"github.com/openziti/ziti/zititest/zitilab/cli"
+	"github.com/openziti/ziti/zititest/zitilab/ctrlmode"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 )
 
@@ -125,21 +126,8 @@ var m = &model.Model{
 				return nil
 			})
 		}),
-		model.FactoryFunc(func(m *model.Model) error {
-			if val, _ := m.GetBoolVariable("ha"); !val {
-				for _, host := range m.SelectHosts("component.ha") {
-					delete(host.Region.Hosts, host.Id)
-				}
-			} else {
-				for _, component := range m.SelectComponents("*") {
-					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
-						ztType.HA = true
-					}
-				}
-			}
-			return nil
-		}),
 		model.NewScaleFactoryWithDefaultEntityFactory(&scaleStrategy{}),
+		ctrlmode.Factory(ctrlmode.Cluster3),
 	},
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
@@ -192,7 +180,7 @@ var m = &model.Model{
 				"ctrl2": {
 					Components: model.Components{
 						"ctrl2": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
 								Version: TargetZitiVersion,
 							},
@@ -230,7 +218,7 @@ var m = &model.Model{
 				"ctrl3": {
 					Components: model.Components{
 						"ctrl3": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
 								Version: TargetZitiVersion,
 							},
@@ -268,19 +256,19 @@ var m = &model.Model{
 		"bootstrap": model.ActionBinder(func(m *model.Model) model.Action {
 			workflow := actions.Workflow()
 
-			isHA := len(m.SelectComponents(".ctrl")) > 1
+			clustered := ctrlmode.IsClustered(m)
 
 			workflow.AddAction(component.StopInParallel("*", 300))
 			workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-			if !isHA {
+			if !clustered {
 				workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
 			}
 
 			workflow.AddAction(component.Start(".ctrl"))
 
-			if isHA {
+			if clustered {
 				workflow.AddAction(semaphore.Sleep(2 * time.Second))
 				workflow.AddAction(edge.InitRaftController("#ctrl1"))
 			}
