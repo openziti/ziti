@@ -69,9 +69,9 @@ func (mode Mode) CtrlCount() int {
 // Factory returns a structure factory that resolves m's mode, using defaultMode when neither
 // cluster_mode nor ha is set. For a single-controller mode it removes every controller but
 // PrimaryCtrlId, and any host that leaves empty. It fails if the controllers left don't number
-// Mode.CtrlCount, and sets ClusteredVariable and OidcVariable. OIDC is on for a cluster and otherwise
-// follows the oidc variable, which defaults to true. Run it before any factory that reads those
-// variables or selects controllers.
+// Mode.CtrlCount, and sets ClusteredVariable and OidcVariable. OIDC follows the oidc variable, which
+// defaults to true; a cluster requires OIDC, so oidc false fails in a clustered mode. Run it before any
+// factory that reads those variables or selects controllers.
 func Factory(defaultMode Mode) model.Factory {
 	return model.FactoryFunc(func(m *model.Model) error {
 		clusterMode, _ := m.GetStringVariable(ModeVariable)
@@ -98,7 +98,10 @@ func Factory(defaultMode Mode) model.Factory {
 		}
 
 		oidc, oidcFound := m.GetBoolVariable("oidc")
-		oidcEnabled := mode.Clustered() || !oidcFound || oidc
+		oidcEnabled, err := resolveOidc(mode, oidc, oidcFound)
+		if err != nil {
+			return err
+		}
 
 		m.Scope.Defaults[ClusteredVariable] = mode.Clustered()
 		m.Scope.Defaults[OidcVariable] = oidcEnabled
@@ -134,4 +137,14 @@ func resolveMode(clusterMode string, ha, haFound bool, defaultMode Mode) (Mode, 
 	default:
 		return "", fmt.Errorf("invalid %s %q, must be %s, %s or %s", ModeVariable, clusterMode, Cluster3, Cluster1, NonHa)
 	}
+}
+
+func resolveOidc(mode Mode, oidc, oidcFound bool) (bool, error) {
+	if !oidcFound {
+		return true, nil
+	}
+	if !oidc && mode.Clustered() {
+		return false, fmt.Errorf("oidc is false, but %s %s runs raft, which requires OIDC; use %s", ModeVariable, mode, NonHa)
+	}
+	return oidc, nil
 }
