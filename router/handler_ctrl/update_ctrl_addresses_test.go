@@ -920,6 +920,62 @@ func Test_updateCtrlAddressesHandler_LeaderListRequest(t *testing.T) {
 	})
 }
 
+// Test_updateCtrlAddressesHandler_LeaderListOmittingLeader covers a leader whose member list hasn't caught
+// up, so the list it sends omits the leader itself.
+func Test_updateCtrlAddressesHandler_LeaderListOmittingLeader(t *testing.T) {
+	t.Run("a leader's list that omits the leader removes nothing", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange: a restarted router, at no recorded version, that knows all three controllers
+		ctrls := newCtrlListControllers("ctrl1", "ctrl2", "ctrl3")
+		handler := newCtrlListHandler(t, ctrls)
+		receive(t, handler, "ctrl1", followerList(3405, "ctrl1", "ctrl2", "ctrl3"))
+		flush(t, handler)
+
+		// act: ctrl2 leads while replaying its configuration entries after a snapshot install
+		receive(t, handler, "ctrl2", leaderList(1796, 4, "ctrl1"))
+		receive(t, handler, "ctrl2", leaderList(2412, 4, "ctrl1", "ctrl3"))
+		flush(t, handler)
+
+		// assert
+		req.Equal([]string{"ctrl1", "ctrl2", "ctrl3"}, ctrls.ids(), "a leader's list omitting the leader must not remove controllers")
+		req.Empty(ctrls.updates(), "a leader's list omitting the leader must not be applied as the complete set")
+		req.Zero(handler.currentVersion, "a leader's list omitting the leader must not be the recorded version")
+		req.Equal("ctrl2", ctrls.leader(), "the leadership claim must still apply")
+		req.True(awaitingLeaderList(handler), "the router must keep asking for the leader's list")
+
+		t.Run("the leader's list naming the leader replaces the set and ends the request", func(t *testing.T) {
+			req := require.New(t)
+
+			// act
+			receive(t, handler, "ctrl2", leaderList(2414, 4, "ctrl1", "ctrl2"))
+			flush(t, handler)
+
+			// assert
+			req.Equal([]string{"ctrl1", "ctrl2"}, ctrls.ids(), "a newer leader's list naming the leader must remove the controllers it omits")
+			req.Equal(uint64(2414), handler.currentVersion)
+			req.False(awaitingLeaderList(handler), "the leader's list must end the request")
+		})
+	})
+
+	t.Run("a leader's list that omits the leader adds the controllers it names", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange: the list omits nothing the router has, so only the missing leader marks it stale
+		ctrls := newCtrlListControllers("ctrl1")
+		handler := newCtrlListHandler(t, ctrls)
+
+		// act
+		receive(t, handler, "ctrl2", leaderList(5, 1, "ctrl1", "ctrl3"))
+		flush(t, handler)
+
+		// assert
+		req.Equal([]string{"ctrl1", "ctrl3"}, ctrls.ids())
+		req.Equal([]bool{false}, ctrls.updates(), "the additions must not be applied as the complete set")
+		req.True(awaitingLeaderList(handler), "the router must ask for the leader's list")
+	})
+}
+
 // receive delivers m to receiver as controller from sends it. It doesn't wait for m to be applied.
 func receive(t *testing.T, receiver channel.TypedReceiveHandler, from string, m proto.Message) {
 	t.Helper()

@@ -32,7 +32,12 @@ import (
 //   - A leader's list at the recorded version, or a follower's list at or above it, only adds controllers
 //     the router doesn't have. A follower that hasn't caught up can omit current members, and the router
 //     may have lost controllers the leader still names.
+//   - A leader's list that doesn't name the leader is handled as a follower's list, though its leadership
+//     claim still applies. The leader built it from a member list that hasn't caught up.
 //   - Any list below the recorded version is ignored.
+//   - A list at index 0 carries no version: its sender doesn't know which configuration it reflects. It
+//     ranks below every recorded version. A router without a recorded version applies it like any other
+//     list and still has none afterwards, so the next leader's list replaces it.
 //
 // Leadership, claimed by announcements and by leaders' lists, is ordered by raft term. Raft starts a new,
 // higher term with each election and elects at most one leader per term, so:
@@ -48,7 +53,7 @@ import (
 //
 // Receiving never waits for an update to be applied. Past maxPendingCtrlUpdates waiting updates, the
 // waiting lists and announcements are dropped and the leader's list is requested in their place, as it
-// also is when a list is empty or a follower's list omits controllers.
+// also is when a list is empty or a list that only adds omits controllers.
 type updateCtrlAddressesHandler struct {
 	env env.RouterEnv
 
@@ -280,6 +285,22 @@ func (handler *updateCtrlAddressesHandler) applyLeaderList(upd *ctrl_pb.UpdateCt
 		return
 	}
 
+	// A leader is a member of its own configuration, so a list without it was built from a member list
+	// that hasn't caught up.
+	if !namesController(upd.Controllers, ctrlId) {
+		log.Info("leader's ctrl list omits the leader, using only additions and requesting latest set from leader")
+		currentWithoutTerm := handler.currentVersion == 0 || handler.currentVersion <= upd.Index
+		if handler.acceptLeaderClaim(ctrlId, upd.RaftTerm, currentWithoutTerm) {
+			log.Infof("updating current leader to %s", ctrlId)
+			handler.env.UpdateLeader(ctrlId)
+		}
+		handler.applyAdditions(upd, log)
+		handler.requestLeaderList()
+		return
+	}
+
+	// A recorded version of 0 is none, so any leader's list applies; a list at index 0 has no version and
+	// applies only then.
 	switch {
 	case handler.currentVersion == 0 || handler.currentVersion < upd.Index:
 		log.Info("updating to newer controller endpoints")
@@ -316,20 +337,32 @@ func (handler *updateCtrlAddressesHandler) applyFollowerList(upd *ctrl_pb.Update
 		return
 	}
 
-	if handler.currentVersion != 0 && handler.currentVersion > upd.Index {
-		log.Info("ignoring outdated controller endpoint list")
-		return
-	}
-
-	merged, changed, removed := mergeControllers(handler.env.GetNetworkControllers(), upd.Controllers)
-	if removed {
+	if handler.applyAdditions(upd, log) {
 		log.Info("updated ctrl list is not from leader, using only additions and requesting latest set from leader")
 		handler.requestLeaderList()
 	}
+}
+
+// applyAdditions adds the controllers upd names that the router doesn't have, unless upd is below the
+// recorded version. It reports whether upd omits a controller the router has, false if upd was ignored.
+func (handler *updateCtrlAddressesHandler) applyAdditions(upd *ctrl_pb.UpdateCtrlAddresses, log *logrus.Entry) bool {
+	if handler.currentVersion != 0 && handler.currentVersion > upd.Index {
+		log.Info("ignoring outdated controller endpoint list")
+		return false
+	}
+
+	merged, changed, removed := mergeControllers(handler.env.GetNetworkControllers(), upd.Controllers)
 	if changed {
 		log.Info("adding controllers from controller endpoint list")
 		handler.env.UpdateCtrlEndpointDetails(merged, false)
 	}
+	return removed
+}
+
+func namesController(controllers []*ctrl_pb.CtrlDetail, ctrlId string) bool {
+	return slices.ContainsFunc(controllers, func(ctrl *ctrl_pb.CtrlDetail) bool {
+		return ctrl.Id == ctrlId
+	})
 }
 
 func (handler *updateCtrlAddressesHandler) listLogger(upd *ctrl_pb.UpdateCtrlAddresses, ctrlId string, label string) *logrus.Entry {

@@ -67,6 +67,7 @@ change goes through once the leader is upgraded.
     * [Issue #4717](https://github.com/openziti/ziti/issues/4717) - [Backport-2.0] Terminator PUT clears hostId, peerData and sourceCtrl
     * [Issue #4719](https://github.com/openziti/ziti/issues/4719) - [Backport-2.0] Fabric router PUT crashes the controller
     * [Issue #4657](https://github.com/openziti/ziti/issues/4657) - [Backport-2.0] Router doesn't tell SDKs to stop sending on circuits it no longer has
+    * [Issue #4755](https://github.com/openziti/ziti/issues/4755) - [Backport-2.0] Routers drop controllers on a stale member list from a leader restarted after a snapshot install
     * [Issue #4729](https://github.com/openziti/ziti/issues/4729) - [Backport-2.0] API request timeouts surface as TLS 'bad record MAC' errors instead of a 503
     * [Issue #4479](https://github.com/openziti/ziti/issues/4479) - [Backport-2.0] Router never reconnects to a standalone controller after the heartbeat check closes the control channel
     * [Issue #4574](https://github.com/openziti/ziti/issues/4574) - [Backport-2.0] Router can drop controllers on a follower's stale controller list and never re-add them
