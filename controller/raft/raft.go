@@ -48,6 +48,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -884,13 +885,24 @@ func (self *Controller) RemoveServer(id string) error {
 	return self.HandleRemovePeer(req)
 }
 
-func (self *Controller) CtrlAddresses() (uint64, []string) {
+// CtrlAddresses returns the index and addresses of the cached cluster member list, and whether routers may
+// take it as the leader's list, as IsLeaderList reports.
+func (self *Controller) CtrlAddresses() (uint64, []string, bool) {
 	ret := make([]string, 0)
+	var ids []string
 	srvs := self.Fsm.GetCurrentState(self.Raft)
 	for _, srvr := range srvs.Servers {
 		ret = append(ret, string(srvr.Address))
+		ids = append(ids, string(srvr.ID))
 	}
-	return srvs.Index, ret
+	return srvs.Index, ret, self.IsLeaderList(ids)
+}
+
+// IsLeaderList reports whether routers may take a member list naming memberIds as the leader's list: this
+// node leads and the list names it. A leader is a member of its own configuration, so a list without it was
+// built from a member list that hasn't caught up.
+func (self *Controller) IsLeaderList(memberIds []string) bool {
+	return self.IsLeader() && slices.Contains(memberIds, self.env.GetId().Token)
 }
 
 func (self *Controller) RenderJsonConfig() (string, error) {
