@@ -6,7 +6,7 @@ v: 3
 
 enableDebugOps: true
 
-{{if .Component.GetFlag "ha"}}
+{{if .Component.GetFlag "ctrl_is_clustered"}}
 ha:
   enabled: true
 {{end}}
