@@ -38,6 +38,7 @@ import (
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/ctrlmode"
 	"github.com/openziti/ziti/zititest/zitilab/validations"
 )
 
@@ -77,20 +78,7 @@ var Model = &model.Model{
 	},
 
 	StructureFactories: []model.Factory{
-		model.FactoryFunc(func(m *model.Model) error {
-			if val, _ := m.GetBoolVariable("ha"); !val {
-				for _, host := range m.SelectHosts("component.ha") {
-					delete(host.Region.Hosts, host.Id)
-				}
-			} else {
-				for _, component := range m.SelectComponents("*") {
-					if ztType, ok := component.Type.(*zitilab.ZitiTunnelType); ok {
-						ztType.HA = true
-					}
-				}
-			}
-			return nil
-		}),
+		ctrlmode.Factory(ctrlmode.NonHa),
 		model.FactoryFunc(applyVersions),
 		model.FactoryFunc(applyCapabilities),
 	},
@@ -159,7 +147,7 @@ var Model = &model.Model{
 				"ctrl2": {
 					Components: model.Components{
 						"ctrl2": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
 								Version: ZitiCtrlVersion,
 							},
@@ -223,7 +211,7 @@ var Model = &model.Model{
 				"ctrl3": {
 					Components: model.Components{
 						"ctrl3": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
 							Type: &zitilab.ControllerType{
 								Version: ZitiCtrlVersion,
 							},

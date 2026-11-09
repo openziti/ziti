@@ -18,11 +18,13 @@ package tests
 
 import (
 	"github.com/openziti/ziti/zititest/models/smoke"
+	"github.com/openziti/ziti/zititest/zitilab/ctrlmode"
 )
 
-// sdkCapabilities returns capabilities plus CapOidc when SDK clients authenticate through OIDC.
+// sdkCapabilities returns capabilities plus CapOidc when SDK clients authenticate through OIDC. Without
+// OIDC they get legacy api sessions, which every router handles.
 func sdkCapabilities(capabilities ...smoke.Capability) []smoke.Capability {
-	if smoke.OidcEnabled(run.GetModel()) {
+	if ctrlmode.OidcEnabled(run.GetModel()) {
 		return append(capabilities, smoke.CapOidc)
 	}
 	return capabilities
