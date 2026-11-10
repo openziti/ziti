@@ -33,6 +33,9 @@
 
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/ziti: [v1.6.22 -> v1.6.23](https://github.com/openziti/ziti/compare/v1.6.22...v1.6.23)
+    * [Issue #4716](https://github.com/openziti/ziti/issues/4716) - [Backport-1.6] Identity PUT re-enables a disabled identity
+    * [Issue #4718](https://github.com/openziti/ziti/issues/4718) - [Backport-1.6] Terminator PUT clears hostId, peerData and sourceCtrl
+    * [Issue #4720](https://github.com/openziti/ziti/issues/4720) - [Backport-1.6] Fabric router PUT crashes the controller
     * [Issue #4658](https://github.com/openziti/ziti/issues/4658) - [Backport-1.6] Router doesn't tell SDKs to stop sending on circuits it no longer has
     * [Issue #4695](https://github.com/openziti/ziti/issues/4695) - [Backport-1.6] Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
     * [Issue #4617](https://github.com/openziti/ziti/issues/4617) - [Backport-1.6] Router control-channel connect/disconnect race can leave a reconnected router de-registered

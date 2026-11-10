@@ -92,7 +92,7 @@ func (r *TerminatorRouter) Delete(n *network.Network, rc api.RequestContext) {
 
 func (r *TerminatorRouter) Update(n *network.Network, rc api.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return n.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil, rc.NewChangeContext())
+		return n.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), terminatorUpdateFields(), rc.NewChangeContext())
 	})
 }
 
