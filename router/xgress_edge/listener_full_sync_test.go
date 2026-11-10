@@ -24,6 +24,11 @@ func (self *recordingTestChannel) Send(s channel.Sendable) error {
 	return nil
 }
 
+func (self *recordingTestChannel) TrySend(s channel.Sendable) (bool, error) {
+	self.sent = append(self.sent, s)
+	return true, nil
+}
+
 func newFullSyncTestConn(ch *recordingTestChannel) *edgeClientConn {
 	return &edgeClientConn{
 		ch: sdkedge.NewSingleSdkChannel(ch),
