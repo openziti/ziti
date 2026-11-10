@@ -63,6 +63,7 @@ change goes through once the leader is upgraded.
     * [Issue #4375](https://github.com/openziti/ziti/issues/4375) - router on release-v2.0.x never seeds MFA posture from the api session token <!-- keep -->
     * [Issue #4694](https://github.com/openziti/ziti/issues/4694) - [Backport-2.0] Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
     * [Issue #4707](https://github.com/openziti/ziti/issues/4707) - [Backport-2.0] Version built-in config types independently of the database version
+    * [Issue #4768](https://github.com/openziti/ziti/issues/4768) - [Backport-2.0] Controller RouterDataModel rebuild (BuildAll) drops all existing revocations
     * [Issue #4715](https://github.com/openziti/ziti/issues/4715) - [Backport-2.0] Identity PUT re-enables a disabled identity
     * [Issue #4717](https://github.com/openziti/ziti/issues/4717) - [Backport-2.0] Terminator PUT clears hostId, peerData and sourceCtrl
     * [Issue #4719](https://github.com/openziti/ziti/issues/4719) - [Backport-2.0] Fabric router PUT crashes the controller
