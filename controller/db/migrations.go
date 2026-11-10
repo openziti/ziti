@@ -34,6 +34,9 @@ type Migrations struct {
 	signingCert *x509.Certificate
 }
 
+// RunMigrations brings the edge datastore up to CurrentDbVersion, then syncs the system config types.
+// It runs on every startup and writes only what is out of date. Before changing an existing datastore,
+// it saves a copy alongside the db file.
 func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) error {
 	migrations := &Migrations{
 		stores:      stores,
@@ -41,35 +44,22 @@ func RunMigrations(db boltz.Db, stores *Stores, signingCert *x509.Certificate) e
 	}
 
 	mm := boltz.NewMigratorManager(db)
-	if err := mm.Migrate("edge", CurrentDbVersion, migrations.migrate); err != nil {
+	version, err := mm.GetComponentVersion("edge")
+	if err != nil {
 		return err
 	}
 
-	return migrations.syncConfigTypes(db)
+	if err = mm.Migrate("edge", CurrentDbVersion, migrations.migrate); err != nil {
+		return err
+	}
+
+	// Migrate snapshots only when it moves an existing version, so when the version was already
+	// current, the sync takes the snapshot. A new datastore (version 0) needs none.
+	return migrations.syncSystemConfigTypes(db, version == CurrentDbVersion)
 }
 
-// syncedConfigTypes are config types which are added or changed in 2.0.x. We don't want to increment
-// the db version to add or update them, since doing so risks colliding with the db version range used
-// by other branches. Since bumping the db version is what would normally trigger the migrator to invoke
-// migrate() again, we instead sync these config types on every startup, independent of the stored db
-// version.
-var syncedConfigTypes = []*ConfigType{
-	hostV1ConfigType,
-	hostV2ConfigType,
-	l2HostV1ConfigType,
-	l2InterceptV1ConfigType,
-}
-
-func (m *Migrations) syncConfigTypes(db boltz.Db) error {
-	return db.Update(nil, func(ctx boltz.MutateContext) error {
-		step := &boltz.MigrationStep{Component: "edge", Ctx: ctx}
-		for _, cfgType := range syncedConfigTypes {
-			m.syncConfigType(step, cfgType)
-		}
-		return step.GetError()
-	})
-}
-
+// migrate applies the db version migrations. Config type definitions are not migrated here: a change
+// to one bumps its SystemVersion instead (see syncSystemConfigTypes).
 func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion == 0 {
 		return m.initialize(step)
@@ -83,15 +73,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion < 13 {
 		step.SetError(errors.Errorf("Unsupported edge datastore version: %v", step.CurrentVersion))
 		return step.CurrentVersion
-	}
-
-	if step.CurrentVersion < 14 {
-		m.createInterceptV1ConfigType(step)
-		m.createHostV1ConfigType(step)
-	}
-
-	if step.CurrentVersion < 15 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, serverConfigTypeV1, nil))
 	}
 
 	if step.CurrentVersion < 16 {
@@ -110,23 +91,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.updateIdentityTypes(step)
 	}
 
-	if step.CurrentVersion < 20 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, serverConfigTypeV1, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Create(step.Ctx, hostV2ConfigType))
-	}
-
-	if step.CurrentVersion < 21 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 22 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
 	if step.CurrentVersion < 23 {
 		m.addProcessMultiPostureCheck(step)
 	}
@@ -135,23 +99,8 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.addIdentityIdToSessions(step)
 	}
 
-	if step.CurrentVersion < 25 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 26 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
 	if step.CurrentVersion < 27 {
 		m.addSystemAuthPolicies(step)
-	}
-
-	if step.CurrentVersion < 28 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
 	if step.CurrentVersion < 29 {
@@ -170,29 +119,8 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.dropEntity(step, EntityTypeApiSessionCertificates)
 	}
 
-	if step.CurrentVersion < 31 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 32 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-	}
-
 	if step.CurrentVersion < 33 {
 		m.migrateIdentityTypesToDefault(step)
-	}
-
-	if step.CurrentVersion < 34 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 35 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
 	if step.CurrentVersion < 36 {
@@ -205,15 +133,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.setAuthenticatorIsIssuedByNetwork(step)
 	}
 
-	if step.CurrentVersion < 38 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, interceptV1ConfigType, nil))
-	}
-
-	if step.CurrentVersion < 39 {
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV1ConfigType, nil))
-		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
-	}
-
 	if step.CurrentVersion < 41 {
 		step.SetError(m.stores.Authenticator.CheckIntegrity(step.Ctx, true, func(err error, fixed bool) {
 			log := pfxlog.Logger().WithError(err)
@@ -223,12 +142,6 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 				log.Error("unfixable error during authenticator index rebuild:")
 			}
 		}))
-	}
-
-	if step.CurrentVersion < 43 {
-		m.createOrUpdateConfigType(step, interfacesConfigTypeV1)
-		m.createOrUpdateConfigType(step, hostInterfacesConfigTypeV1)
-		m.createOrUpdateConfigType(step, proxyConfigTypeV1)
 	}
 
 	if step.CurrentVersion < 44 {

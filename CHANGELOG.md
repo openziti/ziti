@@ -60,6 +60,7 @@ change goes through once the leader is upgraded.
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4707](https://github.com/openziti/ziti/issues/4707) - [Backport-2.0] Version built-in config types independently of the database version
     * [Issue #4715](https://github.com/openziti/ziti/issues/4715) - [Backport-2.0] Identity PUT re-enables a disabled identity
     * [Issue #4717](https://github.com/openziti/ziti/issues/4717) - [Backport-2.0] Terminator PUT clears hostId, peerData and sourceCtrl
     * [Issue #4719](https://github.com/openziti/ziti/issues/4719) - [Backport-2.0] Fabric router PUT crashes the controller
