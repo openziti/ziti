@@ -257,10 +257,14 @@ func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ident
 	var checker boltz.FieldChecker
 
 	if cmd.UpdatedFields == nil {
+		// A full update replaces what the update API carries. These fields have their own write paths.
 		checker = &AndFieldChecker{
 			first: self,
 			second: NotFieldChecker{
 				db.FieldIdentityServiceConfigs: struct{}{},
+				db.FieldIdentityDisabledAt:     struct{}{},
+				db.FieldIdentityDisabledUntil:  struct{}{},
+				db.FieldInterfaces:             struct{}{},
 			},
 		}
 	} else {

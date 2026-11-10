@@ -92,7 +92,7 @@ func (r *FabricTerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestCont
 
 func (r *FabricTerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.Terminator.Update(MapUpdateFabricTerminatorToModel(params.ID, params.Terminator), nil, rc.NewChangeContext())
+		return ae.Managers.Terminator.Update(MapUpdateFabricTerminatorToModel(params.ID, params.Terminator), fabricTerminatorUpdateFields(), rc.NewChangeContext())
 	})
 }
 
