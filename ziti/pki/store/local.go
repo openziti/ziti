@@ -269,7 +269,7 @@ func (l *Local) writeChainBundle(caName, destCaName, name string, chainName stri
 	defer func() { _ = serverCertIn.Close() }()
 
 	chainCertPath := filepath.Join(l.Root, destCaName, LocalCertsDir, chainName)
-	out, err := os.OpenFile(chainCertPath, os.O_CREATE|os.O_WRONLY, 0644)
+	out, err := os.OpenFile(chainCertPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open chain file: %v: %v", chainCertPath, err)
 	}
