@@ -27,6 +27,7 @@ import (
 	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_client/current_api_session"
 	clientCurrentIdentity "github.com/openziti/edge-api/rest_client_api_client/current_identity"
 	clientEnroll "github.com/openziti/edge-api/rest_client_api_client/enroll"
+	clientService "github.com/openziti/edge-api/rest_client_api_client/service"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	nfPem "github.com/openziti/foundation/v2/pem"
@@ -532,6 +533,16 @@ func (helper *ClientHelperClient) CreateTotpMfaEnrollment() (*rest_model.DetailM
 	}
 
 	return helper.GetTotpMfa()
+}
+
+// GetServiceDetail returns a service as the client api lists it for the current api session, with the posture
+// queries (and their isPassing) evaluated for that session.
+func (helper *ClientHelperClient) GetServiceDetail(id string) (*rest_model.ServiceDetail, error) {
+	resp, err := helper.API.Service.DetailService(&clientService.DetailServiceParams{ID: id}, nil)
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+	return resp.Payload.Data, nil
 }
 
 func (helper *ClientHelperClient) VerifyTotpMfaEnrollment(code string) (*rest_model.DetailMfa, error) {
