@@ -17,9 +17,11 @@
 package db
 
 import (
+	"crypto/x509"
 	"strconv"
 	"time"
 
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/ziti/v2/controller/storage/ast"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
@@ -34,23 +36,46 @@ const (
 	FieldControllerApiAddressVersion = "apiAddresses.version"
 	FieldControllerApiAddressUrl     = "apiAddresses.url"
 	FieldControllerIsPreferredLeader = "isPreferredLeader"
+	FieldControllerRetainedCerts     = "retainedCerts"
 )
 
 type Controller struct {
 	boltz.BaseExtEntity
-	Name         string    `json:"name"`
-	CtrlAddress  string    `json:"address"`
-	CertPem      string    `json:"certPem"`
-	Fingerprint  string    `json:"fingerprint"`
+	Name              string    `json:"name"`
+	CtrlAddress       string    `json:"address"`
+	CertPem           string    `json:"certPem"`
+	Fingerprint       string    `json:"fingerprint"`
 	IsOnline          bool      `json:"isOnline"`
 	LastJoinedAt      time.Time `json:"lastJoinedAt"`
 	IsPreferredLeader bool      `json:"isPreferredLeader"`
 	ApiAddresses      map[string][]ApiAddress
+	// RetainedCerts holds PEM leaf certs the controller presented before the leaf in CertPem. Tokens
+	// signed under them stay verifiable until the certs expire.
+	RetainedCerts []string `json:"retainedCerts"`
 }
 
 type ApiAddress struct {
 	Url     string `json:"url"`
 	Version string `json:"version"`
+}
+
+// ControllerJwtCerts returns the certs whose keys verify a controller's JWTs: the leaf of its
+// current cert chain, certPem, followed by each retained cert. Entries that don't parse are
+// skipped.
+func ControllerJwtCerts(certPem string, retainedCerts []string) []*x509.Certificate {
+	var result []*x509.Certificate
+
+	if certs := nfpem.PemStringToCertificates(certPem); len(certs) > 0 {
+		result = append(result, certs[0])
+	}
+
+	for _, retained := range retainedCerts {
+		if certs := nfpem.PemStringToCertificates(retained); len(certs) > 0 {
+			result = append(result, certs[0])
+		}
+	}
+
+	return result
 }
 
 func (entity *Controller) GetName() string {
@@ -111,6 +136,7 @@ func (store *controllerStoreImpl) FillEntity(entity *Controller, bucket *boltz.T
 	entity.IsOnline = bucket.GetBoolWithDefault(FieldControllerIsOnline, false)
 	entity.LastJoinedAt = bucket.GetTimeOrDefault(FieldControllerLastJoinedAt, time.Time{})
 	entity.IsPreferredLeader = bucket.GetBoolWithDefault(FieldControllerIsPreferredLeader, false)
+	entity.RetainedCerts = bucket.GetStringList(FieldControllerRetainedCerts)
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	apiListBucket := bucket.GetBucket(FieldControllerApiAddresses)
@@ -138,6 +164,7 @@ func (store *controllerStoreImpl) PersistEntity(entity *Controller, ctx *boltz.P
 	ctx.SetBool(FieldControllerIsOnline, entity.IsOnline)
 	ctx.SetTimeP(FieldControllerLastJoinedAt, &entity.LastJoinedAt)
 	ctx.SetBool(FieldControllerIsPreferredLeader, entity.IsPreferredLeader)
+	ctx.SetStringList(FieldControllerRetainedCerts, entity.RetainedCerts)
 
 	if ctx.ProceedWithSet(FieldControllerApiAddresses) && (ctx.ProceedWithSet(FieldControllerApiAddressUrl) || ctx.ProceedWithSet(FieldControllerApiAddressVersion)) {
 		apiListBucket, err := ctx.Bucket.EmptyBucket(FieldControllerApiAddresses)

@@ -25,9 +25,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-openapi/loads"
@@ -117,6 +120,9 @@ type AppEnv struct {
 	AuthRateLimiter      rate.AdaptiveRateLimiter
 
 	clientApiDefaultSigner *jwtsigner.TlsJwtSigner
+	rootTlsJwtSigner       atomic.Pointer[jwtsigner.TlsJwtSigner]
+	signingCertLock        sync.Mutex
+	pendingSigningCert     pendingSigningCert
 
 	TraceManager *TraceManager
 	timelineId   concurrenz.AtomicValue[string]
@@ -309,29 +315,134 @@ func (ae *AppEnv) GetClientApiDefaultTlsJwtSigner() *jwtsigner.TlsJwtSigner {
 	return ae.clientApiDefaultSigner
 }
 
-// GetRootTlsJwtSigner creates and returns a JWT signer using the root server certificate.
+// GetRootTlsJwtSigner returns the signer for controller-issued JWTs. It starts on the identity's
+// cert at startup and follows a renewed cert when CheckSigningCert moves it.
 func (ae *AppEnv) GetRootTlsJwtSigner() *jwtsigner.TlsJwtSigner {
-	rootCerts := ae.GetConfig().Id.ServerCert()
-	var rootCert *tls.Certificate
+	return ae.rootTlsJwtSigner.Load()
+}
 
-	if len(rootCerts) != 0 {
-		rootCert = rootCerts[0]
-	} else {
-		rootCert = ae.GetConfig().Id.Cert()
+const (
+	// signingCertCheckInterval is how often MonitorSigningCert checks the identity for a renewed
+	// cert.
+	signingCertCheckInterval = 30 * time.Second
+
+	// signingCertPropagationGrace is how long MonitorSigningCert keeps JWT signing on the previous
+	// cert once the controller's record presents a renewed one, so peer controllers and routers
+	// can learn the renewed key before tokens carry it.
+	signingCertPropagationGrace = 5 * time.Minute
+)
+
+// pendingSigningCert is a renewed cert the controller's record presents but JWT signing has not
+// moved to, and when CheckSigningCert first found the record presenting it.
+type pendingSigningCert struct {
+	leaf  []byte
+	since time.Time
+}
+
+// MonitorSigningCert runs CheckSigningCert periodically, with signingCertPropagationGrace, until
+// the controller shuts down. Without raft, the first successful check also refreshes the
+// controller's own record. It blocks, so run it on its own goroutine.
+func (ae *AppEnv) MonitorSigningCert() {
+	refresh := !ae.GetConfig().IsRaftEnabled()
+
+	for {
+		if err := ae.CheckSigningCert(refresh, signingCertPropagationGrace); err != nil {
+			pfxlog.Logger().WithError(err).Warn("could not move JWT signing to the identity's current cert, will retry")
+		} else {
+			refresh = false
+		}
+
+		// Controllers renewed by the same schedule would otherwise write their records in step.
+		delay := signingCertCheckInterval - time.Duration(rand.Int64N(int64(signingCertCheckInterval/5)))
+
+		select {
+		case <-time.After(delay):
+		case <-ae.GetCloseNotifyChannel():
+			return
+		}
 	}
+}
 
-	if rootCert == nil {
-		panic(fmt.Errorf("root identity doesn't have a server cert or cert"))
-	}
+// CheckSigningCert moves JWT signing to the identity's current cert. It first makes the
+// controller's record present the cert, which publishes its key to peer controllers and routers.
+// That publication is asynchronous, so the signer stays on its previous cert, whose key is still
+// published, until the record has presented the new cert for grace. grace runs from the first call
+// that finds the record presenting the cert, so a positive grace defers the move to a later call.
+// The signer moves without waiting once its previous cert has expired or the record no longer
+// publishes it. refresh rewrites the record even when it already presents the cert. Safe to call
+// concurrently.
+func (ae *AppEnv) CheckSigningCert(refresh bool, grace time.Duration) error {
+	ae.signingCertLock.Lock()
+	defer ae.signingCertLock.Unlock()
 
-	rootSigner := &jwtsigner.TlsJwtSigner{}
-	err := rootSigner.Set(rootCert)
-
+	cert, err := jwtsigner.IdentitySigningCert(ae.GetConfig().Id)
 	if err != nil {
-		pfxlog.Logger().WithError(err).Panic("failed to set root controller identity signer")
+		return err
 	}
 
-	return rootSigner
+	presented, err := ae.Managers.Controller.EnsureSelfCert(cert, refresh)
+	if err != nil || !presented {
+		return err
+	}
+
+	current := ae.rootTlsJwtSigner.Load()
+	if bytes.Equal(current.TlsCerts.Certificate[0], cert.Certificate[0]) {
+		ae.pendingSigningCert = pendingSigningCert{}
+		return nil
+	}
+
+	signer, err := jwtsigner.NewTlsJwtSigner(cert)
+	if err != nil {
+		return err
+	}
+
+	log := pfxlog.Logger().WithField("previousKid", current.KeyId()).WithField("kid", signer.KeyId())
+
+	now := time.Now()
+	if !bytes.Equal(ae.pendingSigningCert.leaf, cert.Certificate[0]) {
+		ae.pendingSigningCert = pendingSigningCert{leaf: cert.Certificate[0], since: now}
+		log.WithField("grace", grace).Info("controller record presents the identity's renewed cert, JWT signing moves to it once the grace has passed")
+	}
+
+	if now.Before(ae.pendingSigningCert.since.Add(grace)) {
+		usable, err := ae.signingCertStillVerifiable(current, now)
+		if err != nil || usable {
+			return err
+		}
+		log.Warn("previous signing cert has expired or is no longer published, moving JWT signing to the renewed cert before the grace has passed")
+	}
+
+	ae.rootTlsJwtSigner.Store(signer)
+	ae.pendingSigningCert = pendingSigningCert{}
+	log.Info("JWT signing moved to the identity's renewed cert")
+
+	return nil
+}
+
+// signingCertStillVerifiable reports whether tokens signer signs at now can be verified: its cert
+// has not expired and the controller's record still publishes it.
+func (ae *AppEnv) signingCertStillVerifiable(signer *jwtsigner.TlsJwtSigner, now time.Time) (bool, error) {
+	leaf, err := x509.ParseCertificate(signer.TlsCerts.Certificate[0])
+	if err != nil {
+		return false, err
+	}
+
+	if !now.Before(leaf.NotAfter) {
+		return false, nil
+	}
+
+	record, err := ae.Managers.Controller.Read(ae.GetId())
+	if err != nil {
+		return false, err
+	}
+
+	for _, published := range db.ControllerJwtCerts(record.CertPem, record.RetainedCerts) {
+		if published.Equal(leaf) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // GetApiServerCsrSigner returns the certificate signer for API server CSRs.
@@ -516,11 +627,6 @@ func (ae *AppEnv) GetCloseNotifyChannel() <-chan struct{} {
 	return ae.HostController.GetCloseNotifyChannel()
 }
 
-// GetPeerSigners returns the certificates of peer controllers for signature verification.
-func (ae *AppEnv) GetPeerSigners() []*x509.Certificate {
-	return ae.HostController.GetPeerSigners()
-}
-
 // GetCommandDispatcher returns the command dispatcher for processing control plane commands.
 func (ae *AppEnv) GetCommandDispatcher() command.Dispatcher {
 	return ae.HostController.GetCommandDispatcher()
@@ -556,7 +662,6 @@ type HostController interface {
 	GetStartRaftIndex() uint64
 	GetDb() boltz.Db
 	GetCommandDispatcher() command.Dispatcher
-	GetPeerSigners() []*x509.Certificate
 	GetEventDispatcher() event.Dispatcher
 	GetRaftIndex() uint64
 	GetPeerAddresses() []string
@@ -803,6 +908,17 @@ func NewAppEnv(host HostController) (*AppEnv, error) {
 	}
 
 	ae.FingerprintGenerator = cert.NewFingerprintGenerator()
+
+	rootCert, err := jwtsigner.IdentitySigningCert(cfg.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	rootSigner, err := jwtsigner.NewTlsJwtSigner(rootCert)
+	if err != nil {
+		return nil, fmt.Errorf("could not create JWT signer from controller identity: %w", err)
+	}
+	ae.rootTlsJwtSigner.Store(rootSigner)
 
 	ae.Managers = model.NewManagers()
 	ae.Managers.Init(ae)

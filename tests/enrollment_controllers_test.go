@@ -31,8 +31,8 @@ import (
 )
 
 // Test_EnrollmentControllerList verifies that a successful client identity enrollment response carries
-// the cluster's controllers, exposing only client and OIDC API addresses. Non-HA test controllers do
-// not register themselves, so the controller list is seeded directly via the manager.
+// the cluster's controllers, exposing only client and OIDC API addresses. A non-HA test controller
+// records only itself, so the other controllers are seeded directly via the manager.
 func Test_EnrollmentControllerList(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
@@ -43,12 +43,29 @@ func Test_EnrollmentControllerList(t *testing.T) {
 	ctx.Req.NoError(err)
 	ctx.Req.NotNil(adminManApiSession)
 
-	expected := []expectedController{
+	// the controller records itself asynchronously once its APIs are up, so wait for that record
+	var self *model.Controller
+	for start := time.Now(); time.Since(start) < 30*time.Second; time.Sleep(250 * time.Millisecond) {
+		if self, err = ctx.EdgeController.AppEnv.Managers.Controller.Read(ctx.EdgeController.AppEnv.GetId()); err == nil {
+			break
+		}
+	}
+	ctx.Req.NoError(err, "expected the controller to record itself in the store")
+	ctx.Req.Len(self.ApiAddresses[webapis.ClientApiBinding], 1)
+	ctx.Req.Len(self.ApiAddresses[webapis.OidcApiBinding], 1)
+
+	seeded := []expectedController{
 		{id: "enroll-ctrl-a", clientUrl: "https://ctrl-a.client.controllers.test", oidcUrl: "https://ctrl-a.oidc.controllers.test"},
 		{id: "enroll-ctrl-b", clientUrl: "https://ctrl-b.client.controllers.test", oidcUrl: "https://ctrl-b.oidc.controllers.test"},
 	}
 
-	for _, ec := range expected {
+	expected := append([]expectedController{{
+		id:        self.Id,
+		clientUrl: self.ApiAddresses[webapis.ClientApiBinding][0].Url,
+		oidcUrl:   self.ApiAddresses[webapis.OidcApiBinding][0].Url,
+	}}, seeded...)
+
+	for _, ec := range seeded {
 		// the controller's cert is parsed and distributed via the RDM on create, so a real cert is required
 		controllerCa := newTestCa()
 		controller := &model.Controller{

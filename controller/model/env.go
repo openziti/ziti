@@ -17,11 +17,8 @@
 package model
 
 import (
-	"crypto/x509"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/metrics"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/command"
@@ -29,6 +26,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/jwtsigner"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
 // Env defines the core environment interface for Ziti Edge controller operations.
@@ -141,10 +139,6 @@ type Env interface {
 	// GetCloseNotifyChannel enables graceful shutdown coordination by signaling
 	// when the controller is terminating.
 	GetCloseNotifyChannel() <-chan struct{}
-
-	// GetPeerSigners provides peer controller certificates for validating signed
-	// messages and ensuring secure inter-controller communication.
-	GetPeerSigners() []*x509.Certificate
 
 	// AddRouterPresenceHandler enables monitoring router connectivity changes
 	// for network topology updates and service availability tracking.

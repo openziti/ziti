@@ -248,6 +248,7 @@ func (c *Controller) Run() {
 	}
 
 	go c.checkEdgeInitialized()
+	go c.AppEnv.MonitorSigningCert()
 
 	if err := c.policyEngine.Start(c.AppEnv.HostController.GetCloseNotifyChannel()); err != nil {
 		log.WithError(err).Fatalf("error starting policy engine")

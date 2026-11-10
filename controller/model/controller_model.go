@@ -20,9 +20,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -36,6 +36,8 @@ type Controller struct {
 	LastJoinedAt      time.Time
 	IsPreferredLeader bool
 	ApiAddresses      map[string][]ApiAddress
+	// RetainedCerts is maintained by ControllerManager.ApplyUpdate; values set by callers are ignored.
+	RetainedCerts []string
 }
 
 func (entity *Controller) sortApiAddresses() {
@@ -104,6 +106,7 @@ func (entity *Controller) toBoltEntity(tx *bbolt.Tx, env Env) (*db.Controller, e
 		LastJoinedAt:      entity.LastJoinedAt,
 		IsPreferredLeader: entity.IsPreferredLeader,
 		ApiAddresses:      map[string][]db.ApiAddress{},
+		RetainedCerts:     entity.RetainedCerts,
 	}
 
 	for apiKey, instances := range entity.ApiAddresses {
@@ -136,6 +139,7 @@ func (entity *Controller) fillFrom(env Env, tx *bbolt.Tx, boltController *db.Con
 	entity.IsOnline = boltController.IsOnline
 	entity.LastJoinedAt = boltController.LastJoinedAt
 	entity.IsPreferredLeader = boltController.IsPreferredLeader
+	entity.RetainedCerts = boltController.RetainedCerts
 	entity.ApiAddresses = map[string][]ApiAddress{}
 
 	for apiKey, instances := range boltController.ApiAddresses {

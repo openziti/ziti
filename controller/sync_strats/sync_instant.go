@@ -241,9 +241,9 @@ func (strategy *InstantStrategy) Initialize(logSize uint64, bufferSize uint) err
 	strategy.ae.GetStores().Revocation.AddEntityConstraint(revocationHandler)
 
 	controllerHandler := &constraintToIndexedEvents[*db.Controller]{
-		indexProvider: strategy.indexProvider,
-		createHandler: strategy.ControllerCreate,
-		updateHandler: strategy.ControllerUpdate,
+		indexProvider:     strategy.indexProvider,
+		createHandler:     strategy.ControllerCreate,
+		updateFromHandler: strategy.ControllerUpdate,
 	}
 
 	strategy.ae.GetStores().Controller.AddEntityConstraint(controllerHandler)
@@ -1017,15 +1017,16 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 		if err != nil {
 			return err
 		}
-		certs := nfPem.PemStringToCertificates(storeModel.CertPem)
 
-		newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages)}
-		newEvent := &edge_ctrl_pb.DataState_Event{
-			Action:      edge_ctrl_pb.DataState_Create,
-			Model:       newModel,
-			IsSynthetic: true,
+		for _, publicKey := range controllerPublicKeys(storeModel) {
+			newModel := &edge_ctrl_pb.DataState_Event_PublicKey{PublicKey: publicKey}
+			newEvent := &edge_ctrl_pb.DataState_Event{
+				Action:      edge_ctrl_pb.DataState_Create,
+				Model:       newModel,
+				IsSynthetic: true,
+			}
+			rdm.HandlePublicKeyEvent(newEvent, newModel)
 		}
-		strategy.HandlePublicKeyEvent(newEvent, newModel)
 	}
 
 	for _, publicKey := range firstPartyCaPublicKeys(strategy.ae.GetConfig().Edge.CaCerts()) {
@@ -2044,13 +2045,39 @@ func (strategy *InstantStrategy) PostureCheckDelete(index uint64, postureCheck *
 }
 
 func (strategy *InstantStrategy) ControllerCreate(index uint64, controller *db.Controller) {
-	certs := nfPem.PemStringToCertificates(controller.CertPem)
-	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
+	for _, publicKey := range controllerPublicKeys(controller) {
+		strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, publicKey)
+	}
 }
 
-func (strategy *InstantStrategy) ControllerUpdate(index uint64, controller *db.Controller) {
-	certs := nfPem.PemStringToCertificates(controller.CertPem)
-	strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, newPublicKey(certs[0].Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
+// ControllerUpdate publishes the keys of the updated controller record and deletes those the
+// update dropped, which are retained certs past expiry.
+func (strategy *InstantStrategy) ControllerUpdate(index uint64, initial, final *db.Controller) {
+	published := map[string]struct{}{}
+	for _, publicKey := range controllerPublicKeys(final) {
+		published[publicKey.Kid] = struct{}{}
+		strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Create, publicKey)
+	}
+
+	if initial == nil {
+		return
+	}
+
+	for _, publicKey := range controllerPublicKeys(initial) {
+		if _, ok := published[publicKey.Kid]; !ok {
+			strategy.handlePublicKey(index, edge_ctrl_pb.DataState_Delete, publicKey)
+		}
+	}
+}
+
+// controllerPublicKeys returns the JWT validation keys a controller record publishes. See
+// db.ControllerJwtCerts.
+func controllerPublicKeys(controller *db.Controller) []*edge_ctrl_pb.DataState_PublicKey {
+	var result []*edge_ctrl_pb.DataState_PublicKey
+	for _, cert := range db.ControllerJwtCerts(controller.CertPem, controller.RetainedCerts) {
+		result = append(result, newPublicKey(cert.Raw, edge_ctrl_pb.DataState_PublicKey_X509CertDer, controllerCertUsages))
+	}
+	return result
 }
 
 func (strategy *InstantStrategy) CaCreate(index uint64, ca *db.Ca) {
@@ -2367,7 +2394,10 @@ type constraintToIndexedEvents[E boltz.Entity] struct {
 
 	createHandler func(uint64, E)
 	updateHandler func(uint64, E)
-	deleteHandler func(uint64, E)
+	// updateFromHandler, when set, replaces updateHandler and also receives the entity as it was
+	// before the update.
+	updateFromHandler func(index uint64, initial, final E)
+	deleteHandler     func(uint64, E)
 }
 
 // ProcessPreCommit is a pass through to satisfy interface requirements.
@@ -2389,7 +2419,7 @@ func (h *constraintToIndexedEvents[E]) ProcessPostCommit(state *boltz.EntityChan
 			h.createHandler(index, state.FinalState)
 		}
 	case boltz.EntityUpdated:
-		if h.updateHandler != nil {
+		if h.updateHandler != nil || h.updateFromHandler != nil {
 			index, err := h.indexProvider.NextIndex(state.Ctx)
 
 			if err != nil {
@@ -2397,7 +2427,11 @@ func (h *constraintToIndexedEvents[E]) ProcessPostCommit(state *boltz.EntityChan
 				return
 			}
 
-			h.updateHandler(index, state.FinalState)
+			if h.updateFromHandler != nil {
+				h.updateFromHandler(index, state.InitialState, state.FinalState)
+			} else {
+				h.updateHandler(index, state.FinalState)
+			}
 		}
 	case boltz.EntityDeleted:
 		if h.deleteHandler != nil {

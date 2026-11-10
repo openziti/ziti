@@ -18,7 +18,6 @@ package model
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"time"
 
 	"github.com/openziti/foundation/v2/versions"
@@ -181,10 +180,6 @@ func (self *TestContext) GetApiAddresses() (map[string][]event.ApiAddress, []byt
 
 func (self *TestContext) GetRaftInfo() (string, string, string) {
 	return "testaddr", "testid", "testversion"
-}
-
-func (self *TestContext) GetPeerSigners() []*x509.Certificate {
-	return nil
 }
 
 func (self *TestContext) Identity() identity.Identity {

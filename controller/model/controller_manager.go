@@ -17,8 +17,12 @@
 package model
 
 import (
+	"bytes"
+	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -30,6 +34,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
 	"github.com/openziti/ziti/v2/controller/fields"
+	"github.com/openziti/ziti/v2/controller/jwtsigner"
 	"github.com/openziti/ziti/v2/controller/models"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"google.golang.org/protobuf/proto"
@@ -59,6 +64,7 @@ func (self *ControllerManager) Create(entity *Controller, ctx *change.Context) e
 }
 
 func (self *ControllerManager) ApplyCreate(cmd *command.CreateEntityCommand[*Controller], ctx boltz.MutateContext) error {
+	cmd.Entity.RetainedCerts = nil
 	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
@@ -67,8 +73,96 @@ func (self *ControllerManager) Update(entity *Controller, checker fields.Updated
 	return DispatchUpdate[*Controller](self, entity, checker, ctx)
 }
 
+// ApplyUpdate applies a controller record update. RetainedCerts is never taken from the command:
+// an update that writes CertPem recomputes it from the stored record (see retainOutgoingCert), and
+// any other update leaves it alone.
 func (self *ControllerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Controller], ctx boltz.MutateContext) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		checker := cmd.UpdatedFields
+		if checker != nil {
+			checker = checker.RemoveFields(db.FieldControllerRetainedCerts)
+		}
+
+		if checker == nil || checker.IsUpdated(db.FieldControllerCertPem) {
+			stored, found, err := self.GetStore().FindById(ctx.Tx(), cmd.Entity.Id)
+			if err != nil {
+				return err
+			}
+
+			if found {
+				cmd.Entity.RetainedCerts = retainOutgoingCert(stored.RetainedCerts, stored.CertPem, cmd.Entity.CertPem)
+				if checker != nil {
+					checker = checker.AddField(db.FieldControllerRetainedCerts)
+				}
+			}
+		}
+
+		return self.updateEntity(cmd.Entity, checker, ctx)
+	})
+}
+
+// maxRetainedCerts bounds a controller record's retained certs. It only matters when certs are
+// renewed far more often than they expire.
+const maxRetainedCerts = 50
+
+// retainOutgoingCert returns the retained certs for a record whose cert chain changes from
+// prevChainPem to nextChainPem, as PEM leaf certs. The outgoing leaf is added and the incoming
+// leaf removed. Certs that expired before the incoming leaf's NotBefore are dropped, and past
+// maxRetainedCerts the earliest issued are dropped. The result depends only on the arguments, so
+// every cluster member applying the same update computes the same list.
+func retainOutgoingCert(retained []string, prevChainPem, nextChainPem string) []string {
+	prev := leafCert(prevChainPem)
+	next := leafCert(nextChainPem)
+
+	certs := map[string]*x509.Certificate{}
+	for _, retainedPem := range retained {
+		if cert := leafCert(retainedPem); cert != nil {
+			certs[string(cert.Raw)] = cert
+		}
+	}
+
+	if prev != nil {
+		certs[string(prev.Raw)] = prev
+	}
+
+	if next != nil {
+		delete(certs, string(next.Raw))
+		for k, cert := range certs {
+			if cert.NotAfter.Before(next.NotBefore) {
+				delete(certs, k)
+			}
+		}
+	}
+
+	ordered := make([]*x509.Certificate, 0, len(certs))
+	for _, cert := range certs {
+		ordered = append(ordered, cert)
+	}
+
+	sort.Slice(ordered, func(i, j int) bool {
+		if !ordered[i].NotBefore.Equal(ordered[j].NotBefore) {
+			return ordered[i].NotBefore.Before(ordered[j].NotBefore)
+		}
+		return bytes.Compare(ordered[i].Raw, ordered[j].Raw) < 0
+	})
+
+	if len(ordered) > maxRetainedCerts {
+		ordered = ordered[len(ordered)-maxRetainedCerts:]
+	}
+
+	var result []string
+	for _, cert := range ordered {
+		result = append(result, nfpem.EncodeToString(cert))
+	}
+	return result
+}
+
+// leafCert returns the first cert in certPem, or nil if there is none.
+func leafCert(certPem string) *x509.Certificate {
+	if certs := nfpem.PemStringToCertificates(certPem); len(certs) > 0 {
+		return certs[0]
+	}
+	return nil
 }
 
 func (self *ControllerManager) Read(id string) (*Controller, error) {
@@ -79,11 +173,12 @@ func (self *ControllerManager) Read(id string) (*Controller, error) {
 	return modelEntity, nil
 }
 
-// ReadAll returns all controllers from the database. If no controllers exist (single-controller
-// non-HA mode), it returns a synthetic controller representing the running instance so that
-// token verification via kid lookup works without special-case fallback paths. This runs during
-// startup (token issuer cache load), so it must stay startup-safe; for the client-facing list with
-// API addresses, use ReadAllForClient at request time.
+// ReadAll returns all controllers from the database. If none exist, as on a non-HA controller
+// before it first writes its own record, it returns a stand-in for the running instance (id
+// selfControllerStandInId) so that token verification via kid lookup works without special-case
+// fallback paths. This runs during startup (token issuer cache load), so it must stay
+// startup-safe; for the client-facing list with API addresses, use ReadAllForClient at request
+// time.
 func (self *ControllerManager) ReadAll() ([]*Controller, error) {
 	result, err := self.BaseList("true limit none")
 	if err != nil {
@@ -94,8 +189,6 @@ func (self *ControllerManager) ReadAll() ([]*Controller, error) {
 		return result.Entities, nil
 	}
 
-	// No controllers in the DB — single-controller mode. Build a representation of self
-	// so that the token issuer cache can verify controller-issued JWTs via kid lookup.
 	selfController, err := self.buildSelfController()
 	if err != nil {
 		return nil, fmt.Errorf("no controllers in database and could not build self controller: %w", err)
@@ -104,12 +197,14 @@ func (self *ControllerManager) ReadAll() ([]*Controller, error) {
 	return []*Controller{selfController}, nil
 }
 
+// selfControllerStandInId is the id of the controller ReadAll synthesizes when no records exist.
+const selfControllerStandInId = "single-controller"
+
 // buildSelfController constructs a minimal Controller model representing the running instance from
-// the root TLS JWT signer certificate. It is only called in single-controller (non-HA) deployments
-// where no controller records exist in the database. It must stay free of dependencies that are not
-// ready during controller startup: the token issuer cache calls ReadAll while loading, before xweb
-// is initialized, so this must NOT read API addresses (see ReadAllForClient for the request-time,
-// address-populated variant).
+// the root TLS JWT signer certificate. It is only called when no controller records exist in the
+// database. It must stay free of dependencies that are not ready during controller startup: the
+// token issuer cache calls ReadAll while loading, before xweb is initialized, so this must NOT read
+// API addresses (see ReadAllForClient for the request-time, address-populated variant).
 func (self *ControllerManager) buildSelfController() (*Controller, error) {
 	signer := self.env.GetRootTlsJwtSigner()
 	if signer == nil || signer.TlsCerts == nil || len(signer.TlsCerts.Certificate) == 0 {
@@ -123,7 +218,7 @@ func (self *ControllerManager) buildSelfController() (*Controller, error) {
 
 	return &Controller{
 		BaseEntity: models.BaseEntity{
-			Id: "single-controller",
+			Id: selfControllerStandInId,
 		},
 		Name:        cert.Subject.CommonName,
 		CertPem:     nfpem.EncodeToString(cert),
@@ -246,32 +341,47 @@ func (self *ControllerManager) Unmarshall(bytes []byte) (*Controller, error) {
 	return controller, nil
 }
 
+// getCurrentAsClusterPeer describes this controller as a cluster peer presenting its identity's
+// current server cert. ServerCert is empty if the identity has no cert.
 func (self *ControllerManager) getCurrentAsClusterPeer() *event.ClusterPeer {
-	addr, id, version := self.env.GetRaftInfo()
-	clientApiCert := self.env.GetRootTlsJwtSigner()
-	var leaderCerts []*x509.Certificate
+	var certs []*x509.Certificate
+	if tlsCert, err := jwtsigner.IdentitySigningCert(self.env.GetConfig().Id); err != nil {
+		pfxlog.Logger().WithError(err).Error("could not read this controller's identity cert")
+	} else {
+		certs = parseCertChain(tlsCert)
+	}
+	return self.currentAsClusterPeer(certs)
+}
 
-	for _, certBytes := range clientApiCert.TlsCerts.Certificate {
+// currentAsClusterPeer describes this controller as a cluster peer presenting certs (leaf first).
+// Without raft, Addr is the ctrl advertise address, if one is configured.
+func (self *ControllerManager) currentAsClusterPeer(certs []*x509.Certificate) *event.ClusterPeer {
+	result := &event.ClusterPeer{
+		Id:         self.env.GetId(),
+		ServerCert: certs,
+	}
+
+	result.ApiAddresses, _ = self.env.GetApiAddresses()
+
+	if raftConfig := self.env.GetConfig().Raft; raftConfig != nil {
+		result.Addr, result.Id, result.Version = self.env.GetRaftInfo()
+		result.IsPreferredLeader = raftConfig.PreferredLeader
+	} else if options := self.env.GetConfig().Ctrl.Options; options != nil && options.AdvertiseAddress != nil {
+		result.Addr = (*options.AdvertiseAddress).String()
+	}
+
+	return result
+}
+
+// parseCertChain returns the parsed certs of tlsCert, leaf first, skipping any that don't parse.
+func parseCertChain(tlsCert *tls.Certificate) []*x509.Certificate {
+	var result []*x509.Certificate
+	for _, certBytes := range tlsCert.Certificate {
 		if cert, err := x509.ParseCertificate(certBytes); err == nil {
-			leaderCerts = append(leaderCerts, cert)
+			result = append(result, cert)
 		}
 	}
-
-	apiAddresses, _ := self.env.GetApiAddresses()
-
-	isPreferredLeader := false
-	if raftConfig := self.env.GetConfig().Raft; raftConfig != nil {
-		isPreferredLeader = raftConfig.PreferredLeader
-	}
-
-	return &event.ClusterPeer{
-		Id:                id,
-		Addr:              addr,
-		Version:           version,
-		ServerCert:        leaderCerts,
-		ApiAddresses:      apiAddresses,
-		IsPreferredLeader: isPreferredLeader,
-	}
+	return result
 }
 
 func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer, peerConnectedEvent bool) {
@@ -297,6 +407,11 @@ func (self *ControllerManager) UpdateControllerState(peers []*event.ClusterPeer,
 	}
 
 	selfAsPeer := self.getCurrentAsClusterPeer()
+	if len(selfAsPeer.ServerCert) == 0 {
+		pfxlog.Logger().Error("could not update controllers from peers, no identity cert")
+		return
+	}
+
 	peerFingerprints := ""
 	for _, peer := range peers {
 		if len(peer.ServerCert) > 0 {
@@ -440,8 +555,70 @@ func (self *ControllerManager) PeersDisconnected(peers []*event.ClusterPeer) {
 // from each controller and avoid stale or out-of-date information.
 func (self *ControllerManager) UpdateSelfOnNewLeader() {
 	peer := self.getCurrentAsClusterPeer()
+	if len(peer.ServerCert) == 0 {
+		pfxlog.Logger().Error("could not update self, no identity cert")
+		return
+	}
 
-	newController := &Controller{
+	changeCtx := change.New()
+	changeCtx.SetSourceType("raft.state.has_leader").
+		SetChangeAuthorType(change.AuthorTypeController)
+
+	if err := self.Update(controllerFromSelfPeer(peer), selfUpdateFields(), changeCtx); err != nil {
+		pfxlog.Logger().WithError(err).Error("could not update self")
+	}
+}
+
+// EnsureSelfCert makes this controller's record present cert, a TLS cert chain with the leaf
+// first, and reports whether the record presents that leaf on return. A record that already
+// presents it is rewritten only when refresh is set, which also refreshes the record's addresses.
+// Without raft a missing record is created. With raft a missing record is left for the leader to
+// create when this controller joins the cluster, and false is returned.
+//
+// The record is read from the local store, which on a follower can trail a write made through
+// another controller. A stale read can skip a write that was needed; callers repeat the check, so
+// that delays the write rather than losing it.
+func (self *ControllerManager) EnsureSelfCert(cert *tls.Certificate, refresh bool) (bool, error) {
+	certs := parseCertChain(cert)
+	if len(certs) == 0 {
+		return false, errors.New("cert has no parseable certificates")
+	}
+
+	existing, err := self.Read(self.env.GetId())
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return false, err
+	}
+
+	if existing != nil && !refresh {
+		if current := leafCert(existing.CertPem); current != nil && current.Equal(certs[0]) {
+			return true, nil
+		}
+	}
+
+	if existing == nil && self.env.GetConfig().IsRaftEnabled() {
+		return false, nil
+	}
+
+	changeCtx := change.New()
+	changeCtx.SetSourceType("controller.cert.check").
+		SetChangeAuthorType(change.AuthorTypeController)
+
+	newController := controllerFromSelfPeer(self.currentAsClusterPeer(certs))
+
+	if existing == nil {
+		newController.LastJoinedAt = time.Now()
+		err = self.Create(newController, changeCtx)
+	} else {
+		err = self.Update(newController, selfUpdateFields(), changeCtx)
+	}
+
+	return err == nil, err
+}
+
+// controllerFromSelfPeer builds this controller's record from its description as a peer, which
+// must carry at least one cert.
+func controllerFromSelfPeer(peer *event.ClusterPeer) *Controller {
+	return &Controller{
 		BaseEntity: models.BaseEntity{
 			Id: peer.Id,
 		},
@@ -453,7 +630,11 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 		IsPreferredLeader: peer.IsPreferredLeader,
 		ApiAddresses:      apiAddressesFromPeer(peer),
 	}
-	disconnectFields := fields.UpdatedFieldsMap{
+}
+
+// selfUpdateFields lists the record fields a controller maintains about itself.
+func selfUpdateFields() fields.UpdatedFieldsMap {
+	return fields.UpdatedFieldsMap{
 		db.FieldControllerIsOnline:          struct{}{},
 		db.FieldControllerCertPem:           struct{}{},
 		db.FieldControllerFingerprint:       struct{}{},
@@ -463,14 +644,6 @@ func (self *ControllerManager) UpdateSelfOnNewLeader() {
 		db.FieldControllerApiAddressVersion: struct{}{},
 		db.FieldControllerIsPreferredLeader: struct{}{},
 		db.FieldName:                        struct{}{},
-	}
-
-	changeCtx := change.New()
-	changeCtx.SetSourceType("raft.state.has_leader").
-		SetChangeAuthorType(change.AuthorTypeController)
-
-	if err := self.Update(newController, disconnectFields, changeCtx); err != nil {
-		pfxlog.Logger().WithError(err).Error("could not update self")
 	}
 }
 

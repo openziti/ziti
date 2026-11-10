@@ -82,7 +82,10 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 
 	var controllers []string
 	for _, ctrl := range ctrls.Entities {
-		controllers = append(controllers, ctrl.CtrlAddress)
+		// A non-HA controller with no advertise address records itself without a ctrl address.
+		if ctrl.CtrlAddress != "" {
+			controllers = append(controllers, ctrl.CtrlAddress)
+		}
 	}
 
 	if len(controllers) == 0 {

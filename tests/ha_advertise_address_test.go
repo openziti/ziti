@@ -21,7 +21,6 @@ package tests
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -326,24 +325,6 @@ func (ctx *TestContext) requireSuffrage(ctrl *controller.Controller, id string, 
 		}
 		assert.Fail(c, "member not found: "+id)
 	}, 30*time.Second, 100*time.Millisecond)
-}
-
-// restartPrimaryController shuts down the primary controller and starts it again from its config
-// file and existing data, applying modifier to the loaded config.
-func (ctx *TestContext) restartPrimaryController(testDb string, modifier func(*config.Config)) {
-	ctrlListener := ctx.ControllerConfig.Ctrl.Listener.String()
-
-	// Controller.Shutdown leaves accepted router channels open, which a real process exit would
-	// not, so close them to have routers reconnect.
-	for _, r := range ctx.fabricController.GetNetwork().AllConnectedRouters() {
-		ctx.Req.NoError(r.Control.Close())
-	}
-	ctx.EdgeController.Shutdown()
-	ctx.fabricController.Shutdown()
-	ctx.Req.NoError(ctx.waitForPortClose(ctx.ApiHost, 30*time.Second))
-	ctx.Req.NoError(ctx.waitForPortClose(strings.TrimPrefix(ctrlListener, "tls:"), 30*time.Second))
-
-	ctx.startServerWith(testDb, false, modifier, true)
 }
 
 // requireMemberAddresses waits until ctrl's raft configuration maps exactly the given member ids to

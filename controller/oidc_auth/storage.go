@@ -29,8 +29,8 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
-	"github.com/openziti/ziti/v2/controller/jwtsigner"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
@@ -131,8 +131,7 @@ var _ Storage = (*HybridStorage)(nil)
 // with one controller. After id, access, and/or refresh tokens are acquired, they may be used at any controller.
 // All token revocations are synchronized with other controllers.
 type HybridStorage struct {
-	env        model.Env
-	signingKey key
+	env model.Env
 
 	authRequests cmap.ConcurrentMap[string, *AuthRequest] //authRequest.Id -> authRequest
 	codes        cmap.ConcurrentMap[string, string]       //code -> authRequest.Id
@@ -313,15 +312,11 @@ func (s *HybridStorage) AddClient(client *Client) {
 
 var _ Storage = &HybridStorage{}
 
-func NewStorage(rootSigner *jwtsigner.TlsJwtSigner, config *Config, env model.Env) *HybridStorage {
+// NewStorage returns a HybridStorage that signs with env's root TLS JWT signer, following it when
+// the signer moves to a renewed cert.
+func NewStorage(config *Config, env model.Env) *HybridStorage {
 	store := &HybridStorage{
-		env: env,
-		signingKey: key{
-			id:         rootSigner.KeyId(),
-			algorithm:  jose.SignatureAlgorithm(rootSigner.SigningMethod().Alg()),
-			privateKey: rootSigner.TlsCerts.PrivateKey,
-			publicKey:  rootSigner.TlsCerts.Leaf.PublicKey,
-		},
+		env:          env,
 		authRequests: cmap.New[*AuthRequest](),
 		codes:        cmap.New[string](),
 		clients:      cmap.New[*Client](),
@@ -979,50 +974,66 @@ func (s *HybridStorage) RevokeToken(_ context.Context, tokenIDOrToken string, _ 
 
 // SigningKey implements the op.Storage interface
 func (s *HybridStorage) SigningKey(_ context.Context) (op.SigningKey, error) {
-	return &s.signingKey, nil
+	return s.signingKey(), nil
 }
 
 // SignatureAlgorithms implements the op.Storage interface
 func (s *HybridStorage) SignatureAlgorithms(context.Context) ([]jose.SignatureAlgorithm, error) {
-	return []jose.SignatureAlgorithm{s.signingKey.Algorithm()}, nil
+	return []jose.SignatureAlgorithm{s.signingKey().Algorithm()}, nil
 }
 
-// KeySet implements the op.Storage interface
+// signingKey returns the key of env's current root TLS JWT signer.
+func (s *HybridStorage) signingKey() *key {
+	signer := s.env.GetRootTlsJwtSigner()
+	return &key{
+		id:         signer.KeyId(),
+		algorithm:  jose.SignatureAlgorithm(signer.SigningMethod().Alg()),
+		privateKey: signer.TlsCerts.PrivateKey,
+		publicKey:  signer.TlsCerts.Leaf.PublicKey,
+	}
+}
+
+// KeySet implements the op.Storage interface. It lists the key this controller signs with and every
+// key a controller record publishes, current and retained, leaving out revoked key IDs.
 func (s *HybridStorage) KeySet(_ context.Context) ([]op.Key, error) {
-	signers := s.env.GetPeerSigners()
+	signingKey := s.signingKey()
+	keys := map[string]op.Key{signingKey.id: &pubKey{key: *signingKey}}
 
-	for _, cert := range signers {
-		kid := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
+	controllers, err := s.env.GetManagers().Controller.ReadAll()
+	if err != nil {
+		return nil, err
+	}
 
-		if _, found := s.keys.Get(kid); found {
-			continue
-		}
+	for _, controller := range controllers {
+		for _, cert := range db.ControllerJwtCerts(controller.CertPem, controller.RetainedCerts) {
+			kid := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
 
-		if newKey := newKeyFromCert(cert, kid); newKey != nil {
+			if _, found := keys[kid]; found {
+				continue
+			}
+
+			newKey := newKeyFromCert(cert, kid)
+			if newKey == nil {
+				pfxlog.Logger().
+					WithField("issuer", cert.Issuer).
+					WithField("subject", cert.Subject).
+					WithField("kid", kid).
+					WithField("publicKeyType", fmt.Sprintf("%T", cert.PublicKey)).
+					Error("could not convert cert to JWKS key, unknown signing method")
+				continue
+			}
+
+			keys[kid] = newKey
 			s.keys.Set(kid, newKey)
-		} else {
-			pfxlog.Logger().
-				WithField("issuer", cert.Issuer).
-				WithField("subject", cert.Subject).
-				WithField("kid", fmt.Sprintf("%x", sha1.Sum(cert.Raw))).
-				WithField("publicKeyType", fmt.Sprintf("%T", cert.PublicKey)).
-				Error("could not convert cert to JWKS key, unknown signing method")
 		}
 	}
 
 	var result []op.Key
-
-	//this controller
-	if !s.IsTokenRevoked(s.signingKey.id) {
-		result = append(result, &pubKey{key: s.signingKey})
-	}
-
-	//peer controllers
-	s.keys.IterCb(func(kid string, key *pubKey) {
+	for kid, k := range keys {
 		if !s.IsTokenRevoked(kid) {
-			result = append(result, key)
+			result = append(result, k)
 		}
-	})
+	}
 
 	return result, nil
 }

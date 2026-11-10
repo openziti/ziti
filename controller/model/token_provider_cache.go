@@ -85,30 +85,9 @@ func NewTokenIssuerCache(env Env) *TokenIssuerCache {
 }
 
 func (a *TokenIssuerCache) onControllerCreate(controller *db.Controller) {
-	logger := pfxlog.Logger().WithFields(map[string]interface{}{
-		"id":   controller.Id,
-		"name": controller.Name,
-	})
-
-	certs := nfPem.PemStringToCertificates(controller.CertPem)
-
-	if len(certs) == 0 {
-		logger.Error("could not add controller token issuer, no certificates found")
-		return
-	}
-
-	cert := certs[0]
-
-	controllerTokenIssuer := &ControllerTokenIssuer{
-		controllerId:   controller.Id,
-		controllerName: controller.Name,
-		pubKey: common.IssuerPublicKey{
-			PubKey: cert.PublicKey,
-			Chain:  certs},
-		kid:              fmt.Sprintf("%x", sha1.Sum(cert.Raw)),
-		controllerIssuer: "",
-	}
-	a.controllerIssuers.Set(controller.Id, controllerTokenIssuer)
+	a.setControllerIssuer(controller.Id, controller.Name, controller.CertPem, controller.RetainedCerts)
+	// A stored record supersedes the stand-in ReadAll synthesizes when there are none.
+	a.controllerIssuers.Remove(selfControllerStandInId)
 }
 
 func (a *TokenIssuerCache) onControllerUpdate(controller *db.Controller) {
@@ -133,31 +112,38 @@ func (a *TokenIssuerCache) onControllerDelete(controller *db.Controller) {
 
 // addControllerIssuer creates a ControllerTokenIssuer from a model Controller and adds it to the cache.
 func (a *TokenIssuerCache) addControllerIssuer(controller *Controller) {
-	logger := pfxlog.Logger().WithFields(map[string]interface{}{
-		"id":   controller.Id,
-		"name": controller.Name,
-	})
+	a.setControllerIssuer(controller.Id, controller.Name, controller.CertPem, controller.RetainedCerts)
+}
 
-	certs := nfPem.PemStringToCertificates(controller.CertPem)
+// setControllerIssuer caches an issuer for a controller that accepts the key of its current cert
+// chain, certPem, and of each retained cert.
+func (a *TokenIssuerCache) setControllerIssuer(id, name, certPem string, retainedCerts []string) {
+	certs := nfPem.PemStringToCertificates(certPem)
 
 	if len(certs) == 0 {
-		logger.Error("could not add controller token issuer, no certificates found")
+		pfxlog.Logger().WithField("id", id).WithField("name", name).
+			Error("could not add controller token issuer, no certificates found")
 		return
 	}
 
-	cert := certs[0]
-
-	controllerTokenIssuer := &ControllerTokenIssuer{
-		controllerId:   controller.Id,
-		controllerName: controller.Name,
-		pubKey: common.IssuerPublicKey{
-			PubKey: cert.PublicKey,
-			Chain:  certs,
-		},
-		kid:              fmt.Sprintf("%x", sha1.Sum(cert.Raw)),
-		controllerIssuer: "",
+	pubKeys := map[string]common.IssuerPublicKey{
+		fmt.Sprintf("%x", sha1.Sum(certs[0].Raw)): {PubKey: certs[0].PublicKey, Chain: certs},
 	}
-	a.controllerIssuers.Set(controller.Id, controllerTokenIssuer)
+
+	for _, retainedPem := range retainedCerts {
+		if retained := nfPem.PemStringToCertificates(retainedPem); len(retained) > 0 {
+			pubKeys[fmt.Sprintf("%x", sha1.Sum(retained[0].Raw))] = common.IssuerPublicKey{
+				PubKey: retained[0].PublicKey,
+				Chain:  retained,
+			}
+		}
+	}
+
+	a.controllerIssuers.Set(id, &ControllerTokenIssuer{
+		controllerId:   id,
+		controllerName: name,
+		pubKeys:        pubKeys,
+	})
 }
 
 // onExtJwtCreate handles creation of new external JWT signers.
@@ -989,20 +975,24 @@ func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 
 var _ common.TokenIssuer = (*ControllerTokenIssuer)(nil)
 
-// ControllerTokenIssuer implements TokenIssuer for controller-issued JWTs. Each running
-// controller is represented by one instance keyed by the SHA-1 fingerprint of its TLS
-// certificate (the key ID). It is always considered enabled and does not support enrollment (toCert/toToken enrollment).
+// ControllerTokenIssuer implements TokenIssuer for controller-issued JWTs. Each controller is
+// represented by one instance that accepts the key of its current cert and of each cert it
+// retains, each keyed by the SHA-1 fingerprint of the cert (the key ID). It is always considered
+// enabled and does not support enrollment (toCert/toToken enrollment).
 type ControllerTokenIssuer struct {
 	controllerId     string
 	controllerName   string
-	pubKey           common.IssuerPublicKey
-	kid              string
+	pubKeys          map[string]common.IssuerPublicKey
 	controllerIssuer string
 }
 
-// GetKids returns the single key ID derived from the controller's TLS certificate fingerprint.
+// GetKids returns the key IDs this controller's tokens may carry.
 func (o *ControllerTokenIssuer) GetKids() []string {
-	return []string{o.kid}
+	kids := make([]string, 0, len(o.pubKeys))
+	for kid := range o.pubKeys {
+		kids = append(kids, kid)
+	}
+	return kids
 }
 
 // IsControllerTokenIssuer returns true, distinguishing this issuer from external JWT signers.
@@ -1027,11 +1017,8 @@ func (o *ControllerTokenIssuer) IsEnabled() bool {
 }
 
 func (o *ControllerTokenIssuer) PubKeyByKid(kid string) (common.IssuerPublicKey, bool) {
-	if kid == o.kid {
-		return o.pubKey, true
-	}
-
-	return common.IssuerPublicKey{}, false
+	pubKey, ok := o.pubKeys[kid]
+	return pubKey, ok
 }
 
 func (o *ControllerTokenIssuer) Resolve(_ bool) error {

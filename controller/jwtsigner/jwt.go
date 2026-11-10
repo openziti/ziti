@@ -27,6 +27,7 @@ import (
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openziti/identity"
 )
 
 // Signer provides JWT signing capabilities with configurable signing methods and key identification.
@@ -103,6 +104,33 @@ func (c *TlsJwtSigner) Set(cert *tls.Certificate) error {
 	c.Signer = New(signingMethod, c.TlsCerts.PrivateKey, kid)
 
 	return nil
+}
+
+// NewTlsJwtSigner returns a TlsJwtSigner for cert. See TlsJwtSigner.Set.
+func NewTlsJwtSigner(cert *tls.Certificate) (*TlsJwtSigner, error) {
+	signer := &TlsJwtSigner{}
+	if err := signer.Set(cert); err != nil {
+		return nil, err
+	}
+	return signer, nil
+}
+
+// IdentitySigningCert returns the cert a controller identity signs JWTs with: its first server
+// cert, or its client cert when it has no server certs. The result reflects the identity's
+// current files, so it changes when the identity reloads.
+func IdentitySigningCert(id identity.Identity) (*tls.Certificate, error) {
+	var result *tls.Certificate
+	if serverCerts := id.ServerCert(); len(serverCerts) != 0 {
+		result = serverCerts[0]
+	} else {
+		result = id.Cert()
+	}
+
+	if result == nil || len(result.Certificate) == 0 {
+		return nil, errors.New("identity has no server cert or cert to sign with")
+	}
+
+	return result, nil
 }
 
 // GetJwtSigningMethod determines the appropriate JWT signing method based on the
