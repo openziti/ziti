@@ -60,6 +60,8 @@ change goes through once the leader is upgraded.
 * github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
 * github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4375](https://github.com/openziti/ziti/issues/4375) - router on release-v2.0.x never seeds MFA posture from the api session token <!-- keep -->
+    * [Issue #4694](https://github.com/openziti/ziti/issues/4694) - [Backport-2.0] Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
     * [Issue #4707](https://github.com/openziti/ziti/issues/4707) - [Backport-2.0] Version built-in config types independently of the database version
     * [Issue #4715](https://github.com/openziti/ziti/issues/4715) - [Backport-2.0] Identity PUT re-enables a disabled identity
     * [Issue #4717](https://github.com/openziti/ziti/issues/4717) - [Backport-2.0] Terminator PUT clears hostId, peerData and sourceCtrl
@@ -92,7 +94,6 @@ change goes through once the leader is upgraded.
     * [Issue #4407](https://github.com/openziti/ziti/issues/4407) - [Backport-2.0] Router data model root CA public keys carry different intermediates on each controller
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4416](https://github.com/openziti/ziti/issues/4416) - Set clientAuth and serverAuth extended key usages on identity client certificates
-    * [Issue #4375](https://github.com/openziti/ziti/issues/4375) - router on release-v2.0.x never seeds MFA posture from the api session token <!-- keep -->
 
 
 # Release 2.0.8
