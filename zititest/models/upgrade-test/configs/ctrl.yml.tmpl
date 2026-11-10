@@ -91,6 +91,12 @@ edge:
       duration: 5m
     edgeRouter:
       duration: 5m
+  # short-lived access tokens make every OIDC client refresh several times per phase, so a controller
+  # whose signing key routers or peers can't verify fails a gate rather than hiding behind a token
+  # issued before the change. Clients stay on legacy sessions until the 2.0 upgrade binds OIDC, so
+  # pre-2.0 controllers, some of which don't read this key, are unaffected.
+  oidc:
+    accessTokenDuration: 5m
 
 web:
   - name: all-apis-localhost

@@ -194,17 +194,18 @@ func restartCtrlOnVersion(run model.Run, c *model.Component, version string) err
 	return nil
 }
 
-// rollingClusterUpgrade upgrades one node at a time, waiting for the cluster to settle before moving
-// on, so a node that cannot survive the upgrade fails the phase at the node that broke.
-func rollingClusterUpgrade(run model.Run, ctrls []*model.Component, version string) error {
+// rollingClusterRestart restarts one node at a time on version, waiting for the cluster to settle
+// before moving on, so a node that cannot survive the restart fails the phase at the node that broke.
+// A version the nodes already run makes it a plain rolling restart.
+func rollingClusterRestart(run model.Run, ctrls []*model.Component, version string) error {
 	log := tui.ValidationLogger()
 	for _, c := range clusterUpgradeOrder(ctrls) {
-		log.Infof("upgrading cluster node %s to %s", c.Id, version)
+		log.Infof("restarting cluster node %s on %s", c.Id, version)
 		if err := restartCtrlOnVersion(run, c, version); err != nil {
 			return err
 		}
 		if err := waitForClusterConnected(ctrls, clusterSettleTimeout); err != nil {
-			return fmt.Errorf("cluster unhealthy after upgrading %s to %s: %w", c.Id, version, err)
+			return fmt.Errorf("cluster unhealthy after restarting %s on %s: %w", c.Id, version, err)
 		}
 	}
 	return nil
@@ -266,7 +267,7 @@ func upgradeClusterControllers(run model.Run) error {
 	var err error
 	switch mode {
 	case clusterUpgradeRolling:
-		err = rollingClusterUpgrade(run, ctrls, nextVersion)
+		err = rollingClusterRestart(run, ctrls, nextVersion)
 	case clusterUpgradeAllAtOnce:
 		err = allAtOnceClusterUpgrade(run, ctrls, nextVersion)
 	default:
@@ -295,7 +296,7 @@ func upgradeClusterRouters(run model.Run) error {
 		tui.ValidationLogger().Infof("nextVersion is not set, skipping the router upgrade")
 		return nil
 	}
-	return upgradeRoutersTo(run, nextVersion)
+	return restartRoutersOn(run, nextVersion)
 }
 
 // upgradeToNextVersion runs the optional cluster upgrade phase: the controllers, then the routers,

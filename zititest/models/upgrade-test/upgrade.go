@@ -146,13 +146,14 @@ func upgradeController(run model.Run) error {
 
 // upgradeRouters upgrades the edge routers from fromVersion to toVersion in place.
 func upgradeRouters(run model.Run) error {
-	return upgradeRoutersTo(run, run.GetModel().MustStringVariable("toVersion"))
+	return restartRoutersOn(run, run.GetModel().MustStringVariable("toVersion"))
 }
 
-// upgradeRoutersTo upgrades the edge routers to version in place, one at a time so traffic keeps
+// restartRoutersOn restarts the edge routers on version in place, one at a time so traffic keeps
 // flowing through the others. Each router restart briefly disrupts circuits on that router, which is
-// expected; the others carry traffic in the meantime.
-func upgradeRoutersTo(run model.Run, version string) error {
+// expected; the others carry traffic in the meantime. A version the routers already run makes it a
+// plain rolling restart.
+func restartRoutersOn(run model.Run, version string) error {
 	m := run.GetModel()
 	log := tui.ValidationLogger()
 
@@ -162,7 +163,7 @@ func upgradeRoutersTo(run model.Run, version string) error {
 		if !ok {
 			continue
 		}
-		log.Infof("upgrading router %s to %s", c.Id, version)
+		log.Infof("restarting router %s on %s", c.Id, version)
 		rt.SetVersion(version)
 		if err := chaos.RestartSelected(run, 1, c); err != nil {
 			return err

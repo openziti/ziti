@@ -152,6 +152,14 @@ var m = &model.Model{
 				"failAtRatio": 3,
 			},
 
+			// controller cert renewal, run once the cluster is on nextVersion. Every controller's server
+			// cert is reissued in place with no restart, then traffic soaks for long enough that every
+			// client refreshes its 5m access token onto a renewed cert. enabled=false skips the phase.
+			"ctrlCertRenewal": model.Variables{
+				"enabled": true,
+				"soak":    "10m",
+			},
+
 			// auth/cluster flags. Phase 1 runs a single standalone controller on legacy auth,
 			// so all three default to false. OIDC becomes available via the 2.0 controller's
 			// auto-binding, not by setting these.
@@ -258,6 +266,7 @@ var m = &model.Model{
 			gate := newSteadyStateGate(simServices)
 			m.AddActionF("validateSteadyState", gate.validate)
 			m.AddActionF("validateSteadyStateAfterDisruption", gate.validateAfterDisruption)
+			m.AddActionF("soakAfterCertRenewal", soakAfterCertRenewal(gate))
 
 			// resetToBaseline returns the system to a fresh standalone fromVersion baseline so a new
 			// testIteration can run from a known state. It undoes the in-process mutations a pass makes
@@ -557,6 +566,13 @@ var m = &model.Model{
 		"upgradeToNextVersion":      model.BindF(upgradeToNextVersion),
 		"upgradeClusterControllers": model.BindF(upgradeClusterControllers),
 		"upgradeClusterRouters":     model.BindF(upgradeClusterRouters),
+		// the controller cert renewal phase that follows it, plus its pieces
+		"ctrlCertRenewal":           model.BindF(ctrlCertRenewal),
+		"renewCtrlCerts":            model.BindF(renewCtrlCerts),
+		"verifyCtrlCertsRenewed":    model.BindF(verifyCtrlCertsRenewed),
+		"restartOneOfEach":          model.BindF(restartOneOfEach),
+		"restartClusterControllers": model.BindF(restartClusterControllers),
+		"restartClusterRouters":     model.BindF(restartClusterRouters),
 		// controller memory sampling, runnable on its own against a live instance
 		"startCtrlMemory": model.BindF(startCtrlMemorySamplers),
 		"stopCtrlMemory":  model.BindF(stopCtrlMemorySamplers),
@@ -586,6 +602,7 @@ var m = &model.Model{
 				"addClusterNodes",                    // start ctrl2/ctrl3 and join them to the cluster
 				"validateSteadyStateAfterDisruption", // 3-node cluster stable, terminators + traffic recovered
 				"upgradeToNextVersion",               // optional: whole system toVersion -> nextVersion
+				"ctrlCertRenewal",                    // with nextVersion: renew every controller's cert in place, no restart
 				"reportCtrlMemory",                   // controller memory over the whole pass
 			)
 		}),

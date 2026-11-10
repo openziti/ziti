@@ -186,6 +186,42 @@ func (self *Clients) SetSessionToken(token string) {
 	self.lastAuth = time.Now()
 }
 
+// ApiSession returns the API session the clients present, or nil before authentication.
+func (self *Clients) ApiSession() edge_apis.ApiSession {
+	return self.mgmt.GetCurrentApiSession()
+}
+
+// UseApiSession makes the clients present session, which may have been issued by another
+// controller.
+func (self *Clients) UseApiSession(session edge_apis.ApiSession) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	self.mgmt.SetUseOidc(session.GetType() == edge_apis.ApiSessionTypeOidc)
+	self.mgmt.ApiSession.Store(&session)
+	self.lastAuth = time.Now()
+}
+
+// RefreshOidcSession exchanges the current OIDC session's refresh token at this controller and
+// presents the session that comes back. It fails when the current session is not an OIDC session.
+func (self *Clients) RefreshOidcSession() error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	current := self.mgmt.GetCurrentApiSession()
+	if current == nil || current.GetType() != edge_apis.ApiSessionTypeOidc {
+		return errors.New("no OIDC session to refresh")
+	}
+
+	refreshed, err := self.mgmt.AuthEnabledApi.RefreshApiSession(current, self.mgmt.HttpClient)
+	if err != nil {
+		return err
+	}
+	self.mgmt.ApiSession.Store(&refreshed)
+	self.lastAuth = time.Now()
+	return nil
+}
+
 // StartSessionRefresh starts a background goroutine that periodically renews
 // the API session. In OIDC mode the refresh token is used; in legacy mode the
 // goroutine re-authenticates with the provided credentials. Call
@@ -235,15 +271,9 @@ func (self *Clients) runSessionRefresh(interval time.Duration, username, passwor
 func (self *Clients) refreshSession(username, password string) error {
 	current := self.mgmt.GetCurrentApiSession()
 	if current != nil && current.GetType() == edge_apis.ApiSessionTypeOidc {
-		self.lock.Lock()
-		defer self.lock.Unlock()
-
-		refreshed, err := self.mgmt.AuthEnabledApi.RefreshApiSession(current, self.mgmt.HttpClient)
-		if err != nil {
+		if err := self.RefreshOidcSession(); err != nil {
 			return err
 		}
-		self.mgmt.ApiSession.Store(&refreshed)
-		self.lastAuth = time.Now()
 		pfxlog.Logger().Debug("OIDC session refreshed successfully")
 		return nil
 	}

@@ -12,6 +12,7 @@ upgrades while asserting that traffic keeps flowing throughout:
 4. Convert the controller to HA (single-node cluster).
 5. Add two more controller nodes to form a 3-node cluster.
 6. Optionally upgrade the whole cluster again, to the "next" version (default: 2.1 built from `main`).
+7. With the "next" version in place, renew every controller's server cert in place, without a restart.
 
 The ZET (ziti-edge-tunnel), ERT (edge-router-tunneler), and ziti tunnel clients and hosts stay up
 across the entire sequence. The whole run is repeatable in a loop so we can flush out timing errors
@@ -63,7 +64,8 @@ Both ends are fully parameterized (version X -> version Y), defaulting to latest
   but is a pre-release).
 - `nextVersion` is an optional second hop: once the 3-node cluster is up on `toVersion`, the whole
   cluster is upgraded again. `nextVersionSource` / `nextVersionRef` work exactly like their `toVersion`
-  counterparts. Setting `nextVersion` to the empty string skips the phase and its two gates entirely.
+  counterparts. Setting `nextVersion` to the empty string skips the phase and its two gates entirely,
+  along with the controller cert renewal that follows it.
 - The existing per-component `<componentId>_version` label knob still works for one-off overrides.
 
 Both the "from" and "to" binaries are pre-staged on every host during distribution. Because binaries
@@ -81,6 +83,11 @@ One controller config works for both binaries. It has no explicit OIDC section, 
 auto-binds the `edge-oidc` API on its first restart (`ensureOidcOnClientApiServer` in
 `controller/controller.go`). That auto-bind is the "upgrade forces OIDC to become available" event, and
 it happens with no config change.
+
+The config does set `edge.oidc.accessTokenDuration` to 5 minutes, down from the 30-minute default. That
+changes no API binding; it makes every OIDC client refresh its access token several times per phase, so
+a controller whose tokens routers or peers can't verify fails the next gate instead of passing on a
+token issued before the change.
 
 For the HA conversion, the controller config is re-rendered to add the `cluster:` directive and rsynced
 to the host before restart. The standalone binary then auto-migrates the bbolt DB into raft and comes up
@@ -142,6 +149,8 @@ The main orchestration action runs these phases in order.
 6. Final validation: full clean steady-state.
 7. Optional cluster upgrade to `nextVersion`: upgrade all three controllers, assert clean steady-state,
    roll the routers, assert clean steady-state again. Skipped when `nextVersion` is empty.
+8. Controller cert renewal on `nextVersion` (see below). Skipped when `nextVersion` is empty or
+   `ctrlCertRenewal.enabled` is false.
 
    Not implemented: asserting that the *un-restarted* instance of each pair kept its original PID across
    phases 1-5, which would prove the long-lived clients truly stayed up rather than having been quietly
@@ -234,6 +243,35 @@ Scale caveat: this model runs a handful of routers, identities and services, so 
 fraction of a production controller's. Expect the *shape* to be informative (does the upgraded node
 diverge from its warm peers, and does it diverge in `all-at-once` too) rather than the magnitude. Chasing
 the reported 1 GiB number would mean seeding a much larger data set first.
+
+## Controller cert renewal
+
+Controllers renew their own server certs in production: the Linux package installs a monthly systemd
+timer that reissues the leaf cert over the file the controller's identity loads. The controller picks
+the new cert up without restarting, and it signs its JWTs with that cert, so a renewal changes the
+signing key while every router, peer controller and client keeps running. This phase covers that.
+
+It runs once the cluster is on `nextVersion`, since that is the build under test; `toVersion` is a
+release that may predate controllers following a renewed cert. The steps:
+
+1. `renewCtrlCerts` reissues each controller's server cert on its host with `ziti pki create server`,
+   keeping the key, subject, SANs and SPIFFE id. Nothing restarts.
+2. `verifyCtrlCertsRenewed` waits for every controller to move to its renewed cert: every controller's
+   records present the new certs, an OIDC login at each controller returns a token carrying its new
+   cert's kid, and every other controller accepts that token and exchanges its refresh token. A
+   controller keeps signing with its previous cert for 5 minutes after its record presents the new
+   one, so peers and routers learn the new key first; expect this step to take 5 to 6 minutes.
+3. `soakAfterCertRenewal` runs the post-disruption gate with a 10-minute stability window
+   (`ctrlCertRenewal.soak`). With 5-minute access tokens, every client refreshes onto a token signed by
+   a renewed cert while the gate watches its traffic.
+4. `restartOneOfEach` restarts the `-restart` instance of every pair, so every SDK flavor logs in
+   afresh, then the gate runs.
+5. `restartClusterControllers` restarts the controllers one at a time, leader last, so each rebuilds its
+   key set from the controller records. `verifyCtrlCertsRenewed` runs again, then the gate.
+6. `restartClusterRouters` restarts the routers one at a time, so each resyncs its key set from the
+   controllers, then the gate. The Go SDK keeps the service token a bind was created with, so the
+   `-stable` hosts re-bind with tokens signed by the previous certs: the routers must still know those
+   keys.
 
 ## Iteration and reset
 

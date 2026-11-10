@@ -1,8 +1,19 @@
 name: Upgrade Test
 
 on:
+  workflow_call:
+    inputs:
+      nextFromBuild:
+        description: Run the second upgrade hop on the ziti this workflow builds, in place of nextVersion and nextVersionRef
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
+      nextFromBuild:
+        description: 'run the second upgrade hop on the ziti built from the selected branch, in place of nextVersion and nextVersionRef'
+        type: boolean
+        default: false
       zetVersion:
         description: 'ziti-edge-tunnel version for every ZET client and host (blank uses the model default)'
         required: false
@@ -37,9 +48,10 @@ on:
           - all-at-once
         default: ''
 
-# one upgrade test at a time: each run provisions a multi-region AWS topology
+# one upgrade test at a time: each run provisions a multi-region AWS topology. The group is a literal
+# because a calling workflow's name stands in for github.workflow.
 concurrency:
-  group: ${{ github.workflow }}
+  group: fablab-upgrade-test
   cancel-in-progress: false
 
 env:
@@ -98,6 +110,7 @@ jobs:
           TO_VERSION_REF: ${{ inputs.toVersionRef }}
           NEXT_VERSION: ${{ inputs.nextVersion }}
           NEXT_VERSION_REF: ${{ inputs.nextVersionRef }}
+          NEXT_FROM_BUILD: ${{ inputs.nextFromBuild }}
           CLUSTER_UPGRADE_MODE: ${{ inputs.clusterUpgradeMode }}
         shell: bash
         run: |
@@ -109,9 +122,21 @@ jobs:
           if [ -n "$FROM_VERSION" ]; then LABELS="$LABELS,fromVersion=$FROM_VERSION"; fi
           if [ -n "$TO_VERSION" ]; then LABELS="$LABELS,toVersion=$TO_VERSION"; fi
           if [ -n "$TO_VERSION_REF" ]; then LABELS="$LABELS,toVersionRef=$TO_VERSION_REF"; fi
-          # "none" is how a run switches the optional second hop off, since a blank input means
-          # "use the model default" and the model defaults it on
-          if [ "$NEXT_VERSION" = "none" ]; then
+          if [ "$NEXT_FROM_BUILD" = "true" ]; then
+            if [ -n "$NEXT_VERSION" ] || [ -n "$NEXT_VERSION_REF" ]; then
+              echo "nextFromBuild can't be combined with nextVersion or nextVersionRef" >&2
+              exit 1
+            fi
+            # the second hop runs the binary built above, staged under the version the Build step
+            # stamped into it. Every reset re-stages it, so the iteration step needs the path too.
+            NEXT_LABEL=$($(go env GOPATH)/bin/ziti-ci -q get-next-version)
+            ZITI_NEXTVERSION_PATH="$(go env GOPATH)/bin/ziti"
+            export ZITI_NEXTVERSION_PATH
+            echo "ZITI_NEXTVERSION_PATH=${ZITI_NEXTVERSION_PATH}" >> "$GITHUB_ENV"
+            LABELS="$LABELS,nextVersion=$NEXT_LABEL"
+          elif [ "$NEXT_VERSION" = "none" ]; then
+            # "none" is how a run switches the optional second hop off, since a blank input means
+            # "use the model default" and the model defaults it on
             LABELS="$LABELS,nextVersion="
           elif [ -n "$NEXT_VERSION" ]; then
             LABELS="$LABELS,nextVersion=$NEXT_VERSION"

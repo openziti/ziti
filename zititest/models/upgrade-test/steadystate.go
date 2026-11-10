@@ -138,8 +138,15 @@ func (g *steadyStateGate) loadTuning(m *model.Model) {
 }
 
 func (g *steadyStateGate) validate(run model.Run) error {
+	g.loadTuning(run.GetModel())
+	return g.check(run, g.stabilityWindow)
+}
+
+// check runs the gate with the given stability window: terminators present and valid, every sim
+// client connected, recovery to consecutive clean runs, then clean runs for the whole window.
+// Callers load the tuning first.
+func (g *steadyStateGate) check(run model.Run, stabilityWindow time.Duration) error {
 	m := run.GetModel()
-	g.loadTuning(m)
 
 	// gate output (scenario runs, recovery/stability progress) routes to the TUI validation pane
 	log := tui.ValidationLogger()
@@ -189,8 +196,8 @@ func (g *steadyStateGate) validate(run model.Run) error {
 	}
 
 	// stability: any failure in the window fails the gate
-	log.Infof("steady-state gate: recovered; requiring clean runs for %s", g.stabilityWindow)
-	stabilityEnd := time.Now().Add(g.stabilityWindow)
+	log.Infof("steady-state gate: recovered; requiring clean runs for %s", stabilityWindow)
+	stabilityEnd := time.Now().Add(stabilityWindow)
 	for time.Now().Before(stabilityEnd) {
 		if err = g.runScenario(simControl, sims); err != nil {
 			return fmt.Errorf("stability window failed: %w", err)
@@ -219,8 +226,19 @@ func (g *steadyStateGate) runScenario(simControl *loop4.RemoteController, sims [
 // restart). It waits for the churn to begin settling before running the normal gate, which then
 // waits for every expected terminator to re-establish.
 func (g *steadyStateGate) validateAfterDisruption(run model.Run) error {
+	g.loadTuning(run.GetModel())
+	return g.checkAfterDisruption(run, g.stabilityWindow)
+}
+
+// soakAfterDisruption is validateAfterDisruption with the stability window stretched to window, for
+// a disruption whose failures can surface only minutes after it.
+func (g *steadyStateGate) soakAfterDisruption(run model.Run, window time.Duration) error {
+	g.loadTuning(run.GetModel())
+	return g.checkAfterDisruption(run, window)
+}
+
+func (g *steadyStateGate) checkAfterDisruption(run model.Run, stabilityWindow time.Duration) error {
 	m := run.GetModel()
-	g.loadTuning(m)
 	log := tui.ValidationLogger()
 	log.Infof("post-disruption settle: waiting %s before verifying terminators", g.postDisruptionDelay)
 	time.Sleep(g.postDisruptionDelay)
@@ -237,7 +255,7 @@ func (g *steadyStateGate) validateAfterDisruption(run model.Run) error {
 		}
 	}
 
-	return g.validate(run)
+	return g.check(run, stabilityWindow)
 }
 
 // reconcileStaleTerminators deletes edge terminators the routers no longer host (the pre-2.0 upgrade

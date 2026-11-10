@@ -53,3 +53,14 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/validation-sdk-status.yml
     secrets: inherit
+
+  # one pass of the upgrade sequence, ending on this branch's build: the cluster upgrade to it, then
+  # the controller cert renewal phase
+  upgrade-test:
+    name: Upgrade Test
+    needs: backward-compatibility
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/upgrade-test.yml
+    secrets: inherit
+    with:
+      nextFromBuild: true
