@@ -39,7 +39,6 @@ func BenchmarkPolicyWrites(b *testing.B) {
 		b.Run(fmt.Sprintf("n=%d", n), func(b *testing.B) {
 			ctx := NewTestContext(b)
 			defer ctx.Cleanup()
-			ctx.Init()
 			ctx.NoError(ctx.GetDb().View(func(tx *bbolt.Tx) error {
 				tx.DB().NoSync = true
 				return nil

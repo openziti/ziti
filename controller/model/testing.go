@@ -224,8 +224,6 @@ func NewTestContext(t require.TestingT) *TestContext {
 		eventDispatcher: event.DispatcherMock{},
 	}
 
-	ctx.TestContext.Init()
-
 	ctx.config = &config.Config{
 		Id: &identity.TokenId{
 			Token: "test",

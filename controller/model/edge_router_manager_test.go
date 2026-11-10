@@ -11,7 +11,6 @@ import (
 func TestEdgeRouterManager(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test get edge routers for service and identity", ctx.testGetEdgeRoutersForServiceAndIdentity)
 }
@@ -53,7 +52,6 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 func TestEdgeRouterAccess(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	edgeRouter := ctx.requireNewEdgeRouter()
 	identity := ctx.requireNewIdentity(false)

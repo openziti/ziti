@@ -888,6 +888,7 @@ Thanks to the community members who contributed to this release.
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
     * [Issue #4705](https://github.com/openziti/ziti/issues/4705) - Version built-in config types independently of the database version
+    * [Issue #4745](https://github.com/openziti/ziti/issues/4745) - Track edge datastore migrations by name instead of a single version
     * [Issue #4712](https://github.com/openziti/ziti/issues/4712) - Identity PUT re-enables a disabled identity
     * [Issue #4713](https://github.com/openziti/ziti/issues/4713) - Terminator PUT clears hostId, peerData and sourceCtrl
     * [Issue #4714](https://github.com/openziti/ziti/issues/4714) - Fabric router PUT crashes the controller

@@ -35,7 +35,6 @@ import (
 func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 	ctx.CleanupAll()
 
 	// Real entities so the policy can carry valid '@id' entity refs alongside
@@ -137,7 +136,7 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 		step := &boltz.MigrationStep{
 			Component:      "edge",
 			Ctx:            mctx,
-			CurrentVersion: CurrentDbVersion - 1,
+			CurrentVersion: LegacyDbVersion,
 		}
 		migrations.backfillPolicyRoleAttributeIndexes(step)
 		return step.GetError()
@@ -206,7 +205,7 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 		step := &boltz.MigrationStep{
 			Component:      "edge",
 			Ctx:            mctx,
-			CurrentVersion: CurrentDbVersion - 1,
+			CurrentVersion: LegacyDbVersion,
 		}
 		migrations.backfillPolicyRoleAttributeIndexes(step)
 		return step.GetError()
@@ -234,7 +233,6 @@ func Test_BackfillPolicyRoleAttributeIndexes(t *testing.T) {
 func Test_BackfillPolicyRoleAttributeIndexes_AddsWildcardKey(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 	ctx.CleanupAll()
 
 	spAll := &ServicePolicy{
@@ -275,7 +273,7 @@ func Test_BackfillPolicyRoleAttributeIndexes_AddsWildcardKey(t *testing.T) {
 		step := &boltz.MigrationStep{
 			Component:      "edge",
 			Ctx:            mctx,
-			CurrentVersion: CurrentDbVersion - 1,
+			CurrentVersion: MaxLegacyDbVersion - 1,
 		}
 		migrations.backfillPolicyRoleAttributeIndexes(step)
 		return step.GetError()

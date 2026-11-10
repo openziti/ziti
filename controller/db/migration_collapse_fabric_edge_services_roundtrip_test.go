@@ -38,7 +38,6 @@ import (
 func Test_MigrateCollapseEdgeServices_RoundTrip(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	// --- build a representative graph via the real (post-collapse) store ---
 	configType := &ConfigType{BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()}, Name: eid.New(), Target: ConfigTypeTargetService}
@@ -106,10 +105,9 @@ func Test_MigrateCollapseEdgeServices_RoundTrip(t *testing.T) {
 		// its parent's entity type, so the index lives at the unified service path
 		// (ziti/indexes/services/roleAttributes) both pre- and post-collapse (verified against a
 		// real pre-collapse db). The migration must leave it intact (M5).
-		versions := boltz.GetOrCreatePath(tx, RootBucket, "versions")
-		versions.SetInt64("edge", 44, nil)
-		return versions.GetError()
+		return nil
 	}))
+	require.NoError(t, resetToNumberedVersion(ctx, 44))
 
 	// The migration must report no anomaly events: nothing for the integrity check to fix, and
 	// no pre-existing destinations to replace.

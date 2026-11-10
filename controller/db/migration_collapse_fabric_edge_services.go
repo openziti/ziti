@@ -47,7 +47,7 @@ func (m *Migrations) collapseEdgeServices(step *boltz.MigrationStep) {
 		return
 	}
 
-	var edgeCount, fabricCount int
+	var edgeCount, fabricCount, skippedCount int
 
 	// Iterate all service entity IDs
 	cursor := servicesBucket.Cursor()
@@ -59,6 +59,14 @@ func (m *Migrations) collapseEdgeServices(step *boltz.MigrationStep) {
 
 		entityBucket := servicesBucket.Bucket(key)
 		if entityBucket == nil {
+			continue
+		}
+
+		// isFabricOnly is written by this migration and by every service write after it, so a service
+		// that has it is already collapsed. Without this, a second run would find no edge sub-bucket and
+		// mark every service fabric-only.
+		if entityBucket.Get([]byte(FieldServiceIsFabricOnly)) != nil {
+			skippedCount++
 			continue
 		}
 
@@ -93,7 +101,7 @@ func (m *Migrations) collapseEdgeServices(step *boltz.MigrationStep) {
 		edgeCount++
 	}
 
-	log.Infof("service collapse migration: migrated %d edge services and %d fabric-only services", edgeCount, fabricCount)
+	log.Infof("service collapse migration: migrated %d edge services and %d fabric-only services, skipped %d already collapsed", edgeCount, fabricCount, skippedCount)
 
 	if step.HasError() {
 		return

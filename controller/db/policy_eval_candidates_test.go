@@ -32,7 +32,6 @@ import (
 func Test_PolicyEvaluationCandidates(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("service policies", ctx.testServicePolicyCandidateTransitions)
 	t.Run("edge router policies", ctx.testEdgeRouterPolicyCandidateTransitions)

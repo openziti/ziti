@@ -32,7 +32,6 @@ import (
 func Test_PolicyEvaluationMatrix(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("service policy identity roles", ctx.testServicePolicyIdentityRolesMatrix)
 	t.Run("service policy service roles", ctx.testServicePolicyServiceRolesMatrix)

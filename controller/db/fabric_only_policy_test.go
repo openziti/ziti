@@ -35,7 +35,6 @@ import (
 func Test_FabricOnlyPolicyExclusion(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("#all service policy created after services excludes fabric-only", ctx.testAllServicePolicyExcludesFabricOnly_policyLast)
 	t.Run("#all service policy excludes fabric-only service created later", ctx.testAllServicePolicyExcludesFabricOnly_serviceLast)

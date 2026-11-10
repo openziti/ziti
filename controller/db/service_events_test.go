@@ -32,7 +32,6 @@ import (
 func Test_ServiceUpdatedEventsCoalesce(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 	ctx.CleanupAll()
 
 	identity := newIdentity(eid.New(), ctx.getIdentityTypeId(), "a")
