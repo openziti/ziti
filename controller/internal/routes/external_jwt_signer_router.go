@@ -51,6 +51,9 @@ func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 	})
 
 	// management
+
+	// Delete stays available to the entity permission: a signer referenced by an auth policy cannot be
+	// deleted, so a delete cannot remove a restriction an admin relies on.
 	ae.ManagementApi.ExternalJWTSignerDeleteExternalJWTSignerHandler = extJwtManagement.DeleteExternalJWTSignerHandlerFunc(func(params extJwtManagement.DeleteExternalJWTSignerParams, _ interface{}) middleware.Responder {
 		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Delete)
 		return ae.IsAllowed(r.DeleteForManagement, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
@@ -66,19 +69,21 @@ func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(r.ListForManagement, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
 	})
 
+	// A signer defines whose tokens the controller accepts as proof of identity, including for admin
+	// identities. Creating or changing one is therefore restricted to admins, as it is for authenticators.
 	ae.ManagementApi.ExternalJWTSignerUpdateExternalJWTSignerHandler = extJwtManagement.UpdateExternalJWTSignerHandlerFunc(func(params extJwtManagement.UpdateExternalJWTSignerParams, _ interface{}) middleware.Responder {
 		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Update)
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.UpdateForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.UpdateForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
 	ae.ManagementApi.ExternalJWTSignerCreateExternalJWTSignerHandler = extJwtManagement.CreateExternalJWTSignerHandlerFunc(func(params extJwtManagement.CreateExternalJWTSignerParams, _ interface{}) middleware.Responder {
 		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Create)
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateForManagement(ae, rc, params) }, params.HTTPRequest, "", "", permissions.DefaultManagementAccess())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.CreateForManagement(ae, rc, params) }, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
 
 	ae.ManagementApi.ExternalJWTSignerPatchExternalJWTSignerHandler = extJwtManagement.PatchExternalJWTSignerHandlerFunc(func(params extJwtManagement.PatchExternalJWTSignerParams, _ interface{}) middleware.Responder {
 		ae.InitPermissionsContext(params.HTTPRequest, permissions.Management, "external-jwt-signer", permissions.Update)
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.PatchForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.DefaultManagementAccess())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.PatchForManagement(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
