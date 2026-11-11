@@ -55,6 +55,43 @@ func Test_Permissions_ApiSession(t *testing.T) {
 		ctx.testContextChanged(t)
 		testApiSessionNoPermissions(ctx)
 	})
+
+	t.Run("api-session tokens are only disclosed to admins", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		testApiSessionTokenDisclosure(ctx)
+	})
+}
+
+// testApiSessionTokenDisclosure tests that the token of an api-session is withheld from non-admins and
+// that it cannot be recovered by filtering or sorting on it
+func testApiSessionTokenDisclosure(ctx *TestContext) {
+	testHelper := permissionTestHelper{}
+
+	testIdentitySession := testHelper.newIdentityWithPermissions(ctx, []string{})
+	apiSessionId := *testIdentitySession.AuthResponse.ID
+	token := *testIdentitySession.AuthResponse.Token
+
+	// Admin sees the token
+	detail := testHelper.getApiSession(ctx, ctx.AdminManagementSession, apiSessionId, http.StatusOK)
+	ctx.Req.Equal(token, *detail.Token)
+
+	for _, perm := range []string{permissions.AdminReadOnlyPermission, "ops", "ops.read"} {
+		session := testHelper.newIdentityWithPermissions(ctx, []string{perm})
+
+		detail = testHelper.getApiSession(ctx, session, apiSessionId, http.StatusOK)
+		ctx.Req.Empty(*detail.Token, "token disclosed to %s", perm)
+
+		for _, query := range []map[string]string{
+			{"filter": `token contains "` + token[:4] + `"`},
+			{"filter": `true sort by token`},
+		} {
+			resp, err := session.newAuthenticatedRequest().SetQueryParams(query).Get("/api-sessions")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+		}
+	}
+
+	testHelper.deleteApiSession(ctx, ctx.AdminManagementSession, apiSessionId, http.StatusOK)
 }
 
 // testApiSessionAdminPermissions tests that admin permission allows all api-session operations

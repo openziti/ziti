@@ -222,6 +222,12 @@ func (store *BaseStore[E]) AddSymbol(name string, nodeType ast.NodeType, prefix 
 	return store.AddSymbolWithKey(name, nodeType, name, prefix...)
 }
 
+// AddPrivateSymbol adds a symbol that can back an index or an internal query, but that callers of the
+// public query API can neither filter nor sort on. It is meant for fields holding secrets.
+func (store *BaseStore[E]) AddPrivateSymbol(name string, nodeType ast.NodeType, prefix ...string) EntitySymbol {
+	return store.addSymbol(name, false, store.newEntitySymbol(name, nodeType, name, nil, prefix...))
+}
+
 func (store *BaseStore[E]) AddFkSymbol(name string, linkedStore Store, prefix ...string) EntitySymbol {
 	return store.AddFkSymbolWithKey(name, name, linkedStore, prefix...)
 }
