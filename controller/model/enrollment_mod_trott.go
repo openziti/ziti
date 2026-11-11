@@ -84,12 +84,11 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apiErr
 	}
 
-	signingOpts := &cert.SigningOpts{
-		DNSNames:       serverCsr.DNSNames,
-		EmailAddresses: serverCsr.EmailAddresses,
-		IPAddresses:    serverCsr.IPAddresses,
-		URIs:           serverCsr.URIs,
-	}
+	// The peer id of a channel can be derived from the common name of the presented certificate, so
+	// it is always the router's id rather than whatever the CSR asks for.
+	serverCsr.Subject.CommonName = txRouter.Id
+
+	signingOpts := routerCertSigningOpts(serverCsr)
 
 	srvCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, signingOpts)
 
@@ -109,12 +108,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	signingOpts = &cert.SigningOpts{
-		DNSNames:       clientCsr.DNSNames,
-		EmailAddresses: clientCsr.EmailAddresses,
-		IPAddresses:    clientCsr.IPAddresses,
-		URIs:           clientCsr.URIs,
-	}
+	signingOpts = routerCertSigningOpts(clientCsr)
 
 	clientCsr.Subject.CommonName = txRouter.Id
 

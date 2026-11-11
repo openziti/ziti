@@ -371,7 +371,7 @@ func (self *EdgeRouterManager) ExtendEnrollment(router *EdgeRouter, clientCsrPem
 		return nil, apiErr
 	}
 
-	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem)
+	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem, router.Id)
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
@@ -416,7 +416,7 @@ func (self *EdgeRouterManager) ExtendEnrollmentWithVerify(router *EdgeRouter, cl
 		return nil, apiErr
 	}
 
-	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem)
+	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem, router.Id)
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
