@@ -214,7 +214,7 @@ func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, client
 		return nil, apiErr
 	}
 
-	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem)
+	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem, router.Id)
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
@@ -256,7 +256,7 @@ func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRout
 		return nil, apiErr
 	}
 
-	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem)
+	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem, router.Id)
 
 	if err != nil {
 		apiErr := apierror.NewCouldNotProcessCsr()
