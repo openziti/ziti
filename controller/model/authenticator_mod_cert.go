@@ -195,6 +195,19 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 			return nil, apierror.NewInvalidAuth()
 		}
 
+		// An external id is matched on nothing but the certificate's claim, so whoever controls a CA
+		// with auth enabled decides which identity its certificates log in as. Managing CAs does not
+		// require being an admin, so that must not extend to admin identities.
+		if isAdminIdentity(identity) {
+			reason := "admin identities may not authenticate by externalId"
+			failEvent := module.NewAuthEventFailure(context, bundle, reason)
+			module.env.GetEventDispatcher().AcceptAuthenticationEvent(failEvent)
+
+			logger.Error(reason)
+
+			return nil, apierror.NewInvalidAuth()
+		}
+
 		authenticator = module.authenticatorExternalId(identity.Id, clientCert)
 
 	} else {
