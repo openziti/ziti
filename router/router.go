@@ -345,6 +345,9 @@ func Create(cfg *env.Config, versionProvider versions.VersionProvider) *Router {
 
 	closeNotify := make(chan struct{})
 	metricsRegistry := createMetricsRegistry(cfg, closeNotify)
+	servermetrics.RegisterHostStats(metricsRegistry, servermetrics.HostStatsConfig{
+		Enabled: cfg.Metrics.HostMetrics.Enabled,
+	})
 
 	router := &Router{
 		xgRegistry:          env.NewRegistry(),
@@ -502,6 +505,9 @@ func (self *Router) Start() error {
 	// Initialize directories and show configuration
 	if err := os.MkdirAll(filepath.Dir(self.config.Ctrl.EndpointsFile), 0700); err != nil {
 		logrus.WithField("dir", filepath.Dir(self.config.Ctrl.EndpointsFile)).WithError(err).Error("failed to initialize directory for endpoints file")
+		return err
+	}
+	if err := self.config.SlowHandlerDetector().CheckDumpDir(); err != nil {
 		return err
 	}
 	self.showOptions()

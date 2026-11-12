@@ -39,6 +39,8 @@ type createRouterOptions struct {
 }
 
 // newCreateRouterCmd creates the 'fabric create router' command for the given entity type
+//
+// Deprecated: the command creates a router outside enrollment. Enroll routers instead.
 func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	options := &createRouterOptions{
 		Options: api.Options{
@@ -49,10 +51,14 @@ func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        "router <path-to-cert>",
-		Short:      "creates a router managed by the Ziti Controller",
+		Short:      "creates a router managed by the Ziti Controller (deprecated)",
 		Args:       cobra.MinimumNArgs(1),
 		RunE:       options.createRouter,
 		SuggestFor: []string{},
+		// Cobra prints this on every use, after `Command "router" is deprecated, `.
+		Deprecated: "and will be removed in a future release. It creates a router outside the enrollment process, " +
+			"with its id taken from the certificate. Enroll routers instead, which assigns the id. If you rely on " +
+			"this command, please open an issue describing your use case.",
 	}
 
 	// allow interspersing positional args and flags
