@@ -68,12 +68,13 @@ func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *model.Router
 }
 
 func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
-	index, data := o.raft.CtrlAddresses()
+	index, data, isLeaderList := o.raft.CtrlAddresses()
 	log := pfxlog.Logger().WithFields(map[string]interface{}{
 		"routerId":  r.Id,
 		"channel":   r.Control.LogicalName(),
 		"addresses": data,
 		"index":     index,
+		"isLeader":  isLeaderList,
 	})
 
 	if len(data) == 0 {
@@ -84,7 +85,7 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *model.Router) {
 	log.Info("router connected, syncing ctrl addresses")
 
 	updMsg := &ctrl_pb.UpdateCtrlAddresses{
-		IsLeader:  o.raft.IsLeader(),
+		IsLeader:  isLeaderList,
 		Addresses: data,
 		Index:     index,
 	}
