@@ -229,11 +229,15 @@ func (self *Controller) updateMemberAddressAsLeader(id raft.ServerID, fromAddr, 
 	return nil
 }
 
+// errNoRaftConfiguration is returned by getLatestConfiguration when neither store holds a configuration,
+// as on a node that hasn't been bootstrapped or joined a cluster.
+var errNoRaftConfiguration = errors.New("no raft configuration found")
+
 // getLatestConfiguration returns the latest raft configuration, committed or not, with the index of
 // the log entry that set it, read from the raft log and snapshot stores. Unlike
 // raft.Raft.GetConfiguration, whose Index is always zero, the index can be passed as prevIndex to
 // make a membership change conditional. An entry appended after the read makes the pair stale, which
-// a conditional change then rejects.
+// a conditional change then rejects. It returns errNoRaftConfiguration when there is none.
 func (self *Controller) getLatestConfiguration() (raft.Configuration, uint64, error) {
 	var configuration raft.Configuration
 	var configIndex, snapshotIndex uint64
@@ -269,7 +273,7 @@ func (self *Controller) getLatestConfiguration() (raft.Configuration, uint64, er
 	}
 
 	if configIndex == 0 {
-		return configuration, 0, errors.New("no raft configuration found")
+		return configuration, 0, errNoRaftConfiguration
 	}
 	return configuration, configIndex, nil
 }
