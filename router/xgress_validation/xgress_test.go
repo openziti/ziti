@@ -70,6 +70,8 @@ func (self *testSetup) cleanupCircuit(circuit *testEnv) {
 }
 
 func (self *testSetup) createCircuit(t *testing.T, clientF, hostF func(originator xgress.Originator) (net.Conn, xgress.Connection)) *testEnv {
+	t.Helper()
+
 	result := &testEnv{}
 	result.closeUp = true
 	result.closeDown = true
@@ -109,28 +111,32 @@ func (self *testSetup) createCircuit(t *testing.T, clientF, hostF func(originato
 }
 
 func (self *testSetup) testVariations(t *testing.T, clientF, hostF func(originator xgress.Originator) (net.Conn, xgress.Connection)) {
+	t.Helper()
+
 	t.Run("data upstream", func(t *testing.T) {
 		circuit := self.createCircuit(t, clientF, hostF)
 		circuit.sendUpstream = true
-		self.runTestVariation(circuit, t)
+		self.runTestVariation(t, circuit)
 	})
 
 	t.Run("data downstream", func(t *testing.T) {
 		circuit := self.createCircuit(t, clientF, hostF)
 		circuit.sendDownstream = true
-		self.runTestVariation(circuit, t)
+		self.runTestVariation(t, circuit)
 	})
 
 	t.Run("data bidirectional", func(t *testing.T) {
 		circuit := self.createCircuit(t, clientF, hostF)
 		circuit.sendUpstream = true
 		circuit.sendDownstream = true
-		self.runTestVariation(circuit, t)
+		self.runTestVariation(t, circuit)
 		self.cleanupCircuit(circuit)
 	})
 }
 
-func (self *testSetup) runTestVariation(env *testEnv, t *testing.T) {
+func (self *testSetup) runTestVariation(t *testing.T, env *testEnv) {
+	t.Helper()
+
 	errs := make(chan error, 5)
 	sendUpDoneC := make(chan struct{})
 	sendDownDoneC := make(chan struct{})

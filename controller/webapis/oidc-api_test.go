@@ -256,6 +256,8 @@ var testSerial = int64(0)
 // newMinimalServerIdentity builds an identity with a single concrete server cert, enough for
 // NewOidcApiHandler to reach allowedHostnames parsing.
 func newMinimalServerIdentity(t *testing.T) identity.Identity {
+	t.Helper()
+
 	req := require.New(t)
 
 	caKey, caTmpl := mkCaCert("Parent CA")

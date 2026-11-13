@@ -35,6 +35,8 @@ func (*legacySessionTestHandler) Label() string {
 }
 
 func newLegacySessionTestEntities(t *testing.T, testCtx *model.TestContext) (*model.Managers, *model.Identity, *model.EdgeService) {
+	t.Helper()
+
 	managers := testCtx.GetManagers()
 	identity := &model.Identity{
 		Name:           uuid.NewString(),

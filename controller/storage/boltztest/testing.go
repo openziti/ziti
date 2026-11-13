@@ -50,16 +50,20 @@ type BaseTestContext struct {
 	storeF        StoreFunc
 }
 
-func NewTestContext(t testing.TB, storeF StoreFunc) *BaseTestContext {
+func NewTestContext(tb testing.TB, storeF StoreFunc) *BaseTestContext {
+	tb.Helper()
+
 	return &BaseTestContext{
-		Assertions:    *require.New(t),
-		t:             t,
+		Assertions:    *require.New(tb),
+		t:             tb,
 		ReferenceTime: time.Now(),
 		storeF:        storeF,
 	}
 }
 
 func (ctx *BaseTestContext) NextTest(t *testing.T) {
+	t.Helper()
+
 	ctx.t = t
 	ctx.Assertions = *require.New(t)
 }

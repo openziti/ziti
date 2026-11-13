@@ -90,6 +90,8 @@ func newBoundTerminator(registry *hostedServiceRegistry, connId uint32, cost uin
 // takeOver runs the listener id check for replacement against a registry holding existing, whose sdk
 // connection is closed so the takeover does not try to notify it.
 func takeOver(t *testing.T, registry *hostedServiceRegistry, existing, replacement *edgeTerminator) {
+	t.Helper()
+
 	existing.MsgChannel.SdkChannel.(*reconcileTestSdkChannel).ch.closed = true
 	registry.Put(existing)
 

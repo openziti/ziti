@@ -217,6 +217,8 @@ func requirePostureCheckAppliedElsewhere(ctx *TestContext, policyType, identityR
 // checkAlreadyApplied, the check is first applied to the client through a bind policy on an
 // otherwise unused service.
 func testDialCircuitRevokedOnRequirementChange(t *testing.T, checkAlreadyApplied bool) {
+	t.Helper()
+
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
@@ -325,6 +327,8 @@ func Test_PostureRevalidation_HostTerminator_OnRequirementChange_CheckAlreadyApp
 // to close. With checkAlreadyApplied, the check is first applied to the host through a dial
 // policy on an otherwise unused service.
 func testHostTerminatorRevokedOnRequirementChange(t *testing.T, checkAlreadyApplied bool) {
+	t.Helper()
+
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()

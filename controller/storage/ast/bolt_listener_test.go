@@ -702,6 +702,8 @@ func TestSortingPaging(t *testing.T) {
 }
 
 func runSortPageTest(t *testing.T, tt sortPageTestDef) {
+	t.Helper()
+
 	listener := NewListener()
 	listener.PrintRuleLocation = false
 	listener.PrintChildren = false
@@ -735,6 +737,8 @@ func runSortPageTest(t *testing.T, tt sortPageTestDef) {
 }
 
 func runFilterTest(t *testing.T, tt testDef) {
+	t.Helper()
+
 	listener := NewListener()
 	listener.PrintRuleLocation = false
 	listener.PrintChildren = false

@@ -45,18 +45,18 @@ func Test_Permissions_WaitForMfa(t *testing.T) {
 		ctx.testContextChanged(t)
 		resp, err := enrollingSession.newAuthenticatedRequest().Post("/current-identity/mfa")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusCreated, t)
+		standardJsonResponseTests(t, resp, http.StatusCreated)
 
 		resp, err = enrollingSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 		mfa := ctx.parseJson(resp.Body())
 		secret, err = parseSecretFromProvisioningUrl(ctx.RequireGetNonNilPathValue(mfa, "data", "provisioningUrl").Data().(string))
 		ctx.Req.NoError(err)
 
 		resp, err = enrollingSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(secret))).Post("/current-identity/mfa/verify")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 	})
 
 	pendingSession, err := auth.AuthenticateManagementApi(ctx)
@@ -66,7 +66,7 @@ func Test_Permissions_WaitForMfa(t *testing.T) {
 		ctx.testContextChanged(t)
 		resp, err := pendingSession.newAuthenticatedRequest().Get("/current-api-session")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 		authQueries := ctx.RequireGetNonNilPathValue(ctx.parseJson(resp.Body()), "data", "authQueries").Data().([]interface{})
 		ctx.Req.Len(authQueries, 1)
 	})
@@ -75,21 +75,21 @@ func Test_Permissions_WaitForMfa(t *testing.T) {
 		ctx.testContextChanged(t)
 		resp, err := pendingSession.newAuthenticatedRequest().Get("/identities")
 		ctx.Req.NoError(err)
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 
 		resp, err = pendingSession.newAuthenticatedRequest().Delete("/identities/" + created.Data.ID)
 		ctx.Req.NoError(err)
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 
 	t.Run("granular permissions work once the challenge is answered", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		resp, err := pendingSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(secret))).Post("/authenticate/mfa")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		resp, err = pendingSession.newAuthenticatedRequest().Get("/identities")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 	})
 }

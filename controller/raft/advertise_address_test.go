@@ -117,6 +117,8 @@ func (nopSnapshot) Release()                             {}
 // so that configuration changes commit on ctrl1's vote alone. It returns a Controller for ctrl1
 // whose mesh probes the given address by calling probe.
 func newTestLeader(t *testing.T, probe func(address string) (raft.ServerID, raft.ServerAddress, error)) *Controller {
+	t.Helper()
+
 	conf := raft.DefaultConfig()
 	conf.LocalID = "ctrl1"
 	conf.HeartbeatTimeout = 50 * time.Millisecond
@@ -158,6 +160,8 @@ func newTestLeader(t *testing.T, probe func(address string) (raft.ServerID, raft
 }
 
 func requireServer(t *testing.T, ctrl *Controller, id raft.ServerID) raft.Server {
+	t.Helper()
+
 	cfgFuture := ctrl.Raft.GetConfiguration()
 	require.NoError(t, cfgFuture.Error())
 	for _, srv := range cfgFuture.Configuration().Servers {

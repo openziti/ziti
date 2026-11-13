@@ -1,5 +1,7 @@
 version: "2"
 linters:
+  enable:
+    - thelper # test helpers call t.Helper() first, and take *testing.T as their first parameter
   settings:
     staticcheck:
       checks: 

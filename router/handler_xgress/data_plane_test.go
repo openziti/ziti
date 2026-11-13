@@ -76,6 +76,8 @@ func (unwrittenSender) CloseNotify() <-chan struct{} {
 // newTimeoutError returns a channel timeout error. The channel package exports no constructor, so it
 // comes from a send whose deadline passes.
 func newTimeoutError(t *testing.T) error {
+	t.Helper()
+
 	err := channel.NewMessage(0, nil).WithTimeout(time.Millisecond).SendAndWaitForWire(unwrittenSender{})
 	require.True(t, channel.IsTimeout(err))
 	return err
@@ -115,6 +117,8 @@ func (self *recordingFaultReceiver) ReportEndpointFault(string, string, ctrl_pb.
 // newRoutedXgress returns an open xgress whose payloads the returned forwarder routes to dest, through
 // the returned data plane. The forwarder reports faults to faults.
 func newRoutedXgress(t *testing.T, dest *busyDestination, faults forwarder.FaultReceiver) (*xgress.Xgress, *forwarder.Forwarder, xgress.DataPlaneAdapter) {
+	t.Helper()
+
 	closeNotify := make(chan struct{})
 	t.Cleanup(func() { close(closeNotify) })
 

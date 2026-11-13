@@ -669,7 +669,7 @@ func (request *authenticatedRequests) RequireNewIdentityWithCaOtt(isAdmin bool, 
 
 func (request *authenticatedRequests) requireCreateEntity(entity entity) string {
 	resp := request.createEntity(entity)
-	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
+	standardJsonResponseTests(request.testContext.testing, resp, http.StatusCreated)
 	id := request.testContext.getEntityId(resp.Body())
 	entity.setId(id)
 	return id
@@ -686,7 +686,7 @@ func (request *authenticatedRequests) requireCreateRestModelEntity(path string, 
 	resp, err := request.newAuthenticatedRequest().SetBody(body).Post(path)
 	request.testContext.Req.NoError(err)
 
-	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
+	standardJsonResponseTests(request.testContext.testing, resp, http.StatusCreated)
 
 	id := request.testContext.getEntityId(resp.Body())
 
@@ -700,17 +700,17 @@ func (request *authenticatedRequests) requireCreateRestModelPostureResponse(enti
 	resp, err := request.newAuthenticatedRequest().SetBody(body).Post("posture-response")
 	request.testContext.Req.NoError(err)
 
-	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
+	standardJsonResponseTests(request.testContext.testing, resp, http.StatusCreated)
 }
 
 func (request *authenticatedRequests) requireDeleteEntity(entity entity) {
 	resp := request.deleteEntityOfType(entity.getEntityType(), entity.getId())
-	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
+	standardJsonResponseTests(request.testContext.testing, resp, http.StatusOK)
 }
 
 func (request *authenticatedRequests) requireUpdateEntity(entity entity) {
 	resp := request.updateEntity(entity)
-	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
+	standardJsonResponseTests(request.testContext.testing, resp, http.StatusOK)
 }
 
 func (request *authenticatedRequests) requireList(url string) []string {
@@ -1066,7 +1066,7 @@ func (request *authenticatedRequests) requireCreateNewConfigType() *configType {
 
 func (request *authenticatedRequests) requirePatchEntity(entity entity, fields ...string) {
 	resp := request.patchEntity(entity, fields...)
-	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
+	standardJsonResponseTests(request.testContext.testing, resp, http.StatusOK)
 }
 
 func (request *authenticatedRequests) patchEntity(entity entity, fields ...string) *resty.Response {

@@ -67,6 +67,8 @@ func newTestSession(l Listener) *PacketSession {
 }
 
 func requireReturns(t *testing.T, f func()) {
+	t.Helper()
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)

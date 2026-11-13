@@ -82,16 +82,22 @@ func Test_firstPartyCaPublicKeys(t *testing.T) {
 
 // newTestCa issues a CA certificate named name, self-signed when parent is nil.
 func newTestCa(t *testing.T, name string, parent *x509.Certificate, parentKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey) {
+	t.Helper()
+
 	return newTestCert(t, name, true, parent, parentKey)
 }
 
 // newTestLeaf issues an end-entity certificate named name from the given CA.
 func newTestLeaf(t *testing.T, name string, parent *x509.Certificate, parentKey *ecdsa.PrivateKey) *x509.Certificate {
+	t.Helper()
+
 	cert, _ := newTestCert(t, name, false, parent, parentKey)
 	return cert
 }
 
 func newTestCert(t *testing.T, name string, isCa bool, parent *x509.Certificate, parentKey *ecdsa.PrivateKey) (*x509.Certificate, *ecdsa.PrivateKey) {
+	t.Helper()
+
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 

@@ -32,6 +32,8 @@ import (
 // jtiFromServiceToken returns the "jti" (session id) claim from a service-access JWT without
 // verifying its signature.
 func jtiFromServiceToken(t *testing.T, token string) string {
+	t.Helper()
+
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		t.Fatalf("expected a 3-segment JWT, got %d segments", len(parts))

@@ -1071,6 +1071,8 @@ func receiveAll(receiver channel.TypedReceiveHandler, deliveries []delivery, don
 
 // newCtrlListHandler returns a running handler over ctrls, stopped when the test ends.
 func newCtrlListHandler(t *testing.T, ctrls *ctrlListControllers) *updateCtrlAddressesHandler {
+	t.Helper()
+
 	routerEnv := &ctrlListEnv{ctrls: ctrls, closeNotify: make(chan struct{})}
 	t.Cleanup(routerEnv.stop)
 	handler := &updateCtrlAddressesHandler{
@@ -1086,6 +1088,8 @@ func newCtrlListHandler(t *testing.T, ctrls *ctrlListControllers) *updateCtrlAdd
 // released, so the updates received meanwhile wait. The held list names every controller ctrls has, so
 // applying it changes nothing. The gate is released when the test ends.
 func holdApplying(t *testing.T, ctrls *ctrlListControllers, handler *updateCtrlAddressesHandler) (*gate, error) {
+	t.Helper()
+
 	held := ctrls.holdReads()
 	t.Cleanup(held.release)
 
@@ -1353,6 +1357,8 @@ type stuckCtrl struct {
 }
 
 func newStuckCtrl(t *testing.T, id string) *stuckCtrl {
+	t.Helper()
+
 	done := make(chan struct{})
 	t.Cleanup(func() {
 		close(done)

@@ -114,6 +114,8 @@ func mkLeafWithKey(t *testing.T, cn, spiffePath string, ekus []x509.ExtKeyUsage,
 }
 
 func mkLeaf(t *testing.T, cn, spiffePath string, ekus []x509.ExtKeyUsage, signer *certAndKey) *certAndKey {
+	t.Helper()
+
 	return mkLeafWithKey(t, cn, spiffePath, ekus, signer, mkTestKey(t))
 }
 
