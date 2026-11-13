@@ -6,7 +6,7 @@ v: 3
 
 enableDebugOps: true
 
-{{if .Component.GetFlag "ha"}}
+{{if .Component.GetFlag "ctrl_is_clustered"}}
 ha:
   enabled: true
 {{end}}
@@ -39,10 +39,12 @@ metrics:
   messageQueueSize: 10
 
 link:
+{{- if not (.Component.HasTag "link-dial-only")}}
   listeners:
     - binding:          transport
       bind:             tls:0.0.0.0:6000
       advertise:        tls:{{$router_ip}}:6000
+{{- end}}
   dialers:
     - binding:          transport
       options:

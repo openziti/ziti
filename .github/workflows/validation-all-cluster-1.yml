@@ -1,0 +1,12 @@
+name: Validation (All, 1-Node Cluster)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validation:
+    name: Validation
+    uses: ./.github/workflows/validation.yml
+    secrets: inherit
+    with:
+      cluster_mode: cluster-1
