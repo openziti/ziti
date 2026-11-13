@@ -231,8 +231,10 @@ web:
         options: { }
       - binding: fabric
         options: { }
-      - binding: edge-oidc
-        options: { }
+      # OIDC is not supported on this release. SDKs use OIDC sessions whenever edge-oidc is bound, so it is
+      # bound only for clustered controllers, whose clients require it.
+      {{ if not .Controller.Ctrl.Clustered }}#{{- end }}- binding: edge-oidc
+      {{ if not .Controller.Ctrl.Clustered }}#{{- end }}  options: { }
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}- binding: zac
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}  options:
       {{ if not .Controller.Web.BindPoints.Console.Enabled }}#{{- end }}    location: {{ .Controller.Web.BindPoints.Console.Location }}
