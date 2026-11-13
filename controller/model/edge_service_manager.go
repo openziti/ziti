@@ -122,7 +122,7 @@ func (self *EdgeServiceManager) IsDialableByIdentity(id string, identityId strin
 	result := false
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
-		result = self.env.GetStores().EdgeService.IsBindableByIdentity(tx, id, identityId)
+		result = self.env.GetStores().EdgeService.IsDialableByIdentity(tx, id, identityId)
 		return err
 	})
 	return result, err
