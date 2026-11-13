@@ -1,18 +1,55 @@
 name: Backward Compatibility Test
+run-name: ${{ format('Backward Compatibility Test ({0}{1}){2}', inputs.cluster_mode, !inputs.oidc && ', OIDC off' || '', (inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && format(' with ctrl {0}, routers {1} and {2}', inputs.ctrl_version || 'branch', inputs.router_version_a || 'branch', inputs.router_version_b || 'branch') || '') }}
 
 on:
   workflow_call:
+    inputs:
+      cluster_mode:
+        description: How the controllers run, cluster-3, cluster-1 or non-ha
+        type: string
+        required: false
+        default: non-ha
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        required: false
+        default: true
   workflow_dispatch:
     inputs:
+      cluster_mode:
+        description: How the controllers run
+        type: choice
+        options:
+          - non-ha
+          - cluster-1
+          - cluster-3
+        default: non-ha
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        default: true
+      router_version_a:
+        description: 'Router release to compare, such as v2.0.8, or blank for the branch build. Setting any version runs these in place of the release line matrix'
+        type: string
+        required: false
+      router_version_b:
+        description: 'Router release to compare against A, such as v1.5.4. Runs A on the client side (east) with B hosting (west), then B east with A west'
+        type: string
+        required: false
+      ctrl_version:
+        description: "Controller release, such as v2.0.8, or blank for the branch build. It must be on the branch's major.minor line: run a 2.0 controller from release-v2.0.x"
+        type: string
+        required: false
       labels:
         description: 'Extra fablab labels for every job, comma separated, such as capability_oidc=on'
         type: string
         required: false
 
 # cancel older, redundant runs of same workflow on same branch. Under workflow_call, github.workflow
-# names the caller, so the suffix keeps this group distinct from the caller's other jobs.
+# names the caller, so the suffix keeps this group distinct from the caller's other jobs. A manual
+# run's inputs are part of the group, so runs comparing different versions don't cancel each other.
 concurrency:
-  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-backward-compatibility
+  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-backward-compatibility-${{ inputs.cluster_mode }}-${{ inputs.oidc }}-${{ inputs.ctrl_version }}-${{ inputs.router_version_a }}-${{ inputs.router_version_b }}-${{ inputs.labels }}
   cancel-in-progress: true
 
 env:
@@ -25,25 +62,70 @@ env:
 
 jobs:
   fablab-compat-smoketest:
-    name: Fablab Compat Smoketest - ${{ matrix.side }}-${{ matrix.line }}
+    name: Fablab Compat Smoketest - ${{ matrix.line != 'pinned' && format('{0}-{1}', matrix.side, matrix.line) || format('east {0}, west {1}', matrix.side == 'a-east' && (inputs.router_version_a || 'branch') || (inputs.router_version_b || 'branch'), matrix.side == 'a-east' && (inputs.router_version_b || 'branch') || (inputs.router_version_a || 'branch')) }}
     if: github.repository_owner == 'openziti'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         # Each release line runs with the old routers on the client side (east) and, separately, on
-        # the hosting side (west), against the newest stable (promoted) release of that line.
-        line: [ "2.0", "1.6" ]
-        side: [ east, west ]
+        # the hosting side (west), against the newest stable (promoted) release of that line. A manual
+        # run that pins any version pairs the two router versions both ways: a-east puts A on the
+        # client side and B hosting, b-east the reverse. Two equal versions run once.
+        line: ${{ fromJSON((inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && '["pinned"]' || '["2.0", "1.6"]') }}
+        side: ${{ fromJSON(!(inputs.ctrl_version || inputs.router_version_a || inputs.router_version_b) && '["east", "west"]' || inputs.router_version_a == inputs.router_version_b && '["a-east"]' || '["a-east", "b-east"]') }}
 
     steps:
-      - name: Resolve Router Version
+      - name: Resolve Versions
         env:
           GH_TOKEN: ${{ github.token }}
           LINE: ${{ matrix.line }}
           SIDE: ${{ matrix.side }}
+          CTRL_VERSION: ${{ inputs.ctrl_version }}
+          ROUTER_VERSION_A: ${{ inputs.router_version_a }}
+          ROUTER_VERSION_B: ${{ inputs.router_version_b }}
         shell: bash
         run: |
+          if [ "$LINE" = pinned ]; then
+            case "$SIDE" in
+              a-east) east=$ROUTER_VERSION_A west=$ROUTER_VERSION_B ;;
+              b-east) east=$ROUTER_VERSION_B west=$ROUTER_VERSION_A ;;
+              *) echo "unknown side $SIDE" >&2; exit 1 ;;
+            esac
+
+            labels=""
+            summary=""
+            for pin in "controllers:ctrl1 ctrl2 ctrl3:$CTRL_VERSION" "east routers:router_east_1 router_east_2:$east" "west router:router_west:$west"; do
+              name=${pin%%:*}
+              rest=${pin#*:}
+              components=${rest%%:*}
+              version=${rest#*:}
+
+              if [ -z "$version" ]; then
+                summary="${summary:+$summary, }$name on the branch build"
+                continue
+              fi
+              version=v${version#v}
+              if [[ ! $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+                echo "$name: $version is not a release version" >&2
+                exit 1
+              fi
+              if ! gh release view "$version" --repo openziti/ziti --json tagName > /dev/null; then
+                echo "$name: openziti/ziti has no release $version" >&2
+                exit 1
+              fi
+
+              for component in $components; do
+                labels="${labels:+$labels,}${component}_version=$version"
+              done
+              summary="${summary:+$summary, }$name on $version"
+            done
+
+            echo "VERSION_LABELS=$labels" >> "$GITHUB_ENV"
+            echo "Testing $summary (labels: $labels)" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
           releases=$(gh release list --repo openziti/ziti --exclude-drafts --exclude-pre-releases --limit 1000 --json tagName --jq '.[].tagName')
           version=$(grep -E "^v${LINE//./\\.}\.[0-9]+$" <<< "$releases" | sort -V | tail -n 1 || true)
           if [ -z "$version" ]; then
@@ -57,7 +139,7 @@ jobs:
             *) echo "unknown side $SIDE" >&2; exit 1 ;;
           esac
 
-          echo "ROUTER_LABELS=$labels" >> "$GITHUB_ENV"
+          echo "VERSION_LABELS=$labels" >> "$GITHUB_ENV"
           echo "Testing $SIDE routers on $version (labels: $labels)" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Git Checkout
@@ -95,11 +177,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # inputs reach the script through the environment, never interpolated into it
           EXTRA_LABELS: ${{ inputs.labels }}
+          CLUSTER_MODE: ${{ inputs.cluster_mode }}
+          OIDC: ${{ inputs.oidc }}
         shell: bash
         run: |
+          case "$CLUSTER_MODE" in
+            cluster-3|cluster-1|non-ha) ;;
+            *) echo "cluster_mode must be cluster-3, cluster-1 or non-ha, not '$CLUSTER_MODE'" >&2; exit 1 ;;
+          esac
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${ROUTER_LABELS},environment=gh-fablab-compat-smoketest${EXTRA_LABELS:+,$EXTRA_LABELS}"
+          $(go env GOPATH)/bin/smoketest create -d smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -n smoketest-compat-${{ matrix.side }}-${{ matrix.line }}-${GITHUB_RUN_NUMBER} -l "${VERSION_LABELS},environment=gh-fablab-compat-smoketest-${CLUSTER_MODE},cluster_mode=${CLUSTER_MODE},oidc=${OIDC}${EXTRA_LABELS:+,$EXTRA_LABELS}"
           $(go env GOPATH)/bin/smoketest up
+
+      - name: Validate Links
+        shell: bash
+        run: |
+          $(go env GOPATH)/bin/smoketest exec validateLinks
 
       - name: Test Ziti Command
         shell: bash

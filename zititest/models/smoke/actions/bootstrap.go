@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/ctrlmode"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 )
 
@@ -42,19 +43,19 @@ func NewBootstrapAction() model.ActionBinder {
 func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
 
-	isHA := len(m.SelectComponents(".ctrl")) > 1
+	clustered := ctrlmode.IsClustered(m)
 
 	workflow.AddAction(component.Stop(".ctrl"))
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
 	workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-	if !isHA {
+	if !clustered {
 		workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
 	}
 
 	workflow.AddAction(component.Start(".ctrl"))
 
-	if isHA {
+	if clustered {
 		workflow.AddAction(semaphore.Sleep(5 * time.Second))
 		workflow.AddAction(edge.InitRaftController("#ctrl1"))
 	}
@@ -188,7 +189,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "client-routers", "--edge-router-roles", "#client", "--identity-roles", "#client"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "host-routers", "--edge-router-roles", "#host", "--identity-roles", "#host"))
 
-	if isHA {
+	if len(m.SelectComponents(".ctrl")) > 1 {
 		workflow.AddAction(edge.RaftJoin("ctrl1", ".ctrl"))
 		workflow.AddAction(semaphore.Sleep(6 * time.Second))
 		workflow.AddAction(component.Start(".ctrl"))

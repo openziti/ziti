@@ -42,6 +42,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
+	"github.com/openziti/ziti/zititest/zitilab/ctrlmode"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	"github.com/openziti/ziti/zititest/zitirest"
 )
@@ -91,6 +92,7 @@ var m = &model.Model{
 	},
 	StructureFactories: []model.Factory{
 		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
+		ctrlmode.Factory(ctrlmode.Cluster3),
 		model.FactoryFunc(func(m *model.Model) error {
 			return m.ForEachHost("component.ctrl", 1, func(host *model.Host) error {
 				if host.InstanceType == "" {
@@ -237,9 +239,16 @@ var m = &model.Model{
 			workflow.AddAction(host.GroupExec("*", 500, "rm -f logs/*"))
 			workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
+			clustered := ctrlmode.IsClustered(m)
+			if !clustered {
+				workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
+			}
+
 			workflow.AddAction(component.Start("#ctrl1"))
-			workflow.AddAction(semaphore.Sleep(2 * time.Second))
-			workflow.AddAction(edge.InitRaftController("#ctrl1"))
+			if clustered {
+				workflow.AddAction(semaphore.Sleep(2 * time.Second))
+				workflow.AddAction(edge.InitRaftController("#ctrl1"))
+			}
 			workflow.AddAction(edge.ControllerAvailable("#ctrl1", 30*time.Second))
 			workflow.AddAction(semaphore.Sleep(2 * time.Second))
 

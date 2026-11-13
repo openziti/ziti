@@ -1,8 +1,12 @@
 v: 3
 
+{{if .Component.GetFlag "ctrl_is_clustered"}}
 cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
   restartSelfOnSnapshot: true
+{{else}}
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
+{{end}}
 
 tls:
   handshakeTimeout: 15s
@@ -89,6 +93,10 @@ edge:
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
     address: {{ .Host.PublicIp }}:1280
+{{- if not (.Component.GetFlag "ctrl_oidc") }}
+    # without this, the controller binds edge-oidc itself when the web section leaves it out
+    disableOidcAutoBinding: true
+{{- end}}
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
@@ -200,3 +208,6 @@ web:
         options: {}
       - binding: edge-client
         options: {}
+{{- if .Component.GetFlag "ctrl_oidc" }}
+      - binding: edge-oidc
+{{- end}}
