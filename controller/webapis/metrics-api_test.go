@@ -73,6 +73,8 @@ func Test_MetricsApi_ScrapeCertAuthorization(t *testing.T) {
 	handler := (&MetricsApiHandler{scrapeCert: scrapeCert}).newHandler()
 
 	assertUnauthorized := func(t *testing.T, peerCerts []*x509.Certificate) {
+		t.Helper()
+
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, mScrapeRequest(peerCerts))
 		require.Equal(t, http.StatusUnauthorized, rec.Code)

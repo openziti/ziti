@@ -15,6 +15,8 @@ func asIdentity(id string) *change.Context {
 }
 
 func requireUnauthorized(t *testing.T, err error) {
+	t.Helper()
+
 	require.Error(t, err)
 	var apiErr *errorz.ApiError
 	require.True(t, errors.As(err, &apiErr), "expected an API error, got %T: %v", err, err)

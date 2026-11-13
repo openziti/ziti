@@ -63,7 +63,7 @@ func Test_DeleteRequiresTypedTarget(t *testing.T) {
 		ctx.AdminManagementSession.requireQuery("routers/" + fabricRouter.Id)
 
 		resp := ctx.AdminManagementSession.deleteEntityOfType("routers", fabricRouter.Id)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		status, body := ctx.AdminManagementSession.query("routers/" + fabricRouter.Id)
 		ctx.RequireNotFoundError(status, body)

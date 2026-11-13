@@ -787,6 +787,8 @@ func (self *testJwksServer) urlWithHost(host string) (string, error) {
 
 // newTestJwksServer starts a JWKS endpoint for the duration of the test.
 func newTestJwksServer(t *testing.T, jwksBody string) *testJwksServer {
+	t.Helper()
+
 	result := &testJwksServer{}
 
 	// released on test cleanup so the /hang route does not outlive the test

@@ -48,6 +48,8 @@ func (self *fakeCtrlChannel) IsClosed() bool {
 }
 
 func newTestConnectionTracker(t *testing.T) *ConnectionTracker {
+	t.Helper()
+
 	closeNotify := make(chan struct{})
 	t.Cleanup(func() {
 		close(closeNotify)

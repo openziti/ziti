@@ -59,7 +59,7 @@ func Test_EnrollmentUpdb(t *testing.T) {
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(updbCreate.String()).Post("identities")
 		ctx.Req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusCreated, t)
+		standardJsonResponseTests(t, resp, http.StatusCreated)
 
 		createdResp, err := gabs.ParseJSON(resp.Body())
 		ctx.Req.NoError(err)
@@ -76,7 +76,7 @@ func Test_EnrollmentUpdb(t *testing.T) {
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("identities/" + updbId)
 			ctx.Req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			updbIdentity, err := gabs.ParseJSON(resp.Body())
 			ctx.Req.NoError(err)
@@ -106,7 +106,7 @@ func Test_EnrollmentUpdb(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(enrollmentBody.String()).Post("enroll?method=updb&token=" + updbEnrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				t.Run("enrolled updb identity can authenticate", func(t *testing.T) {
 					ctx.testContextChanged(t)
@@ -128,7 +128,7 @@ func Test_EnrollmentUpdb(t *testing.T) {
 						resp, err := updbApiSession.newAuthenticatedRequest().Get("current-api-session")
 						ctx.Req.NoError(err)
 
-						standardJsonResponseTests(resp, http.StatusOK, t)
+						standardJsonResponseTests(t, resp, http.StatusOK)
 					})
 				})
 			})

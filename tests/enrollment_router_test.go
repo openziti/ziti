@@ -60,7 +60,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 			ctx.Req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			edgeRouterDetails, err := gabs.ParseJSON(resp.Body())
 			ctx.Req.NoError(err)
@@ -146,7 +146,7 @@ func Test_RouterEnrollment(t *testing.T) {
 			resp, err := ctx.newAnonymousClientApiRequest().SetBody("{}").Post("/enroll?method=erott&token=" + randomToken.String())
 			ctx.Req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(t, resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest)
 
 		})
 
@@ -158,7 +158,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 			ctx.Req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			edgeRouterDetails, err := gabs.ParseJSON(resp.Body())
 			ctx.Req.NoError(err)
@@ -177,7 +177,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest)
 			})
 
 			t.Run("and with empty server and client CSR fields fails", func(t *testing.T) {
@@ -191,7 +191,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest)
 			})
 
 			t.Run("and with empty server and client CSR fields fails", func(t *testing.T) {
@@ -205,7 +205,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest)
 			})
 
 			t.Run("and with valid client and missing server CSR fields fails", func(t *testing.T) {
@@ -223,7 +223,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest)
 			})
 
 			t.Run("and with valid client and empty server CSR fields fails", func(t *testing.T) {
@@ -242,7 +242,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest)
 			})
 
 			t.Run("and with valid server and missing client CSR fields fails", func(t *testing.T) {
@@ -260,7 +260,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest)
 			})
 
 			t.Run("and with valid server and empty client CSR fields fails", func(t *testing.T) {
@@ -279,7 +279,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, "MISSING_OR_INVALID_CSR", http.StatusBadRequest)
 			})
 
 			t.Run("and with valid client and server CSR fields succeeds", func(t *testing.T) {
@@ -303,7 +303,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(bodyContainer.String()).Post("/enroll?method=erott&token=" + enrollmentToken)
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				enrollmentContainer, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -422,7 +422,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newAnonymousClientApiRequest().SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardErrorJsonResponseTests(resp, "UNAUTHORIZED", http.StatusUnauthorized, t)
+						standardErrorJsonResponseTests(t, resp, "UNAUTHORIZED", http.StatusUnauthorized)
 					})
 
 					t.Run("no client or server CSR fields fails", func(t *testing.T) {
@@ -433,7 +433,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
+						standardErrorJsonResponseTests(t, resp, "COULD_NOT_VALIDATE", http.StatusBadRequest)
 					})
 
 					t.Run("a client CSR but missing server CSR field fails", func(t *testing.T) {
@@ -445,7 +445,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
+						standardErrorJsonResponseTests(t, resp, "COULD_NOT_VALIDATE", http.StatusBadRequest)
 					})
 
 					t.Run("a server CSR but missing client CSR field fails", func(t *testing.T) {
@@ -457,7 +457,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
+						standardErrorJsonResponseTests(t, resp, "COULD_NOT_VALIDATE", http.StatusBadRequest)
 					})
 
 					t.Run("an empty client and server CSR fields fails", func(t *testing.T) {
@@ -470,7 +470,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(body.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
+						standardErrorJsonResponseTests(t, resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest)
 					})
 
 					t.Run("a valid client CSR and empty server CSR fields fails", func(t *testing.T) {
@@ -490,7 +490,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
+						standardErrorJsonResponseTests(t, resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest)
 					})
 
 					t.Run("a valid server CSR and empty client CSR fields fails", func(t *testing.T) {
@@ -510,7 +510,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardErrorJsonResponseTests(resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest, t)
+						standardErrorJsonResponseTests(t, resp, "COULD_NOT_PROCESS_CSR", http.StatusBadRequest)
 					})
 
 					t.Run("a valid server and client CSR from a new private key succeeds", func(t *testing.T) {
@@ -535,7 +535,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						resp, err := ctx.newRequestWithClientCert(certs, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
-						standardJsonResponseTests(resp, http.StatusOK, t)
+						standardJsonResponseTests(t, resp, http.StatusOK)
 
 						extensionContainer, err := gabs.ParseJSON(resp.Body())
 						ctx.Req.NoError(err)

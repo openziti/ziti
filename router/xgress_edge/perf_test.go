@@ -130,6 +130,8 @@ func Benchmark_CowMapWritePerf(b *testing.B) {
 }
 
 func writePerf(b *testing.B, mux edge.ConnMux[*state.ConnState]) {
+	b.Helper()
+
 	testChannel := &NoopTestChannel{}
 	sdkChannel := edge.NewSingleSdkChannel(testChannel)
 	listener := &listener{}

@@ -57,6 +57,8 @@ func (f *fakeCtrlChannel) IsClosed() bool { return f.closed.Load() }
 func (f *fakeCtrlChannel) IsConnected() bool { return !f.closed.Load() }
 
 func newConnectTestNetwork(t *testing.T) (*model.TestContext, *Network, transport.Address) {
+	t.Helper()
+
 	ctx := model.NewTestContext(t)
 	t.Cleanup(ctx.Cleanup)
 

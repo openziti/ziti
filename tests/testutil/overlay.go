@@ -157,6 +157,8 @@ func (o *Overlay) ReplaceConfig(newServerCertPath string) error {
 }
 
 func (o *Overlay) PrintLoginCommand(t *testing.T) {
+	t.Helper()
+
 	if o.NetworkDialingIdFile == "" {
 		t.Logf("overlay login: ziti edge login %s -y -u admin -p admin\n\n", o.ControllerHostPort())
 	} else {
@@ -220,6 +222,8 @@ func (o *Overlay) RunZiti(zitiPath string, args []string, done chan error) {
 }
 
 func (o *Overlay) CreateAdminIdentity(t *testing.T, now, baseDir string) error {
+	t.Helper()
+
 	if lr, le := o.Login(); le != nil {
 		return le
 	} else {
@@ -259,6 +263,8 @@ func (o *Overlay) CreateAdminIdentity(t *testing.T, now, baseDir string) error {
 }
 
 func (o *Overlay) CreateOverlayIdentities(t *testing.T, now string) error {
+	t.Helper()
+
 	p := common.NewOptionsProvider(os.Stdout, os.Stderr)
 	if _, le := o.Login(); le != nil {
 		return le
@@ -406,6 +412,8 @@ func (o *Overlay) forceKillPids(pids []int) {
 }
 
 func (o *Overlay) EnsureAllPidsStopped(t *testing.T) {
+	t.Helper()
+
 	running := o.getRunningPids()
 	if len(running) == 0 {
 		fmt.Printf("All processes stopped\n")
@@ -726,6 +734,8 @@ func (o *Overlay) WaitForRouterReady(timeout time.Duration) error {
 }
 
 func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration, home string, name string) Overlay {
+	t.Helper()
+
 	o := Overlay{
 		Name:         name,
 		t:            t,
@@ -752,6 +762,8 @@ func CreateOverlay(t *testing.T, ctx context.Context, startTimeout time.Duration
 }
 
 func findAvailablePort(t *testing.T) uint16 {
+	t.Helper()
+
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer func() { _ = listener.Close() }()

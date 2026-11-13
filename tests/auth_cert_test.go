@@ -127,7 +127,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 			Post("/authenticate?method=cert")
 		r.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		authenticator, err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
@@ -163,7 +163,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoBody(t *testi
 		require.New(t).Equal(http.StatusOK, resp.StatusCode())
 	})
 
-	standardJsonResponseTests(resp, http.StatusOK, t)
+	standardJsonResponseTests(t, resp, http.StatusOK)
 
 	t.Run("returns a session token HTTP headers", func(t *testing.T) {
 		require.New(t).NotEmpty(resp.Header().Get(common.ZtSessionHeader), fmt.Sprintf("HTTP header %s is empty", common.ZtSessionHeader))
@@ -296,7 +296,7 @@ func (test *authCertTests) testAuthenticateValidCertInvalidJson(t *testing.T) {
 		require.New(t).NoError(err)
 	})
 
-	standardErrorJsonResponseTests(resp, "COULD_NOT_PARSE_BODY", http.StatusBadRequest, t)
+	standardErrorJsonResponseTests(t, resp, "COULD_NOT_PARSE_BODY", http.StatusBadRequest)
 
 	t.Run("returns without a ziti session header", func(t *testing.T) {
 		require.New(t).Equal("", resp.Header().Get(common.ZtSessionHeader))
@@ -320,7 +320,7 @@ func (test *authCertTests) testAuthenticateValidCertValidClientInfoWithExtraProp
 		require.New(t).NoError(err)
 	})
 
-	standardJsonResponseTests(resp, http.StatusOK, t)
+	standardJsonResponseTests(t, resp, http.StatusOK)
 }
 
 func (test *authCertTests) testAuthenticateInvalidCert(t *testing.T) {
@@ -379,7 +379,7 @@ rv1CXRECfHglY+vO0CFumQOV5bec2R8=
 		require.New(t).NoError(err)
 	})
 
-	standardErrorJsonResponseTests(resp, "INVALID_AUTH", http.StatusUnauthorized, t)
+	standardErrorJsonResponseTests(t, resp, "INVALID_AUTH", http.StatusUnauthorized)
 
 	t.Run("returns without a ziti session header", func(t *testing.T) {
 		require.New(t).Equal("", resp.Header().Get(common.ZtSessionHeader))
@@ -465,7 +465,7 @@ func (test *authCertTests) testAuthenticateValidCertExpired(t *testing.T) {
 		Post("/authenticate?method=cert")
 
 	test.ctx.Req.NoError(err)
-	standardJsonResponseTests(resp, http.StatusOK, t)
+	standardJsonResponseTests(t, resp, http.StatusOK)
 }
 
 func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
@@ -480,7 +480,7 @@ func (test *authCertTests) testAuthenticateValidCertEmptyBody(t *testing.T) {
 		require.New(t).NoError(err)
 	})
 
-	standardJsonResponseTests(resp, http.StatusOK, t)
+	standardJsonResponseTests(t, resp, http.StatusOK)
 
 	t.Run("returns a session token HTTP headers", func(t *testing.T) {
 		require.New(t).NotEmpty(resp.Header().Get(common.ZtSessionHeader), fmt.Sprintf("HTTP header %s is empty", common.ZtSessionHeader))

@@ -26,6 +26,8 @@ import (
 
 func Test_LoadConfig_hostMetrics(t *testing.T) {
 	load := func(t *testing.T, metrics string) (*Config, error) {
+		t.Helper()
+
 		path := filepath.Join(t.TempDir(), "router.yml")
 		require.NoError(t, os.WriteFile(path, []byte(minimalRouterConfig+"metrics:\n"+metrics), 0600))
 		return LoadConfigWithOptions(path, false)

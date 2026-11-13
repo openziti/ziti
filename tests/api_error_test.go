@@ -45,7 +45,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.Req.NotEmpty(contentTypeHeaders)
 		ctx.Req.Equal("application/json", contentTypeHeaders[0])
 
-		standardErrorJsonResponseTests(resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest, t)
+		standardErrorJsonResponseTests(t, resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest)
 	})
 
 	t.Run("json API error expected for accept of */*", func(t *testing.T) {
@@ -63,7 +63,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.Req.NotEmpty(contentTypeHeaders)
 		ctx.Req.Equal("application/json", contentTypeHeaders[0])
 
-		standardErrorJsonResponseTests(resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest, t)
+		standardErrorJsonResponseTests(t, resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest)
 	})
 
 	t.Run("json API error expected for accept of application/json", func(t *testing.T) {
@@ -81,7 +81,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.Req.NotEmpty(contentTypeHeaders)
 		ctx.Req.Equal("application/json", contentTypeHeaders[0])
 
-		standardErrorJsonResponseTests(resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest, t)
+		standardErrorJsonResponseTests(t, resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest)
 	})
 
 	t.Run("json API error expected for accept of application/x-pem-file and application/json", func(t *testing.T) {
@@ -99,7 +99,7 @@ func Test_Api_Errors(t *testing.T) {
 		ctx.Req.NotEmpty(contentTypeHeaders)
 		ctx.Req.Equal("application/json", contentTypeHeaders[0])
 
-		standardErrorJsonResponseTests(resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest, t)
+		standardErrorJsonResponseTests(t, resp, "INVALID_ENROLLMENT_TOKEN", http.StatusBadRequest)
 	})
 
 	t.Run("406 not acceptable type for accept of application/x-pem-file", func(t *testing.T) {

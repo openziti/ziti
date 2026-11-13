@@ -41,7 +41,7 @@ func Test_Specs(t *testing.T) {
 		resp, err = ctx.newAnonymousClientApiRequest().Get("specs")
 		ctx.Req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		t.Run("contains swagger spec", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -65,7 +65,7 @@ func Test_Specs(t *testing.T) {
 		resp, err := ctx.newAnonymousClientApiRequest().Get("specs/edge-client")
 		ctx.Req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		t.Run("contains the swagger spec", func(t *testing.T) {
 			ctx.testContextChanged(t)

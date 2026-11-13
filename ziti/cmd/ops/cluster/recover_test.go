@@ -309,6 +309,8 @@ func lastLogEntry(dataDir string) (*raft.Log, error) {
 // startRaft starts a raft node as localID on the stores in dataDir, with short timeouts, and returns it
 // with its fsm. Both are closed at test cleanup.
 func startRaft(t *testing.T, dataDir string, localID raft.ServerID, localAddr raft.ServerAddress) (*raft.Raft, *zitiraft.BoltDbFsm, error) {
+	t.Helper()
+
 	boltStore, err := raftboltdb.NewBoltStore(filepath.Join(dataDir, "raft.db"))
 	if err != nil {
 		return nil, nil, err
