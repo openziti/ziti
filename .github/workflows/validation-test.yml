@@ -10,10 +10,20 @@ on:
         type: string
         required: false
         default: '2h'
+      cluster_mode:
+        description: How the controllers run, cluster-3, cluster-1 or non-ha
+        type: string
+        required: false
+        default: cluster-3
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        required: false
+        default: true
 
 # cancel older, redundant runs of same workflow on same branch
 concurrency:
-  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-${{ inputs.test }}
+  group: ${{ github.workflow }}-${{github.event_name}}-${{ github.head_ref || github.ref_name }}-${{ inputs.test }}-${{ inputs.cluster_mode }}-${{ inputs.oidc }}
   cancel-in-progress: true
 
 env:
@@ -25,10 +35,12 @@ env:
   BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
   TEST_TYPE: ${{ inputs.test }}
   TEST_DURATION: ${{ inputs.duration }}
+  CLUSTER_MODE: ${{ inputs.cluster_mode }}
+  OIDC: ${{ inputs.oidc }}
 
 jobs:
   validation-test:
-    name: ${{ inputs.test }} validation
+    name: ${{ inputs.test }} validation (${{ inputs.cluster_mode }}${{ !inputs.oidc && ', OIDC off' || '' }})
     # not applicable to forks. shouldn't run on release build
     if: github.repository_owner == 'openziti'
     runs-on: ubuntu-24.04
@@ -66,8 +78,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
+          case "$CLUSTER_MODE" in
+            cluster-3|cluster-1|non-ha) ;;
+            *) echo "cluster_mode must be cluster-3, cluster-1 or non-ha, not '$CLUSTER_MODE'" >&2; exit 1 ;;
+          esac
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/${TEST_TYPE} create -d ${TEST_TYPE}-${GITHUB_RUN_NUMBER} -n ${TEST_TYPE}-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-${TEST_TYPE},ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/${TEST_TYPE} create -d ${TEST_TYPE}-${GITHUB_RUN_NUMBER} -n ${TEST_TYPE}-${GITHUB_RUN_NUMBER} -l environment=gh-fablab-${TEST_TYPE}-${CLUSTER_MODE},cluster_mode=${CLUSTER_MODE},oidc=${OIDC},ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/${TEST_TYPE} up
           $(go env GOPATH)/bin/${TEST_TYPE} exec validateUp
 

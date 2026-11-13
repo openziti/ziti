@@ -362,7 +362,7 @@ jobs:
         shell: bash
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
-          $(go env GOPATH)/bin/smoketest create -d smoketest-ha-${GITHUB_RUN_NUMBER} -n smoketest-ha-${GITHUB_RUN_NUMBER} -l ha=true,environment=gh-fablab-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
+          $(go env GOPATH)/bin/smoketest create -d smoketest-ha-${GITHUB_RUN_NUMBER} -n smoketest-ha-${GITHUB_RUN_NUMBER} -l cluster_mode=cluster-3,environment=gh-fablab-ha-smoketest,ziti_version=$($(go env GOPATH)/bin/ziti-ci -q get-current-version)
           $(go env GOPATH)/bin/smoketest up
 
       - name: Test Ziti Command
