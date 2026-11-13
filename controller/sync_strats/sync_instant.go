@@ -966,50 +966,22 @@ func (strategy *InstantStrategy) BuildPublicKeys(tx *bbolt.Tx, rdm *common.Route
 	return nil
 }
 
-// BuildRevocations loads every unexpired revocation from the store into the
-// router data model. Without it, a data model rebuilt from the store (on startup,
-// on becoming leader, or after a snapshot install) would silently omit every
-// revocation already persisted, so routers syncing from that controller would
-// stop enforcing them.
+// BuildRevocations loads every stored revocation into rdm, expired ones included, so rdm matches
+// the store. Expired revocations leave the model when the revocation enforcer deletes them.
 func (strategy *InstantStrategy) BuildRevocations(tx *bbolt.Tx, rdm *common.RouterDataModelSender) error {
-	return loadRevocations(strategy.ae.GetStores().Revocation, tx, rdm, time.Now())
-}
-
-// loadRevocations applies each revocation in the store into rdm, skipping any
-// that have already expired. Expired revocations are left out because the
-// revocation enforcer purges them, so re-adding them here would only strand them
-// on routers until the next purge.
-func loadRevocations(store db.RevocationStore, tx *bbolt.Tx, rdm *common.RouterDataModelSender, now time.Time) error {
+	store := strategy.ae.GetStores().Revocation
 	for cursor := store.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
-		id := string(cursor.Current())
-
-		revocation, err := store.LoadById(tx, id)
+		revocation, err := store.LoadById(tx, string(cursor.Current()))
 		if err != nil {
 			return err
 		}
 
-		if revocation.ExpiresAt.Before(now) {
-			continue
-		}
-
-		var issuedBefore *timestamppb.Timestamp
-		if !revocation.IssuedBefore.IsZero() {
-			issuedBefore = timestamppb.New(revocation.IssuedBefore)
-		}
-
-		model := &edge_ctrl_pb.DataState_Event_Revocation{
-			Revocation: &edge_ctrl_pb.DataState_Revocation{
-				Id:           revocation.Id,
-				ExpiresAt:    timestamppb.New(revocation.ExpiresAt),
-				Type:         revocation.Type,
-				IssuedBefore: issuedBefore,
-			},
-		}
-		event := &edge_ctrl_pb.DataState_Event{
+		newModel := &edge_ctrl_pb.DataState_Event_Revocation{Revocation: newRevocation(revocation)}
+		newEvent := &edge_ctrl_pb.DataState_Event{
 			Action: edge_ctrl_pb.DataState_Create,
-			Model:  model,
+			Model:  newModel,
 		}
-		rdm.HandleRevocationEvent(event, model)
+		rdm.HandleRevocationEvent(newEvent, newModel)
 	}
 
 	return nil
@@ -1137,6 +1109,23 @@ func (strategy *InstantStrategy) ValidateServices(tx *bbolt.Tx, rdm *common.Rout
 		result = diffVals("service", t.Id, "name", t.Name, v.Name, result)
 		result = diffVals("service", t.Id, "encryption required", t.EncryptionRequired, v.EncryptionRequired, result)
 		result = diffJson("service", t.Id, "configs", t.Configs, v.Configs, result)
+		return result
+	})
+}
+
+// ValidateRevocations compares the controller's Revocation store against the revocations in rdm.
+// Revocations in rdm with no stored counterpart are not reported.
+func (strategy *InstantStrategy) ValidateRevocations(tx *bbolt.Tx, rdm *common.RouterDataModelSender) []error {
+	return ValidateType(tx, strategy.ae.GetStores().Revocation, rdm.Revocations, func(t *db.Revocation, v *edge_ctrl_pb.DataState_Revocation) []error {
+		var result []error
+		result = diffVals("revocation", t.Id, "type", t.Type, v.Type, result)
+		// UTC() drops the location and monotonic reading, so != compares only the instant
+		result = diffVals("revocation", t.Id, "expires at", t.ExpiresAt.UTC(), v.ExpiresAt.AsTime(), result)
+		// a nil cutoff revokes every session, so it must not be confused with a zero-time one
+		result = diffVals("revocation", t.Id, "has issued before", !t.IssuedBefore.IsZero(), v.IssuedBefore != nil, result)
+		if !t.IssuedBefore.IsZero() && v.IssuedBefore != nil {
+			result = diffVals("revocation", t.Id, "issued before", t.IssuedBefore.UTC(), v.IssuedBefore.AsTime(), result)
+		}
 		return result
 	})
 }
@@ -1446,6 +1435,10 @@ func (strategy *InstantStrategy) ValidateAll(rdm *common.RouterDataModelSender) 
 		}
 
 		if errs := strategy.ValidateServicePolicies(tx, rdm); len(errs) != 0 {
+			result = append(result, errs...)
+		}
+
+		if errs := strategy.ValidateRevocations(tx, rdm); len(errs) != 0 {
 			result = append(result, errs...)
 		}
 
@@ -1952,21 +1945,27 @@ func (strategy *InstantStrategy) sendDataStateChangeSet(rtx *RouterSender, state
 }
 
 func (strategy *InstantStrategy) handleRevocation(index uint64, action edge_ctrl_pb.DataState_Action, revocation *db.Revocation) {
+	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
+		Action: action,
+		Model: &edge_ctrl_pb.DataState_Event_Revocation{
+			Revocation: newRevocation(revocation),
+		},
+	})
+}
+
+// newRevocation converts a stored revocation to its router data model form. A zero IssuedBefore
+// maps to nil.
+func newRevocation(revocation *db.Revocation) *edge_ctrl_pb.DataState_Revocation {
 	var issuedBefore *timestamppb.Timestamp
 	if !revocation.IssuedBefore.IsZero() {
 		issuedBefore = timestamppb.New(revocation.IssuedBefore)
 	}
-	strategy.addToChangeSet(index, &edge_ctrl_pb.DataState_Event{
-		Action: action,
-		Model: &edge_ctrl_pb.DataState_Event_Revocation{
-			Revocation: &edge_ctrl_pb.DataState_Revocation{
-				Id:           revocation.Id,
-				ExpiresAt:    timestamppb.New(revocation.ExpiresAt),
-				Type:         revocation.Type,
-				IssuedBefore: issuedBefore,
-			},
-		},
-	})
+	return &edge_ctrl_pb.DataState_Revocation{
+		Id:           revocation.Id,
+		ExpiresAt:    timestamppb.New(revocation.ExpiresAt),
+		Type:         revocation.Type,
+		IssuedBefore: issuedBefore,
+	}
 }
 
 func (strategy *InstantStrategy) HandleServicePolicyChange(ctx boltz.MutateContext, policyChange *edge_ctrl_pb.DataState_ServicePolicyChange) {
