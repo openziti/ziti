@@ -743,7 +743,7 @@ func Test_PostureChecks_ProcessMulti(t *testing.T) {
 		t.Run("succeeds", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			ctx.Req.NoError(patchErr)
-			standardJsonResponseTests(patchResp, 200, t)
+			standardJsonResponseTests(t, patchResp, 200)
 		})
 
 		t.Run("can retrieve values properly", func(t *testing.T) {

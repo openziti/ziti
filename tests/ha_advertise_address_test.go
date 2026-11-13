@@ -83,6 +83,8 @@ func Test_AdvertiseAddressReconcile_Follower(t *testing.T) {
 }
 
 func testFollowerAdvertiseAddressChange(t *testing.T, listener, updatedAddr string, nonVoter bool) {
+	t.Helper()
+
 	ctx := NewTestContextWithConfigSet(t, Ha3)
 	defer ctx.Teardown()
 

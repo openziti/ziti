@@ -143,6 +143,8 @@ func newDefaultTestContext() *TestContext {
 }
 
 func NewTestContext(t *testing.T) *TestContext {
+	t.Helper()
+
 	ret := &TestContext{
 		ApiHost: "127.0.0.1:1281",
 		AdminAuthenticator: &updbAuthenticator{
@@ -161,6 +163,8 @@ func NewTestContext(t *testing.T) *TestContext {
 // NewTestContextWithConfigSet creates a TestContext that uses the supplied ConfigSet
 // instead of DefaultATS. All other behavior, including DB path and API host, is unchanged.
 func NewTestContextWithConfigSet(t *testing.T, cs ConfigSet) *TestContext {
+	t.Helper()
+
 	ret := NewTestContext(t)
 	ret.configSet = cs
 	return ret
@@ -178,6 +182,8 @@ func GetTestContext() *TestContext {
 // level tests. Necessary because, using the wrong *testing.T will cause go test library
 // errors.
 func (ctx *TestContext) testContextChanged(t *testing.T) {
+	t.Helper()
+
 	ctx.testing = t
 	newReq := NewCustomAssertions(t)
 	ctx.Req = newReq
@@ -186,6 +192,8 @@ func (ctx *TestContext) testContextChanged(t *testing.T) {
 
 // NextTest is an alias for testContextChanged and reflects the bbolt testing framework
 func (ctx *TestContext) NextTest(t *testing.T) {
+	t.Helper()
+
 	ctx.testContextChanged(t)
 }
 

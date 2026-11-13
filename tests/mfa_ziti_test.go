@@ -56,7 +56,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := noMfaSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+				standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 			})
 
 			t.Run("delete MFA should 404", func(t *testing.T) {
@@ -64,7 +64,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := noMfaSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Delete("/current-identity/mfa")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+				standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 			})
 
 			t.Run("post MFA verify should 404", func(t *testing.T) {
@@ -72,7 +72,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := noMfaSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Post("/current-identity/mfa/verify")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+				standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 			})
 
 			t.Run("get MFA QR code should 404", func(t *testing.T) {
@@ -80,7 +80,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := noMfaSession.newAuthenticatedRequest().Get("/current-identity/mfa/qr-code")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+				standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 			})
 
 			t.Run("get MFA recovery codes should 404", func(t *testing.T) {
@@ -88,7 +88,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := noMfaSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Get("/current-identity/mfa/recovery-codes")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+				standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 			})
 
 			t.Run("post MFA to generate recovery codes should 404", func(t *testing.T) {
@@ -97,7 +97,7 @@ func Test_MFA(t *testing.T) {
 					resp, err := noMfaSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Post("/current-identity/mfa/recovery-codes")
 
 					ctx.Req.NoError(err)
-					standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+					standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 				})
 			})
 
@@ -109,7 +109,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := noMfaSession.newAuthenticatedRequest().Get("/current-api-session")
 
 				ctx.Req.NoError(err)
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				currentApiSession, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -132,7 +132,7 @@ func Test_MFA(t *testing.T) {
 
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				identity, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -170,7 +170,7 @@ func Test_MFA(t *testing.T) {
 
 			resp, err := mfaStartedSession.newAuthenticatedRequest().Post("/current-identity/mfa")
 			ctx.Req.NoError(err)
-			standardJsonResponseTests(resp, http.StatusCreated, t)
+			standardJsonResponseTests(t, resp, http.StatusCreated)
 		})
 
 		t.Run("and get MFA should return a MFA document", func(t *testing.T) {
@@ -178,7 +178,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaStartedSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 			ctx.Req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			mfa, err := gabs.ParseJSON(resp.Body())
 			ctx.Req.NoError(err)
@@ -227,7 +227,7 @@ func Test_MFA(t *testing.T) {
 
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				identity, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -262,7 +262,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaStartedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Get("/current-identity/mfa/recovery-codes")
 			ctx.Req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("and post MFA recovery codes should error with not found", func(t *testing.T) {
@@ -270,7 +270,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaStartedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Post("/current-identity/mfa/recovery-codes")
 			ctx.Req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("authentication with partially enrolled MFA should fully authenticate", func(t *testing.T) {
@@ -281,7 +281,7 @@ func Test_MFA(t *testing.T) {
 			ctx.Req.NotEmpty(secondMfaStartedSession)
 
 			resp, err := secondMfaStartedSession.newAuthenticatedRequest().Get("/current-api-session/")
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(resp)
@@ -300,7 +300,7 @@ func Test_MFA(t *testing.T) {
 				ctx.testContextChanged(t)
 				resp, err := secondMfaStartedSession.newAuthenticatedRequest().Get("/sessions")
 				ctx.Req.NoError(err)
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 			})
 		})
 
@@ -309,14 +309,14 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaStartedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Delete("/current-identity/mfa")
 			ctx.Req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			t.Run("and return 404 if requested after deletion", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				resp, err := mfaStartedSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 				ctx.Req.NoError(err)
 
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+				standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 			})
 		})
 	})
@@ -347,7 +347,7 @@ func Test_MFA(t *testing.T) {
 
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().Post("/current-identity/mfa")
 				ctx.Req.NoError(err)
-				standardJsonResponseTests(resp, http.StatusCreated, t)
+				standardJsonResponseTests(t, resp, http.StatusCreated)
 			})
 
 			t.Run("save recovery codes", func(t *testing.T) {
@@ -356,7 +356,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				mfa, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -400,7 +400,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(`{}`).Post("/current-identity/mfa/verify")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, "COULD_NOT_VALIDATE", http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(t, resp, "COULD_NOT_VALIDATE", http.StatusBadRequest)
 		})
 
 		t.Run("with an empty code it should error with invalid token/bad request", func(t *testing.T) {
@@ -408,7 +408,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Post("/current-identity/mfa/verify")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 		})
 
 		t.Run("with an invalid code it should error with invalid token/bad request", func(t *testing.T) {
@@ -418,7 +418,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("qwgjwoigrw92")).Post("/current-identity/mfa/verify")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 		})
 
 		t.Run("verify with a recovery code should return with invalid token/bad request", func(t *testing.T) {
@@ -426,7 +426,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(mfaValidatedRecoveryCodes[2])).Post("/current-identity/mfa/verify")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 		})
 
 		t.Run("with a valid code should return ok", func(t *testing.T) {
@@ -438,7 +438,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
 			ctx.Req.NoError(err)
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			t.Run("current api session should be", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -481,7 +481,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("after verification", func(t *testing.T) {
@@ -490,7 +490,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().Get("/current-identity/mfa/qr-code")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+				standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 			})
 
 			t.Run("get MFA should return a MFA documentt", func(t *testing.T) {
@@ -498,7 +498,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				mfa, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -529,7 +529,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Get("/current-identity/mfa/recovery-codes")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 			})
 
 			t.Run("get recovery codes with an invalid code should return invalid token/bad request", func(t *testing.T) {
@@ -538,7 +538,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("6sa5d4f56sad")).Get("/current-identity/mfa/recovery-codes")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 			})
 
 			t.Run("get recovery codes with a recovery code should return invalid token/bad request", func(t *testing.T) {
@@ -547,7 +547,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(mfaValidatedRecoveryCodes[10])).Get("/current-identity/mfa/recovery-codes")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 			})
 
 			t.Run("create new recovery codes with empty code should return invalid token/bad request", func(t *testing.T) {
@@ -555,7 +555,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Post("/current-identity/mfa/recovery-codes")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 			})
 
 			t.Run("create recovery codes with an invalid code should return invalid token/bad request", func(t *testing.T) {
@@ -564,7 +564,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfaValidatedSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("6sa5d4f56sad")).Post("/current-identity/mfa/recovery-codes")
 
 				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+				standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 			})
 
 			t.Run("newly authenticated sessions can use TOTP codes for authentication", func(t *testing.T) {
@@ -581,7 +581,7 @@ func Test_MFA(t *testing.T) {
 					resp, err := newValidatedSession.newAuthenticatedRequest().Get("/current-api-session")
 
 					ctx.Req.NoError(err)
-					standardJsonResponseTests(resp, http.StatusOK, t)
+					standardJsonResponseTests(t, resp, http.StatusOK)
 
 					currentApiSession, err := gabs.ParseJSON(resp.Body())
 					ctx.Req.NoError(err)
@@ -618,7 +618,7 @@ func Test_MFA(t *testing.T) {
 					resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
 					ctx.Req.NoError(err)
 
-					standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+					standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 				})
 
 				t.Run("validating MFA with an empty token should fail with invalid token/bad request", func(t *testing.T) {
@@ -630,7 +630,7 @@ func Test_MFA(t *testing.T) {
 
 					ctx.Req.NoError(err)
 
-					standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+					standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 				})
 
 				t.Run("validating MFA with an invalid token should fail with invalid token/bad request", func(t *testing.T) {
@@ -642,7 +642,7 @@ func Test_MFA(t *testing.T) {
 
 					ctx.Req.NoError(err)
 
-					standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+					standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 				})
 
 				t.Run("validating MFA with an valid token should succeed", func(t *testing.T) {
@@ -656,7 +656,7 @@ func Test_MFA(t *testing.T) {
 
 					ctx.Req.NoError(err)
 
-					standardJsonResponseTests(resp, http.StatusOK, t)
+					standardJsonResponseTests(t, resp, http.StatusOK)
 
 					t.Run("and should have access to the API", func(t *testing.T) {
 						ctx.testContextChanged(t)
@@ -664,7 +664,7 @@ func Test_MFA(t *testing.T) {
 						resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
 						ctx.Req.NoError(err)
 
-						standardJsonResponseTests(resp, http.StatusOK, t)
+						standardJsonResponseTests(t, resp, http.StatusOK)
 					})
 
 					t.Run("current api session should be", func(t *testing.T) {
@@ -715,7 +715,7 @@ func Test_MFA(t *testing.T) {
 					resp, err := newValidatedSession.newAuthenticatedRequest().Get("/current-api-session")
 
 					ctx.Req.NoError(err)
-					standardJsonResponseTests(resp, http.StatusOK, t)
+					standardJsonResponseTests(t, resp, http.StatusOK)
 
 					currentApiSession, err := gabs.ParseJSON(resp.Body())
 					ctx.Req.NoError(err)
@@ -752,7 +752,7 @@ func Test_MFA(t *testing.T) {
 					resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
 					ctx.Req.NoError(err)
 
-					standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+					standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 				})
 
 				t.Run("validating MFA with an valid recovery code should succeed", func(t *testing.T) {
@@ -769,7 +769,7 @@ func Test_MFA(t *testing.T) {
 
 					ctx.Req.NoError(err)
 
-					standardJsonResponseTests(resp, http.StatusOK, t)
+					standardJsonResponseTests(t, resp, http.StatusOK)
 
 					t.Run("and should have access to the API", func(t *testing.T) {
 						ctx.testContextChanged(t)
@@ -777,7 +777,7 @@ func Test_MFA(t *testing.T) {
 						resp, err := newValidatedSession.newAuthenticatedRequest().Get("/sessions")
 						ctx.Req.NoError(err)
 
-						standardJsonResponseTests(resp, http.StatusOK, t)
+						standardJsonResponseTests(t, resp, http.StatusOK)
 					})
 
 					t.Run("current api session should be", func(t *testing.T) {
@@ -821,7 +821,7 @@ func Test_MFA(t *testing.T) {
 
 					ctx.Req.NoError(err)
 
-					standardJsonResponseTests(resp, http.StatusOK, t)
+					standardJsonResponseTests(t, resp, http.StatusOK)
 
 					identity, err := gabs.ParseJSON(resp.Body())
 					ctx.Req.NoError(err)
@@ -864,7 +864,7 @@ func Test_MFA(t *testing.T) {
 
 				resp, err := mfa01DeleteSession.newAuthenticatedRequest().Post("/current-identity/mfa")
 				ctx.Req.NoError(err)
-				standardJsonResponseTests(resp, http.StatusCreated, t)
+				standardJsonResponseTests(t, resp, http.StatusCreated)
 			})
 
 			t.Run("save recovery codes", func(t *testing.T) {
@@ -873,7 +873,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfa01DeleteSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				mfa, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -918,7 +918,7 @@ func Test_MFA(t *testing.T) {
 					resp, err := mfa01DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
 					ctx.Req.NoError(err)
-					standardJsonResponseTests(resp, http.StatusOK, t)
+					standardJsonResponseTests(t, resp, http.StatusOK)
 				})
 			})
 		})
@@ -934,7 +934,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := nonAdminSession.newAuthenticatedRequest().Delete("/identities/" + mfa01DeleteIdentityId + "/mfa")
 			ctx.Req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+			standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 		})
 
 		t.Run("by an admin it should succeed", func(t *testing.T) {
@@ -943,7 +943,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/identities/" + mfa01DeleteIdentityId + "/mfa")
 			ctx.Req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			t.Run("mfaEnabled flag should be false", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -951,7 +951,7 @@ func Test_MFA(t *testing.T) {
 
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				identity, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -990,7 +990,7 @@ func Test_MFA(t *testing.T) {
 
 				resp, err := mfa02DeleteSession.newAuthenticatedRequest().Post("/current-identity/mfa")
 				ctx.Req.NoError(err)
-				standardJsonResponseTests(resp, http.StatusCreated, t)
+				standardJsonResponseTests(t, resp, http.StatusCreated)
 			})
 
 			t.Run("save recovery codes", func(t *testing.T) {
@@ -999,7 +999,7 @@ func Test_MFA(t *testing.T) {
 				resp, err := mfa02DeleteSession.newAuthenticatedRequest().Get("/current-identity/mfa")
 				ctx.Req.NoError(err)
 
-				standardJsonResponseTests(resp, http.StatusOK, t)
+				standardJsonResponseTests(t, resp, http.StatusOK)
 
 				mfa, err := gabs.ParseJSON(resp.Body())
 				ctx.Req.NoError(err)
@@ -1044,7 +1044,7 @@ func Test_MFA(t *testing.T) {
 					resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Post("/current-identity/mfa/verify")
 
 					ctx.Req.NoError(err)
-					standardJsonResponseTests(resp, http.StatusOK, t)
+					standardJsonResponseTests(t, resp, http.StatusOK)
 				})
 			})
 		})
@@ -1054,7 +1054,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfa02DeleteSession.newAuthenticatedRequest().Delete("/current-identity/mfa")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 		})
 
 		t.Run("with an invalid code it should fail", func(s *testing.T) {
@@ -1062,7 +1062,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetHeader("mfa-validation-code", "44444").Delete("/current-identity/mfa")
 
 			ctx.Req.NoError(err)
-			standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
+			standardErrorJsonResponseTests(t, resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest)
 		})
 
 		t.Run("with a valid code it should succeed", func(s *testing.T) {
@@ -1073,7 +1073,7 @@ func Test_MFA(t *testing.T) {
 			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetHeader("mfa-validation-code", code).Delete("/current-identity/mfa")
 
 			ctx.Req.NoError(err)
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 		})
 	})
 }

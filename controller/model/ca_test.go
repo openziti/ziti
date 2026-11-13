@@ -44,6 +44,8 @@ func Test_Ca_GetExternalId(t *testing.T) {
 	const email = "tenant042@acme.example"
 
 	newCert := func(t *testing.T) *x509.Certificate {
+		t.Helper()
+
 		return &x509.Certificate{
 			Subject:        pkix.Name{CommonName: commonName},
 			URIs:           []*url.URL{mustParseUri(t, sanUri), mustParseUri(t, spiffeId)},

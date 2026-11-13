@@ -11,6 +11,8 @@ import (
 )
 
 func roundTrip(t *testing.T, apiErr *errorz.ApiError) *errorz.ApiError {
+	t.Helper()
+
 	data, err := EncodeApiError(apiErr)
 	require.NoError(t, err)
 	decoded := DecodeApiError(data)

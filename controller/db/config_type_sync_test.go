@@ -409,6 +409,8 @@ type snapshotCountingDb struct {
 }
 
 func newSnapshotCountingDb(t *testing.T, db boltz.Db) *snapshotCountingDb {
+	t.Helper()
+
 	return &snapshotCountingDb{
 		Db:   db,
 		path: filepath.Join(t.TempDir(), "snapshot.db"),

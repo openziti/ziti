@@ -74,6 +74,8 @@ type testPki struct {
 }
 
 func newTestPki(t *testing.T) *testPki {
+	t.Helper()
+
 	req := require.New(t)
 
 	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -106,6 +108,8 @@ func newTestPki(t *testing.T) *testPki {
 // newIdentity issues a leaf certificate for the given common name and returns a
 // TokenId for it, with the token defaulted to the common name.
 func (self *testPki) newIdentity(t *testing.T, cn string) *identity.TokenId {
+	t.Helper()
+
 	req := require.New(t)
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

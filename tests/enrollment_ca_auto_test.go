@@ -75,7 +75,7 @@ func Test_EnrollmetnCaAuto(t *testing.T) {
 
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetHeader("content-type", "text/plain").SetBody(verifyPem).Post("cas/" + testCaId + "/verify")
 			ctx.Req.NoError(err)
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			t.Run("can enroll without a name and a 0 length body with externalId claim", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -194,7 +194,7 @@ func Test_EnrollmetnCaAuto(t *testing.T) {
 						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities")
 
 						ctx.Req.NoError(err)
-						standardJsonResponseTests(resp, http.StatusOK, t)
+						standardJsonResponseTests(t, resp, http.StatusOK)
 
 						envelope := rest_model.ListIdentitiesEnvelope{}
 

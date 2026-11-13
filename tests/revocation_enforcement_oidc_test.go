@@ -74,6 +74,8 @@ func requireSetIdentityDisabled(ctx *TestContext, identityId string, path string
 // freshly-authenticated OIDC client context for it. Cleanup of the SDK contexts
 // is registered on t.
 func setupRevocationEnv(t *testing.T, ctx *TestContext) (*ManagementHelperClient, *service, *identity, *ziti.ContextImpl) {
+	t.Helper()
+
 	ctx.RequireAdminManagementApiLogin()
 
 	dialIdentityRole := eid.New()
@@ -157,6 +159,8 @@ func waitForSecondAfter(ts time.Time) {
 // time). Authenticate on an already-authenticated context is a no-op, so a new
 // context is required to exercise re-authentication.
 func freshAuthedContext(t *testing.T, ctx *TestContext, id *identity) *ziti.ContextImpl {
+	t.Helper()
+
 	ztx, err := ziti.NewContext(id.config)
 	ctx.Req.NoError(err)
 	clientContext, ok := ztx.(*ziti.ContextImpl)

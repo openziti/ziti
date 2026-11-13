@@ -28,6 +28,8 @@ import (
 // makeJwtWithExp builds a signed JWT carrying only an exp claim. The token helpers parse it
 // unverified, so the signing key is irrelevant.
 func makeJwtWithExp(t *testing.T, exp time.Time) string {
+	t.Helper()
+
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(exp),
 	})

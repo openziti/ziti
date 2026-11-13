@@ -62,6 +62,8 @@ type terminatorUpdateTest struct {
 }
 
 func newTerminatorUpdateTest(t *testing.T) *terminatorUpdateTest {
+	t.Helper()
+
 	testCtx := model.NewTestContext(t)
 	t.Cleanup(testCtx.Cleanup)
 	testCtx.Init()

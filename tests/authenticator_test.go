@@ -48,7 +48,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		authenticatorsBody, err := gabs.ParseJSON(resp.Body())
 		req.NoError(err)
@@ -95,7 +95,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardJsonResponseTests(listResp, http.StatusOK, t)
+		standardJsonResponseTests(t, listResp, http.StatusOK)
 
 		authenticatorsBody, err := gabs.ParseJSON(listResp.Body())
 
@@ -107,7 +107,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		detailResp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/authenticators/" + authenticatorId)
 		req.NoError(err)
 
-		standardJsonResponseTests(detailResp, http.StatusOK, t)
+		standardJsonResponseTests(t, detailResp, http.StatusOK)
 	})
 
 	t.Run("can create updb authenticator for a different identity", func(t *testing.T) {
@@ -126,7 +126,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(body.String()).Post("/authenticators")
 
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusCreated, t)
+		standardJsonResponseTests(t, resp, http.StatusCreated)
 
 		t.Run("and the new authenticator can be used for authentication", func(t *testing.T) {
 			req := require.New(t)
@@ -160,7 +160,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(body.String()).Post("/authenticators")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusCreated, t)
+		standardJsonResponseTests(t, resp, http.StatusCreated)
 
 		createBody, err := gabs.ParseJSON(resp.Body())
 		ctx.Req.NoError(err)
@@ -193,7 +193,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(body.String()).Post("/authenticators")
 
 		ctx.Req.NoError(err)
-		standardErrorJsonResponseTests(resp, apierror.AuthenticatorMethodMaxCode, apierror.AuthenticatorMethodMaxStatus, t)
+		standardErrorJsonResponseTests(t, resp, apierror.AuthenticatorMethodMaxCode, apierror.AuthenticatorMethodMaxStatus)
 	})
 
 	t.Run("can update updb authenticator for a different identity", func(t *testing.T) {
@@ -224,7 +224,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(body.String()).Put("/authenticators/" + authenticatorId)
 
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		t.Run("newly updated newPassword can be used for authentication", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -265,7 +265,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(body.String()).Patch("/authenticators/" + authenticatorId)
 
 			ctx.Req.NoError(err)
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			t.Run("newly updated authenticator can be used for authentication", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -302,7 +302,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequestWithBody(body.String()).Patch("/authenticators/" + authenticatorId)
 
 			ctx.Req.NoError(err)
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 
 			t.Run("newly patched authenticator can be used for authentication", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -336,7 +336,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 
 		ctx.Req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		t.Run("identity can not longer authenticate", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -539,14 +539,14 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 		resp, err := updbNonAdminManagementSession.newAuthenticatedRequest().Get("authenticators")
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 	t.Run("cannot show details of an authenticator, receives unauthorized error", func(t *testing.T) {
 		req := require.New(t)
 		resp, err := updbNonAdminManagementSession.newAuthenticatedRequest().Get("authenticators/ba3d3a94-47aa-4be1-bc89-04877d5d5fe4")
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 
 	t.Run("cannot create updb authenticator for a different identity, receives unauthorized", func(t *testing.T) {
@@ -562,7 +562,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			Post("authenticators")
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 
 	t.Run("cannot update updb authenticator for a different identity, receives unauthorized", func(t *testing.T) {
@@ -576,7 +576,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			Put("authenticators/" + eid.New())
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 
 	t.Run("cannot patch updb authenticator for a different identity, receives unauthorized", func(t *testing.T) {
@@ -589,7 +589,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			Patch("authenticators/" + eid.New())
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 
 	t.Run("cannot delete updb authenticator for a different identity, receives unauthorized", func(t *testing.T) {
@@ -597,7 +597,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 		resp, err := updbNonAdminManagementSession.newAuthenticatedRequest().Delete("authenticators/" + eid.New())
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 
 	t.Run("cannot create cert authenticator for a different identity, receives unauthorized", func(t *testing.T) {
@@ -613,7 +613,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			Post("authenticators")
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 
 	t.Run("cannot update cert authenticator for a different identity, receives unauthorized", func(t *testing.T) {
@@ -628,7 +628,7 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			Put("authenticators/" + eid.New())
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 	t.Run("cannot patch cert authenticator for a different identity, receives unauthorized", func(t *testing.T) {
 		req := require.New(t)
@@ -640,14 +640,14 @@ func Test_Authenticators_NonAdminUsingAdminEndpoints(t *testing.T) {
 			Patch("authenticators/" + eid.New())
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 	t.Run("cannot delete cert authenticator for a different identity, receives unauthorized", func(t *testing.T) {
 		req := require.New(t)
 		resp, err := updbNonAdminManagementSession.newAuthenticatedRequest().Delete("authenticators/" + eid.New())
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 	})
 }
 
@@ -671,7 +671,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		updbAuthenticatorListBody, err := gabs.ParseJSON(resp.Body())
 
@@ -712,7 +712,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 		})
 	})
 
@@ -736,7 +736,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("for read if the authenticator id is for another identity", func(t *testing.T) {
@@ -746,7 +746,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("for update if the authenticator id is for another identity", func(t *testing.T) {
@@ -761,7 +761,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("for update if the authenticator id is made up", func(t *testing.T) {
@@ -771,7 +771,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("for patch if the authenticator id is for another identity", func(t *testing.T) {
@@ -781,7 +781,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 
 		t.Run("for patch if the authenticator id is made up", func(t *testing.T) {
@@ -791,7 +791,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 			req.NoError(err)
 
-			standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
+			standardErrorJsonResponseTests(t, resp, errorz.NotFoundCode, http.StatusNotFound)
 		})
 	})
 
@@ -801,7 +801,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, apierror.MethodNotAllowedCode, http.StatusMethodNotAllowed, t)
+		standardErrorJsonResponseTests(t, resp, apierror.MethodNotAllowedCode, http.StatusMethodNotAllowed)
 	})
 
 	t.Run("can not create as it isn't supported", func(t *testing.T) {
@@ -810,7 +810,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, apierror.MethodNotAllowedCode, http.StatusMethodNotAllowed, t)
+		standardErrorJsonResponseTests(t, resp, apierror.MethodNotAllowedCode, http.StatusMethodNotAllowed)
 	})
 
 	t.Run("a non-admin can update their own updb authenticator", func(t *testing.T) {
@@ -840,7 +840,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		t.Run("a non-admin can authenticate with updated updb credentials", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -881,7 +881,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 
 		t.Run("a non-admin can authenticate with the original updb credentials", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -919,7 +919,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		t.Run("a non-admin can authenticate with patched updb credentials", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -958,7 +958,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, errorz.UnauthorizedCode, http.StatusUnauthorized, t)
+		standardErrorJsonResponseTests(t, resp, errorz.UnauthorizedCode, http.StatusUnauthorized)
 
 		t.Run("a non-admin can authenticate with original updb credentials", func(t *testing.T) {
 			ctx.testContextChanged(t)
@@ -996,7 +996,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, apierror.AuthenticatorCanNotBeUpdatedCode, http.StatusConflict, t)
+		standardErrorJsonResponseTests(t, resp, apierror.AuthenticatorCanNotBeUpdatedCode, http.StatusConflict)
 	})
 
 	t.Run("a non-admin cannot patch their own cert authenticator", func(t *testing.T) {
@@ -1025,6 +1025,6 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 
 		req.NoError(err)
 
-		standardErrorJsonResponseTests(resp, apierror.AuthenticatorCanNotBeUpdatedCode, http.StatusConflict, t)
+		standardErrorJsonResponseTests(t, resp, apierror.AuthenticatorCanNotBeUpdatedCode, http.StatusConflict)
 	})
 }

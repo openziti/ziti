@@ -236,7 +236,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetHeader("content-type", "text/plain").SetBody(verifyPem).Post("cas/" + caCreateResp.Data.ID + "/verify")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,
@@ -333,7 +333,7 @@ func Test_EnrollmentOtt(t *testing.T) {
 
 		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetHeader("content-type", "text/plain").SetBody(verifyPem).Post("cas/" + caCreateResp.Data.ID + "/verify")
 		ctx.Req.NoError(err)
-		standardJsonResponseTests(resp, http.StatusOK, t)
+		standardJsonResponseTests(t, resp, http.StatusOK)
 
 		enrollmentCreate := &rest_model.EnrollmentCreate{
 			IdentityID: &identity.Id,

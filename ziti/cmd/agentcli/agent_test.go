@@ -71,6 +71,8 @@ func emptyOptions() common.CommonOptions {
 
 // restoreLoggingAfter restores slog's default logger and the global log levels when the test ends.
 func restoreLoggingAfter(t *testing.T) {
+	t.Helper()
+
 	prevDefault := slog.Default()
 	prevLevel := logging.GlobalLevel()
 	prevLogrusLevel := logrus.GetLevel()

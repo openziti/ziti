@@ -510,6 +510,8 @@ func (test *boltQueryTests) testSortPage(t *testing.T) {
 }
 
 func assertOrderById(t *testing.T, people []*testPerson, prevId *string) {
+	t.Helper()
+
 	for idx, person := range people {
 		if idx == 0 {
 			if prevId != nil {
