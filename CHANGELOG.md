@@ -865,7 +865,7 @@ Thanks to the community members who contributed to this release.
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/channel/v5: [v4.3.11 -> v5.0.39](https://github.com/openziti/channel/compare/v4.3.11...v5.0.39)
+* github.com/openziti/channel/v5: [v4.3.11 -> v5.0.40](https://github.com/openziti/channel/compare/v4.3.11...v5.0.40)
     * [Issue #315](https://github.com/openziti/channel/issues/315) - Hellos with a value other than 4 bytes under the ReplyFor header key are rejected
     * [Issue #311](https://github.com/openziti/channel/issues/311) - A queued message can be discarded unwritten after Send reports success
     * [Issue #301](https://github.com/openziti/channel/issues/301) - ReplyFor header with a length other than 4 causes a nil pointer dereference on the rx path
@@ -896,7 +896,8 @@ Thanks to the community members who contributed to this release.
 * github.com/openziti/edge-api: [v0.31.0 -> v0.36.1](https://github.com/openziti/edge-api/compare/v0.31.0...v0.36.1)
     * [Issue #198](https://github.com/openziti/edge-api/issues/198) - Advertise edge router capabilities in the service edge-router list
 
-* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.105](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.105)
+* github.com/openziti/foundation/v2: [v2.0.91 -> v2.0.106](https://github.com/openziti/foundation/compare/v2.0.91...v2.0.106)
+    * [Issue #505](https://github.com/openziti/foundation/issues/505) - Add pfxlog-shaped output handlers to the logging package
     * [Issue #502](https://github.com/openziti/foundation/issues/502) - logging registry forwards records its root handler would decline
     * [Issue #499](https://github.com/openziti/foundation/issues/499) - AtomicBitSet has no set-and-return-previous operation
     * [Issue #494](https://github.com/openziti/foundation/issues/494) - Add package-level Panic logging helper
@@ -904,14 +905,18 @@ Thanks to the community members who contributed to this release.
     * [Issue #488](https://github.com/openziti/foundation/issues/488) - Add package-level Fatal and SyncEmit helpers to logging
     * [Issue #484](https://github.com/openziti/foundation/issues/484) - Add slog logging core (foundation/v2/logging) for upstream libraries
 
-* github.com/openziti/identity: [v1.0.129 -> v1.0.144](https://github.com/openziti/identity/compare/v1.0.129...v1.0.144)
+* github.com/openziti/identity: [v1.0.129 -> v1.0.145](https://github.com/openziti/identity/compare/v1.0.129...v1.0.145)
     * [Issue #72](https://github.com/openziti/identity/issues/72) - Convert logging from pfxlog/logrus to foundation slog logging
     * [Issue #74](https://github.com/openziti/identity/issues/74) - golangci-lint CI fails on go 1.25 module (action installs golangci-lint v1.x)
 
-* github.com/openziti/runzmd: [v1.0.90 -> v1.0.97](https://github.com/openziti/runzmd/compare/v1.0.90...v1.0.97)
+* github.com/openziti/runzmd: [v1.0.90 -> v1.0.98](https://github.com/openziti/runzmd/compare/v1.0.90...v1.0.98)
     * [Issue #58](https://github.com/openziti/runzmd/issues/58) - Variables are not expanded correctly in code blocks
 
-* github.com/openziti/sdk-golang/v2: [v1.7.0 -> v2.0.0-pre5](https://github.com/openziti/sdk-golang/compare/v1.7.0...v2.0.0-pre5)
+* github.com/openziti/sdk-golang/v2: [v1.7.0 -> v2.0.0-pre6](https://github.com/openziti/sdk-golang/compare/v1.7.0...v2.0.0-pre6)
+    * [Issue #1074](https://github.com/openziti/sdk-golang/issues/1074) - Legacy conn with a slow reader blocks every connection on its router channel
+    * [Issue #1052](https://github.com/openziti/sdk-golang/issues/1052) - Hosting listener blocks when a hosting connection closes with a full accept queue
+    * [Issue #1079](https://github.com/openziti/sdk-golang/issues/1079) - SDK logs every payload, ack, read and write at debug level
+    * [Issue #1070](https://github.com/openziti/sdk-golang/issues/1070) - Move xgress wire constants into edge_client.proto
     * [Issue #1048](https://github.com/openziti/sdk-golang/issues/1048) - Write-failed payload is written to the peer as empty data, failing encrypted reads with invalid input
     * [Issue #1036](https://github.com/openziti/sdk-golang/issues/1036) - Closing an SDK-hosted xgress conn before its circuit starts blocks for the circuit start timeout
     * [Issue #1041](https://github.com/openziti/sdk-golang/issues/1041) - Cost and precedence updates on a hosted service are lost when its listener rebinds
@@ -941,17 +946,21 @@ Thanks to the community members who contributed to this release.
     * [Issue #932](https://github.com/openziti/sdk-golang/issues/932) - API Session Certificate chain is not preserved
 
 * github.com/openziti/secretstream: [v0.1.49 -> v0.1.53](https://github.com/openziti/secretstream/compare/v0.1.49...v0.1.53)
-* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.215...v2.0.228)
+* github.com/openziti/transport/v2: [v2.0.215 -> v2.0.229](https://github.com/openziti/transport/compare/v2.0.215...v2.0.229)
     * [Issue #176](https://github.com/openziti/transport/issues/176) - tcp.Connection hides CloseWrite, so callers cannot half-close a TCP transport connection
     * [Issue #173](https://github.com/openziti/transport/issues/173) - Convert logging from pfxlog/logrus to foundation slog logging
 
 * github.com/openziti/xweb/v3: [v3.0.4 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.4...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.0 -> v2.1.0](https://github.com/openziti/ziti/compare/v2.0.0...v2.1.0)
+    * [Issue #4529](https://github.com/openziti/ziti/issues/4529) - Dials to terminators whose host is gone fail as ROUTER_ERR_GENERIC and keep being selected
     * [Issue #4663](https://github.com/openziti/ziti/issues/4663) - Add metrics for the router data model subscriber goroutine
-    * [Issue #4693](https://github.com/openziti/ziti/issues/4693) - Router xgress Close can block indefinitely on a congested circuit
     * [Issue #4330](https://github.com/openziti/ziti/issues/4330) - ER/T does not close existing circuits when the router loses dial access to a service
+    * [Issue #4693](https://github.com/openziti/ziti/issues/4693) - Router xgress Close can block indefinitely on a congested circuit
+    * [Issue #4638](https://github.com/openziti/ziti/issues/4638) - Deprecate creating a router outside enrollment
+    * [Issue #4639](https://github.com/openziti/ziti/issues/4639) - Metrics event filtering builds and maps every metric before discarding the ones it filters out
     * [Issue #4753](https://github.com/openziti/ziti/issues/4753) - Routers drop controllers on a stale member list from a leader restarted after a snapshot install
     * [Issue #4705](https://github.com/openziti/ziti/issues/4705) - Version built-in config types independently of the database version
+    * [Issue #4102](https://github.com/openziti/ziti/issues/4102) - Controller RouterDataModel rebuild (BuildAll) drops all existing revocations
     * [Issue #4712](https://github.com/openziti/ziti/issues/4712) - Identity PUT re-enables a disabled identity
     * [Issue #4713](https://github.com/openziti/ziti/issues/4713) - Terminator PUT clears hostId, peerData and sourceCtrl
     * [Issue #4714](https://github.com/openziti/ziti/issues/4714) - Fabric router PUT crashes the controller

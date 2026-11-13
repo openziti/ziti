@@ -41,6 +41,20 @@ func (self *tunneler) IsTerminatorValid(id string, destination string) bool {
 	return found
 }
 
+// lookupHost returns the tunnel terminator hosted for destination, or the error a dial to it should
+// fail with: xgress.InvalidTerminatorError if nothing is hosted under that id, and
+// xgress_router.UnusableTerminatorError if the hosted terminator is closing or Deleting.
+func (self *tunneler) lookupHost(destination string) (*tunnelTerminator, error) {
+	terminator, found := self.hostedServices.Get(destination)
+	if !found {
+		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
+	}
+	if terminator.closed.Load() || terminator.IsDeleting() {
+		return nil, xgress_router.UnusableTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v is being removed", destination)}
+	}
+	return terminator, nil
+}
+
 func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error) {
 	destination := params.GetDestination()
 	circuitId := params.GetCircuitId()
@@ -49,9 +63,9 @@ func (self *tunneler) Dial(params xgress_router.DialParams) (xt.PeerData, error)
 		WithField("binding", "tunnel").
 		WithField("destination", destination)
 
-	terminator, ok := self.hostedServices.Get(destination)
-	if !ok {
-		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
+	terminator, err := self.lookupHost(destination)
+	if err != nil {
+		return nil, err
 	}
 
 	options, err := tunnel.AppDataToMap(circuitId.Data[uint32(edge.AppDataHeader)])
