@@ -359,6 +359,12 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 		}
 	}
 
+	type policiesChange struct {
+		oldService, newService *IdentityService
+		eventType              ServiceEventType
+	}
+	var policiesChanges []policiesChange
+
 	lockNew := oldIdentity != newIdentity
 	oldIdentity.lock.Lock()
 	if lockNew {
@@ -368,10 +374,10 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 	for svcId, newService := range newServices {
 		if oldService := oldServices[svcId]; oldService != nil {
 			if newService.DialAllowed && oldService.dialPoliciesIndex != newService.dialPoliciesIndex {
-				self.notifyServiceChange(state, oldService, newService, ServiceDialPoliciesChanged)
+				policiesChanges = append(policiesChanges, policiesChange{oldService, newService, ServiceDialPoliciesChanged})
 			}
 			if newService.BindAllowed && oldService.bindPoliciesIndex != newService.bindPoliciesIndex {
-				self.notifyServiceChange(state, oldService, newService, ServiceBindPoliciesChanged)
+				policiesChanges = append(policiesChanges, policiesChange{oldService, newService, ServiceBindPoliciesChanged})
 			}
 		}
 	}
@@ -380,6 +386,12 @@ func (self *IdentitySubscription) checkForChanges(rdm *RouterDataModel) {
 		newIdentity.lock.Unlock()
 	}
 	oldIdentity.lock.Unlock()
+
+	// Notified after unlocking, since subscribers re-check access on these and the check takes the
+	// identity lock.
+	for _, change := range policiesChanges {
+		self.notifyServiceChange(state, change.oldService, change.newService, change.eventType)
+	}
 
 	checksChanged := false
 	if len(oldChecks) != len(newChecks) {

@@ -192,6 +192,31 @@ func Test_PostureRevalidation_HostTerminator_OnPostureData_OIDC(t *testing.T) {
 // client cannot satisfy; the router must revalidate and revoke the active circuit
 // without waiting for a fresh posture-data report or dial.
 func Test_PostureRevalidation_DialCircuit_OnRequirementChange_OIDC(t *testing.T) {
+	testDialCircuitRevokedOnRequirementChange(t, false)
+}
+
+// Test_PostureRevalidation_DialCircuit_OnRequirementChange_CheckAlreadyApplied_OIDC
+// is the same scenario with the check already applied to the client through a bind
+// policy on another service, so adding it to the dial policy leaves the client's set
+// of posture checks unchanged.
+func Test_PostureRevalidation_DialCircuit_OnRequirementChange_CheckAlreadyApplied_OIDC(t *testing.T) {
+	testDialCircuitRevokedOnRequirementChange(t, true)
+}
+
+// requirePostureCheckAppliedElsewhere applies the posture checks with postureCheckRole to
+// identities with identityRole, through a policyType policy on a new, otherwise unused service.
+func requirePostureCheckAppliedElsewhere(ctx *TestContext, policyType, identityRole, postureCheckRole string) {
+	serviceRole := eid.New()
+	service := ctx.newService(s(serviceRole), nil)
+	ctx.AdminManagementSession.requireCreateEntity(service)
+	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic(policyType, "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+}
+
+// testDialCircuitRevokedOnRequirementChange establishes an OIDC client circuit, adds an OS
+// posture check the client fails to the dial policy, and requires the circuit to close. With
+// checkAlreadyApplied, the check is first applied to the client through a bind policy on an
+// otherwise unused service.
+func testDialCircuitRevokedOnRequirementChange(t *testing.T, checkAlreadyApplied bool) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
@@ -227,6 +252,10 @@ func Test_PostureRevalidation_DialCircuit_OnRequirementChange_OIDC(t *testing.T)
 	// Dial policy starts with no posture requirement; the host has none.
 	dialPolicy := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+dialIdentityRole), nil)
 	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+hostIdentityRole), nil)
+
+	if checkAlreadyApplied {
+		requirePostureCheckAppliedElsewhere(ctx, "Bind", dialIdentityRole, postureCheckRoleAttr)
+	}
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -270,6 +299,110 @@ func Test_PostureRevalidation_DialCircuit_OnRequirementChange_OIDC(t *testing.T)
 		ctx.AdminManagementSession.requireUpdateEntity(dialPolicy)
 
 		t.Run("revalidates and revokes the active circuit", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			requireConnClosed(ctx, clientConn)
+		})
+	})
+}
+
+// Test_PostureRevalidation_HostTerminator_OnRequirementChange_OIDC verifies that adding a
+// posture check the host fails to the bind policy revokes the host's terminator, tearing
+// down the active circuit.
+func Test_PostureRevalidation_HostTerminator_OnRequirementChange_OIDC(t *testing.T) {
+	testHostTerminatorRevokedOnRequirementChange(t, false)
+}
+
+// Test_PostureRevalidation_HostTerminator_OnRequirementChange_CheckAlreadyApplied_OIDC is
+// the same scenario with the check already applied to the host through a dial policy on
+// another service, so adding it to the bind policy leaves the host's set of posture checks
+// unchanged.
+func Test_PostureRevalidation_HostTerminator_OnRequirementChange_CheckAlreadyApplied_OIDC(t *testing.T) {
+	testHostTerminatorRevokedOnRequirementChange(t, true)
+}
+
+// testHostTerminatorRevokedOnRequirementChange establishes an OIDC client circuit to an OIDC
+// host, adds an OS posture check the host fails to the bind policy, and requires the circuit
+// to close. With checkAlreadyApplied, the check is first applied to the host through a dial
+// policy on an otherwise unused service.
+func testHostTerminatorRevokedOnRequirementChange(t *testing.T, checkAlreadyApplied bool) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+	ctx.RequireAdminManagementApiLogin()
+
+	dialIdentityRole := eid.New()
+	hostIdentityRole := eid.New()
+	serviceRole := eid.New()
+	postureCheckRoleAttr := eid.New()
+
+	adminManagementApi := ctx.NewEdgeManagementApi(nil)
+	_, err := adminManagementApi.Authenticate(ctx.NewAdminCredentials(), nil)
+	ctx.Req.NoError(err)
+
+	targetOs := &rest_model.OperatingSystem{
+		Type:     ToPtr(rest_model.OsTypeWindows),
+		Versions: []string{"1.0.0"},
+	}
+	hostOsInfo := posture.OsInfo{Type: string(*targetOs.Type), Version: "2.0.0"}
+
+	_, err = adminManagementApi.CreatePostureCheckOs([]*rest_model.OperatingSystem{targetOs}, []string{postureCheckRoleAttr})
+	ctx.Req.NoError(err)
+
+	ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#all"))
+	ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#all"))
+
+	service := ctx.AdminManagementSession.testContext.newService(s(serviceRole), nil)
+	service.terminatorStrategy = xt_smartrouting.Name
+	ctx.AdminManagementSession.requireCreateEntity(service)
+
+	// Bind policy starts with no posture requirement; the client has none.
+	ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+dialIdentityRole), nil)
+	bindPolicy := ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Bind", "AllOf", s("#"+serviceRole), s("#"+hostIdentityRole), nil)
+
+	if checkAlreadyApplied {
+		requirePostureCheckAppliedElsewhere(ctx, "Dial", hostIdentityRole, postureCheckRoleAttr)
+	}
+
+	ctx.CreateEnrollAndStartEdgeRouter()
+
+	// Host (OIDC) reports an OS that won't satisfy the (not-yet-attached) check.
+	_, hostZtx := ctx.AdminManagementSession.RequireCreateSdkContext(hostIdentityRole)
+	hostContext := hostZtx.(*ziti.ContextImpl)
+	hostContext.CtrlClt.SetAllowOidcDynamicallyEnabled(true)
+	defer hostContext.Close()
+	ctx.Req.NoError(hostContext.Authenticate())
+
+	hostContext.CtrlClt.PostureCache.SetOsProviderFunc(func() posture.OsInfo {
+		return hostOsInfo
+	})
+
+	listener, err := hostContext.Listen(service.Name)
+	ctx.Req.NoError(err)
+	defer func() { _ = listener.Close() }()
+
+	testServer := newTestServer(listener, echoPostureTestServer)
+	testServer.start()
+
+	_, clientZtx := ctx.AdminManagementSession.RequireCreateSdkContext(dialIdentityRole)
+	clientContext := clientZtx.(*ziti.ContextImpl)
+	clientContext.CtrlClt.SetAllowOidcDynamicallyEnabled(true)
+	defer clientContext.Close()
+	ctx.Req.NoError(clientContext.Authenticate())
+
+	clientConn := ctx.WrapConn(clientContext.Dial(service.Name))
+	defer func() { _ = clientConn.Close() }()
+
+	name := eid.New()
+	clientConn.WriteString(name, time.Second)
+	clientConn.ReadExpected("hello, "+name, time.Second)
+
+	t.Run("adding a posture check to the bind policy", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		bindPolicy.postureCheckRoles = s("#" + postureCheckRoleAttr)
+		ctx.AdminManagementSession.requireUpdateEntity(bindPolicy)
+
+		t.Run("revalidates and revokes the host terminator, tearing down the active circuit", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			requireConnClosed(ctx, clientConn)
 		})

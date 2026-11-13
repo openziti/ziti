@@ -43,6 +43,18 @@ type TunnelFabricProvider interface {
 	tunnel.FabricProvider
 	SetXgressOptions(*xgress.Options)
 	UpdateIdentity(i *rest_model.IdentityDetail)
+	// CloseDialCircuits closes every dial circuit this provider established for serviceId.
+	CloseDialCircuits(serviceId string, reason string)
+	// CloseAllDialCircuits closes every dial circuit this provider established.
+	CloseAllDialCircuits(reason string)
+	// RevalidateAllDialCircuits re-checks dial access for every circuit this provider established
+	// and closes those no longer granted. It reads the router data model, so it must not be called
+	// with a data model identity lock held.
+	RevalidateAllDialCircuits()
+	// RevalidateDialCircuits re-checks dial access to serviceId and, if it is no longer granted, closes
+	// the circuits this provider established for it. The same locking constraint as
+	// RevalidateAllDialCircuits applies.
+	RevalidateDialCircuits(serviceId string)
 }
 
 type tunneler struct {
@@ -159,6 +171,7 @@ func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType
 		pfxlog.Logger().Infof("identity deleted or disabled %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
 		self.serviceListener.Reset()
+		self.fabricProvider.CloseAllDialCircuits("identity deleted or disabled")
 	} else if eventType == common.IdentityFullState || eventType == common.IdentityUpdatedEvent {
 		pfxlog.Logger().Infof("identity updated %s, eventType: %s", state.Identity.Id, eventType)
 		self.fabricProvider.UpdateIdentity(self.mapRdmIdentityToRest(state.Identity))
@@ -166,10 +179,14 @@ func (self *tunneler) NotifyIdentityEvent(state *common.IdentityState, eventType
 		for _, svc := range state.Services {
 			self.NotifyServiceChange(state, nil, svc, common.ServiceAccessGainedEvent)
 		}
+	} else if eventType == common.IdentityPostureChecksUpdatedEvent {
+		// Routers cannot pass posture checks, so a check added to a granting dial policy, or a check
+		// definition edited, can revoke access without changing service membership.
+		self.fabricProvider.RevalidateAllDialCircuits()
 	}
 }
 
-func (self *tunneler) NotifyServiceChange(state *common.IdentityState, _, service *common.IdentityService, eventType common.ServiceEventType) {
+func (self *tunneler) NotifyServiceChange(state *common.IdentityState, previousService, service *common.IdentityService, eventType common.ServiceEventType) {
 	pfxlog.Logger().Infof("service changed for %s. service %s was %s", state.Identity.Name, service.Service.Name, eventType)
 	tunSvc := self.mapRdmServiceToRest(service)
 	switch eventType {
@@ -177,8 +194,16 @@ func (self *tunneler) NotifyServiceChange(state *common.IdentityState, _, servic
 		self.serviceListener.HandleServicesChange(ziti.ServiceAdded, tunSvc)
 	case common.ServiceUpdatedEvent:
 		self.serviceListener.HandleServicesChange(ziti.ServiceChanged, tunSvc)
+		if previousService != nil && previousService.IsDialAllowed() && !service.IsDialAllowed() {
+			self.fabricProvider.CloseDialCircuits(service.GetId(), "dial access lost")
+		}
+	case common.ServiceDialPoliciesChanged:
+		// A posture check the identity already had through another policy produces no posture
+		// checks event when added to a dial policy, so this is the only notice of it.
+		self.fabricProvider.RevalidateDialCircuits(service.GetId())
 	case common.ServiceAccessLostEvent:
 		self.serviceListener.HandleServicesChange(ziti.ServiceRemoved, tunSvc)
+		self.fabricProvider.CloseDialCircuits(service.GetId(), "service access lost")
 	}
 }
 
