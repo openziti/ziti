@@ -246,7 +246,7 @@ func Test_Configs(t *testing.T) {
 			"name":   eid.New(),
 			"schema": "not-object",
 		})
-		standardErrorJsonResponseTests(resp, errorz.CouldNotValidateCode, http.StatusBadRequest, t)
+		standardErrorJsonResponseTests(t, resp, errorz.CouldNotValidateCode, http.StatusBadRequest)
 	})
 
 	t.Run("create config type with schema should pass", func(t *testing.T) {

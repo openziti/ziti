@@ -71,7 +71,7 @@ func Test_Api_Session_Certs(t *testing.T) {
 			resp, err := request.Post("current-api-session/certificates")
 
 			ctx.Req.NoError(err)
-			standardJsonResponseTests(resp, http.StatusCreated, t)
+			standardJsonResponseTests(t, resp, http.StatusCreated)
 
 			createdResponseBody, err = gabs.ParseJSON(resp.Body())
 			ctx.Req.NoError(err)
@@ -179,7 +179,7 @@ func Test_Api_Session_Certs(t *testing.T) {
 			resp, err := ctx.AdminClientSession.newAuthenticatedRequest().Delete("current-api-session/certificates/" + createdId)
 			ctx.Req.NoError(err)
 
-			standardJsonResponseTests(resp, http.StatusOK, t)
+			standardJsonResponseTests(t, resp, http.StatusOK)
 		})
 	})
 

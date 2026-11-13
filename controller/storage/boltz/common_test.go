@@ -57,6 +57,8 @@ func (test *dbTest) cleanup() {
 }
 
 func (test *dbTest) switchTestContext(t *testing.T) {
+	t.Helper()
+
 	test.Assertions = require.New(t)
 }
 

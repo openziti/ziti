@@ -6,6 +6,20 @@
 * [Controller Advertise Address Updates](#controller-advertise-address-updates) - Changing an HA controller's `advertiseAddress` and restarting now updates the address the cluster and routers use
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
 * Removal of the edge router API proxy (see Removed Features below)
+* [Router Data Model Subscriber Metrics](#router-data-model-subscriber-metrics) - New router metrics for diagnosing router data model performance issues
+
+## Router Data Model Subscriber Metrics
+
+Routers now report metrics for processing router data model subscriber updates, to help diagnose
+router data model performance issues.
+
+* `rdm.subscriber.event` - a timer of processing one queued subscriber event
+* `rdm.subscriber.event.queue_time` - a timer of how long a subscriber event waited in the queue
+* `rdm.subscriber.event.queue_size` - a gauge of the number of subscriber events waiting
+* `rdm.subscriber.scan` - a timer of a scan of identities marked for a check while the event queue was full
+* `rdm.subscriber.scan.queue_time` - a timer of how long a scan request waited
+* `rdm.subscriber.scan.identities` - a histogram of the number of identities each scan processed
+* `rdm.subscriber.full_sync` - a timer of a check of every subscription, as done after the router data model is replaced
 
 ## Controller Advertise Address Updates
 
@@ -125,6 +139,7 @@ identity.
     * [Issue #4533](https://github.com/openziti/ziti/issues/4533) - [Backport-2.0] Validate commands on the raft leader before they enter the log, and halt on an entry a member cannot decode
     * [Issue #4540](https://github.com/openziti/ziti/issues/4540) - [Backport-2.0] Forwarded API errors lose their structured cause, and duplicate-name or referenced-delete errors return 500 from a follower
     * [Issue #4550](https://github.com/openziti/ziti/issues/4550) - [Backport-2.0] Identity creation with authenticators and entity renames swallow their errors
+    * [Issue #4664](https://github.com/openziti/ziti/issues/4664) - [Backport-2.0] Add metrics for the router data model subscriber goroutine
     * [Issue #4490](https://github.com/openziti/ziti/issues/4490) - [Backport-2.0] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4505](https://github.com/openziti/ziti/issues/4505) - [Backport-2.0] Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4525](https://github.com/openziti/ziti/issues/4525) - [Backport-2.0] Allow case-insensitive terminator addressing via host.v1

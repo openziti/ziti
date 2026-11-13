@@ -68,6 +68,8 @@ type objectQueryTest struct {
 }
 
 func (test *objectQueryTest) switchTestContext(t *testing.T) {
+	t.Helper()
+
 	test.Assertions = require.New(t)
 }
 
@@ -352,6 +354,8 @@ func (test *objectQueryTest) testSortPage(t *testing.T) {
 }
 
 func assertOrderById(t *testing.T, people []*testPerson, prevId *string) {
+	t.Helper()
+
 	for idx, person := range people {
 		if idx == 0 {
 			if prevId != nil {

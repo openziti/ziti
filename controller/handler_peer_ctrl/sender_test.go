@@ -30,6 +30,8 @@ import (
 )
 
 func newCertWithUri(t *testing.T, uri string) *x509.Certificate {
+	t.Helper()
+
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 

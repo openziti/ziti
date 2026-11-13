@@ -49,6 +49,8 @@ func (self *stubConnectionTracker) GetChannelsByIdentityId(string) []channel.Cha
 }
 
 func newPostureEvalTestManager(t *testing.T, pool goroutines.Pool) (*ManagerImpl, *stubConnectionTracker) {
+	t.Helper()
+
 	tracker := &stubConnectionTracker{}
 	mgr := &ManagerImpl{
 		postureCache:      posture.NewCache(nil),
@@ -65,6 +67,8 @@ func newPostureEvalTestManager(t *testing.T, pool goroutines.Pool) (*ManagerImpl
 }
 
 func newTestPool(t *testing.T, queueSize uint32) goroutines.Pool {
+	t.Helper()
+
 	pool, err := goroutines.NewPool(goroutines.PoolConfig{
 		QueueSize:    queueSize,
 		MinWorkers:   0,

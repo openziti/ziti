@@ -204,8 +204,10 @@ func (self *TestContext) GetCommandDispatcher() command.Dispatcher {
 
 func (self *TestContext) AddRouterPresenceHandler(RouterPresenceHandler) {}
 
-func NewTestContext(t testing.TB) *TestContext {
-	fabricTestContext := db.NewTestContext(t)
+func NewTestContext(tb testing.TB) *TestContext {
+	tb.Helper()
+
+	fabricTestContext := db.NewTestContext(tb)
 	ctx := &TestContext{
 		TestContext:     fabricTestContext,
 		metricsRegistry: metrics.NewRegistry("test", nil),

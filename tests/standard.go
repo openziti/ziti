@@ -42,7 +42,9 @@ func NewRegistry() strfmt.Registry {
 	return fmt
 }
 
-func standardJsonResponseTests(response *resty.Response, expectedStatusCode int, t *testing.T) {
+func standardJsonResponseTests(t *testing.T, response *resty.Response, expectedStatusCode int) {
+	t.Helper()
+
 	t.Run("has standard json response", func(t *testing.T) {
 		t.Run("response has content type application/json", func(t *testing.T) {
 			parts := strings.Split(response.Header().Get("content-type"), ";")
@@ -118,7 +120,9 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 	})
 }
 
-func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode string, expectedStatusCode int, t *testing.T) {
+func standardErrorJsonResponseTests(t *testing.T, response *resty.Response, expectedErrorCode string, expectedStatusCode int) {
+	t.Helper()
+
 	t.Run("has standard json error response", func(t *testing.T) {
 		t.Run("response has content type application/json", func(t *testing.T) {
 			parts := strings.Split(response.Header().Get("content-type"), ";")

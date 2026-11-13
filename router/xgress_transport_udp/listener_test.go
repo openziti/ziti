@@ -115,6 +115,8 @@ func Test_SessionResponse_RemovedSession(t *testing.T) {
 
 // sentResponse returns the connect response most recently written to the client.
 func (l *eventLoopListener) sentResponse(t *testing.T) *xgress_router.Response {
+	t.Helper()
+
 	var written []byte
 	select {
 	case written = <-l.written:

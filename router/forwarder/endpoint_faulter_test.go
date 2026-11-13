@@ -30,6 +30,8 @@ type testCtrlChannel struct {
 }
 
 func newTestCtrlChannel(t *testing.T) *testCtrlChannel {
+	t.Helper()
+
 	result := &testCtrlChannel{
 		BaseCtrlChannel: ctrlchan.NewBaseCtrlChannel(),
 		written:         make(chan *ctrl_pb.Fault, 1024),
@@ -101,6 +103,8 @@ func (self *testControllers) GetCtrlChannel(string) ctrlchan.CtrlChannel {
 }
 
 func newTestFaulter(t *testing.T, retention time.Duration) (*Faulter, *testControllers) {
+	t.Helper()
+
 	registry := metrics.NewRegistry("test", nil)
 	ctrls := &testControllers{ctrlCh: newTestCtrlChannel(t)}
 
