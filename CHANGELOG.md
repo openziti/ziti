@@ -97,28 +97,37 @@ identity.
     * [Issue #317](https://github.com/openziti/channel/issues/317) - [Backport-4.x] Hellos with a value other than 4 bytes under the ReplyFor header key are rejected
     * [Issue #313](https://github.com/openziti/channel/issues/313) - [Backport-v4] A queued message can be discarded unwritten after Send reports success
 
-* github.com/openziti/foundation/v2: [v2.0.104 -> v2.0.105](https://github.com/openziti/foundation/compare/v2.0.104...v2.0.105)
-* github.com/openziti/identity: [v1.0.143 -> v1.0.144](https://github.com/openziti/identity/compare/v1.0.143...v1.0.144)
-* github.com/openziti/runzmd: [v1.0.96 -> v1.0.97](https://github.com/openziti/runzmd/compare/v1.0.96...v1.0.97)
-* github.com/openziti/sdk-golang: [v1.8.2 -> v1.8.3](https://github.com/openziti/sdk-golang/compare/v1.8.2...v1.8.3)
+* github.com/openziti/foundation/v2: [v2.0.104 -> v2.0.106](https://github.com/openziti/foundation/compare/v2.0.104...v2.0.106)
+    * [Issue #505](https://github.com/openziti/foundation/issues/505) - Add pfxlog-shaped output handlers to the logging package
+
+* github.com/openziti/identity: [v1.0.143 -> v1.0.145](https://github.com/openziti/identity/compare/v1.0.143...v1.0.145)
+* github.com/openziti/runzmd: [v1.0.96 -> v1.0.98](https://github.com/openziti/runzmd/compare/v1.0.96...v1.0.98)
+* github.com/openziti/sdk-golang: [v1.8.2 -> v1.8.4](https://github.com/openziti/sdk-golang/compare/v1.8.2...v1.8.4)
+    * [Issue #1076](https://github.com/openziti/sdk-golang/issues/1076) - [Backport-1.8] Legacy conn with a slow reader blocks every connection on its router channel
+    * [Issue #1066](https://github.com/openziti/sdk-golang/issues/1066) - [Backport-1.8] Hosting listener blocks when a hosting connection closes with a full accept queue
+    * [Issue #1081](https://github.com/openziti/sdk-golang/issues/1081) - [Backport-1.8] SDK logs every payload, ack, read and write at debug level
     * [Issue #1049](https://github.com/openziti/sdk-golang/issues/1049) - [Backport-1.8] Write-failed payload is written to the peer as empty data, failing encrypted reads with invalid input
     * [Issue #1037](https://github.com/openziti/sdk-golang/issues/1037) - [Backport-1.8] Closing an SDK-hosted xgress conn before its circuit starts blocks for the circuit start timeout
     * [Issue #1043](https://github.com/openziti/sdk-golang/issues/1043) - [Backport-1.8] Cost and precedence updates on a hosted service are lost when its listener rebinds
     * [Issue #1032](https://github.com/openziti/sdk-golang/issues/1032) - [Backport-1.8] Service refresh retry panics in rand.Int63n when RefreshInterval is 10s or less
     * [Issue #1056](https://github.com/openziti/sdk-golang/issues/1056) - [Backport-1.8] Xgress conn closed locally ignores the router's StateClosed and retransmits forever
 
-* github.com/openziti/transport/v2: [v2.0.225 -> v2.0.228](https://github.com/openziti/transport/compare/v2.0.225...v2.0.228)
+* github.com/openziti/transport/v2: [v2.0.225 -> v2.0.229](https://github.com/openziti/transport/compare/v2.0.225...v2.0.229)
 * github.com/openziti/xweb/v3: [v3.0.5 -> v3.0.6](https://github.com/openziti/xweb/compare/v3.0.5...v3.0.6)
 * github.com/openziti/ziti/v2: [v2.0.8 -> v2.0.9](https://github.com/openziti/ziti/compare/v2.0.8...v2.0.9)
+    * [Issue #4787](https://github.com/openziti/ziti/issues/4787) - [Backport-2.0] Dials to terminators whose host is gone fail as ROUTER_ERR_GENERIC and keep being selected
+    * [Issue #4664](https://github.com/openziti/ziti/issues/4664) - [Backport-2.0] Add metrics for the router data model subscriber goroutine
+    * [Issue #4332](https://github.com/openziti/ziti/issues/4332) - [Backport-2.0] ER/T does not close existing circuits when the router loses dial access to a service
+    * [Issue #4698](https://github.com/openziti/ziti/issues/4698) - [Backport-2.0] Router xgress Close can block indefinitely on a congested circuit
+    * [Issue #4768](https://github.com/openziti/ziti/issues/4768) - [Backport-2.0] Controller RouterDataModel rebuild (BuildAll) drops all existing revocations
+    * [Issue #4755](https://github.com/openziti/ziti/issues/4755) - [Backport-2.0] Routers drop controllers on a stale member list from a leader restarted after a snapshot install
     * [Issue #4375](https://github.com/openziti/ziti/issues/4375) - router on release-v2.0.x never seeds MFA posture from the api session token <!-- keep -->
     * [Issue #4694](https://github.com/openziti/ziti/issues/4694) - [Backport-2.0] Router does not relay an SDK xgress terminator's half-close to tunneler, proxy, or embedded SDK initiators
     * [Issue #4707](https://github.com/openziti/ziti/issues/4707) - [Backport-2.0] Version built-in config types independently of the database version
-    * [Issue #4768](https://github.com/openziti/ziti/issues/4768) - [Backport-2.0] Controller RouterDataModel rebuild (BuildAll) drops all existing revocations
     * [Issue #4715](https://github.com/openziti/ziti/issues/4715) - [Backport-2.0] Identity PUT re-enables a disabled identity
     * [Issue #4717](https://github.com/openziti/ziti/issues/4717) - [Backport-2.0] Terminator PUT clears hostId, peerData and sourceCtrl
     * [Issue #4719](https://github.com/openziti/ziti/issues/4719) - [Backport-2.0] Fabric router PUT crashes the controller
     * [Issue #4657](https://github.com/openziti/ziti/issues/4657) - [Backport-2.0] Router doesn't tell SDKs to stop sending on circuits it no longer has
-    * [Issue #4755](https://github.com/openziti/ziti/issues/4755) - [Backport-2.0] Routers drop controllers on a stale member list from a leader restarted after a snapshot install
     * [Issue #4729](https://github.com/openziti/ziti/issues/4729) - [Backport-2.0] API request timeouts surface as TLS 'bad record MAC' errors instead of a 503
     * [Issue #4479](https://github.com/openziti/ziti/issues/4479) - [Backport-2.0] Router never reconnects to a standalone controller after the heartbeat check closes the control channel
     * [Issue #4574](https://github.com/openziti/ziti/issues/4574) - [Backport-2.0] Router can drop controllers on a follower's stale controller list and never re-add them
@@ -139,7 +148,6 @@ identity.
     * [Issue #4533](https://github.com/openziti/ziti/issues/4533) - [Backport-2.0] Validate commands on the raft leader before they enter the log, and halt on an entry a member cannot decode
     * [Issue #4540](https://github.com/openziti/ziti/issues/4540) - [Backport-2.0] Forwarded API errors lose their structured cause, and duplicate-name or referenced-delete errors return 500 from a follower
     * [Issue #4550](https://github.com/openziti/ziti/issues/4550) - [Backport-2.0] Identity creation with authenticators and entity renames swallow their errors
-    * [Issue #4664](https://github.com/openziti/ziti/issues/4664) - [Backport-2.0] Add metrics for the router data model subscriber goroutine
     * [Issue #4490](https://github.com/openziti/ziti/issues/4490) - [Backport-2.0] Router panics sending a link state update to a controller it has unregistered
     * [Issue #4505](https://github.com/openziti/ziti/issues/4505) - [Backport-2.0] Router pins a CPU core reporting metrics while no controller is registered
     * [Issue #4525](https://github.com/openziti/ziti/issues/4525) - [Backport-2.0] Allow case-insensitive terminator addressing via host.v1
@@ -147,8 +155,6 @@ identity.
     * [Issue #4407](https://github.com/openziti/ziti/issues/4407) - [Backport-2.0] Router data model root CA public keys carry different intermediates on each controller
     * [Issue #4612](https://github.com/openziti/ziti/issues/4612) - [Backport-2.0] Controller deadlocks when posture data changes for an identity with legacy API sessions
     * [Issue #4416](https://github.com/openziti/ziti/issues/4416) - Set clientAuth and serverAuth extended key usages on identity client certificates
-    * [Issue #4332](https://github.com/openziti/ziti/issues/4332) - [Backport-2.0] ER/T does not close existing circuits when the router loses dial access to a service
-    * [Issue #4698](https://github.com/openziti/ziti/issues/4698) - [Backport-2.0] Router xgress Close can block indefinitely on a congested circuit
 
 
 # Release 2.0.8
