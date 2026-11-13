@@ -17,7 +17,6 @@
 package xgress_edge_tunnel
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -37,7 +36,6 @@ import (
 	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/openziti/ziti/v2/controller/idgen"
 	"github.com/openziti/ziti/v2/router/env"
-	"github.com/openziti/ziti/v2/router/posture"
 	"github.com/openziti/ziti/v2/router/xgress_common"
 	"github.com/openziti/ziti/v2/tunnel"
 	"github.com/pkg/errors"
@@ -49,6 +47,7 @@ func NewTunnelFabricProvider(routerEnv env.RouterEnv, hostedServicesRegistry *Ho
 		env:            routerEnv,
 		hostedServices: hostedServicesRegistry,
 		bindHandler:    routerEnv.GetXgressBindHandler(),
+		dialCircuits:   xgress_common.NewDialCircuitRegistry(),
 	}
 }
 
@@ -57,6 +56,7 @@ type fabricProvider struct {
 	hostedServices *HostedServiceRegistry
 	options        *xgress.Options
 	bindHandler    xgress.BindHandler
+	dialCircuits   *xgress_common.DialCircuitRegistry
 
 	currentIdentity atomic.Pointer[rest_model.IdentityDetail]
 }
@@ -77,6 +77,28 @@ func (self *fabricProvider) UpdateIdentity(i *rest_model.IdentityDetail) {
 
 func (self *fabricProvider) SetXgressOptions(options *xgress.Options) {
 	self.options = options
+}
+
+func (self *fabricProvider) CloseDialCircuits(serviceId string, reason string) {
+	self.dialCircuits.CloseForService(serviceId, reason)
+}
+
+func (self *fabricProvider) CloseAllDialCircuits(reason string) {
+	self.dialCircuits.CloseAll(reason)
+}
+
+func (self *fabricProvider) RequestDialCircuitRevalidation() {
+	self.dialCircuits.RequestRevalidation()
+}
+
+func (self *fabricProvider) RevalidateDialCircuitsIfRequested() {
+	self.dialCircuits.RevalidateIfRequested(self.checkDialAccess)
+}
+
+// checkDialAccess reports whether this router currently has dial access to serviceId. Routers
+// submit no posture data, so a policy carrying posture checks denies.
+func (self *fabricProvider) checkDialAccess(serviceId string) error {
+	return xgress_common.CheckRouterDialAccess(self.env.GetRouterDataModel(), self.env.GetRouterId().Token, serviceId)
 }
 
 func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInstanceId string, conn net.Conn, halfClose bool, appData []byte) error {
@@ -107,9 +129,8 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 	log = log.WithField("ctrlId", ctrlCh.PeerId())
 
-	rdm := self.env.GetRouterDataModel()
-	if policy, err := posture.HasAccess(rdm, self.env.GetRouterId().Token, service.GetId(), nil, edge_ctrl_pb.PolicyType_DialPolicy); err != nil && policy != nil {
-		return fmt.Errorf("router does not have access to service '%s' (%w)", service.GetName(), err)
+	if err = self.checkDialAccess(service.GetId()); err != nil {
+		return err
 	}
 
 	request := &edge_ctrl_pb.CreateTunnelCircuitV2Request{
@@ -142,8 +163,17 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	}
 
 	x := xgress.NewXgress(response.CircuitId, ctrlCh.PeerId(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.options, response.Tags)
+	self.dialCircuits.PrepareTrack(x)
 	self.bindHandler.HandleXgressBind(x)
+	self.dialCircuits.Publish(service.GetId(), x)
 	x.Start()
+
+	// Access lost between the pre-dial check and Publish is only closed by the revocation
+	// notification if it saw the circuit in the registry, so re-check now that it is published.
+	if err = self.checkDialAccess(service.GetId()); err != nil {
+		x.Close()
+		return err
+	}
 
 	return nil
 }
