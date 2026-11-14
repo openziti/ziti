@@ -7,6 +7,7 @@
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
 * Removal of the edge router API proxy (see Removed Features below)
 * [Router Data Model Subscriber Metrics](#router-data-model-subscriber-metrics) - New router metrics for diagnosing router data model performance issues
+* [Posture Ordering and Circuit Fault Delivery](#posture-ordering-and-circuit-fault-delivery) - Routers apply posture responses in order, and retry circuit endpoint faults they couldn't send, for a configurable window
 
 ## Router Data Model Subscriber Metrics
 
@@ -20,6 +21,28 @@ router data model performance issues.
 * `rdm.subscriber.scan.queue_time` - a timer of how long a scan request waited
 * `rdm.subscriber.scan.identities` - a histogram of the number of identities each scan processed
 * `rdm.subscriber.full_sync` - a timer of a check of every subscription, as done after the router data model is replaced
+
+## Posture Ordering and Circuit Fault Delivery
+
+Routers now apply an SDK's posture responses in the order they arrive, before handling a dial or bind
+sent after them. Re-evaluating access after a posture change runs on its own worker pool.
+
+When a circuit's ingress or egress on a router goes away, the router sends the controller a circuit
+endpoint fault. Those faults are now retried until sent, including when a controller reconnects. A
+fault still unsent after the retention window is dropped, which bounds what a router holds through a
+long controller outage. The window is set in the router's `forwarder` section, and takes a duration:
+
+```yaml
+forwarder:
+  endpointFaultRetention: 5m  # default 5m
+```
+
+New router metrics:
+
+* `faults.circuit.endpoint` - a meter of circuit endpoint faults sent to a controller
+* `faults.circuit.endpoint.expired` - a meter of circuit endpoint faults dropped after the retention window
+* `pool.posture.eval.queue_size`, `.worker_count`, `.busy_workers`, `.work_timer` - the worker pool that
+  re-evaluates access after a posture change
 
 ## Controller Advertise Address Updates
 
