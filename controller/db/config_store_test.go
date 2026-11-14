@@ -22,15 +22,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"go.etcd.io/bbolt"
 )
 
 func Test_ConfigStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test config CRUD", ctx.testConfigCrud)
 	t.Run("test config Query", ctx.testConfigQuery)

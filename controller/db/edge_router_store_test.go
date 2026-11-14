@@ -11,7 +11,6 @@ import (
 func Test_EdgeRouterEvents(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	eventChecker := boltz.NewTestEventChecker(&ctx.Assertions)
 	eventChecker.AddHandlers(ctx.stores.Router)

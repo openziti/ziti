@@ -66,7 +66,6 @@ func newTerminatorUpdateTest(t *testing.T) *terminatorUpdateTest {
 
 	testCtx := model.NewTestContext(t)
 	t.Cleanup(testCtx.Cleanup)
-	testCtx.Init()
 
 	managers := testCtx.GetManagers()
 
