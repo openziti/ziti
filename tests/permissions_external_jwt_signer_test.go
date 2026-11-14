@@ -114,19 +114,24 @@ func testExternalJwtSignerAdminReadOnlyPermissions(ctx *TestContext) {
 	testHelper.deleteExternalJwtSigner(ctx, ctx.AdminManagementSession, testSignerId, http.StatusOK)
 }
 
-// testExternalJwtSignerEntityLevelPermissions tests that entity-level external-jwt-signer permission allows all CRUD for external-jwt-signers
+// testExternalJwtSignerEntityLevelPermissions tests that entity-level external-jwt-signer permission allows read and
+// delete for external-jwt-signers, while create and update remain admin only
 func testExternalJwtSignerEntityLevelPermissions(ctx *TestContext) {
 	testHelper := permissionTestHelper{}
 
 	// Create an identity with external-jwt-signer entity permission
 	signerPermSession := testHelper.newIdentityWithPermissions(ctx, []string{"external-jwt-signer"})
 
-	// Test external-jwt-signer CRUD - should all succeed
-	testSignerId := testHelper.createExternalJwtSigner(ctx, signerPermSession, "entity-perm-test-external-jwt-signer", http.StatusCreated)
-	testHelper.getExternalJwtSigner(ctx, signerPermSession, testSignerId, http.StatusOK)
+	// Create and update are admin only - should fail
+	testHelper.createExternalJwtSigner(ctx, signerPermSession, "entity-perm-create", http.StatusUnauthorized)
+
+	testSignerId := testHelper.createExternalJwtSigner(ctx, ctx.AdminManagementSession, "entity-perm-test-external-jwt-signer", http.StatusCreated)
 	testHelper.patchExternalJwtSigner(ctx, signerPermSession, testSignerId, &rest_model.ExternalJWTSignerPatch{
 		Tags: ToPtr(rest_model.Tags{SubTags: rest_model.SubTags{"updated": true}}),
-	}, http.StatusOK)
+	}, http.StatusUnauthorized)
+
+	// Read and delete - should succeed
+	testHelper.getExternalJwtSigner(ctx, signerPermSession, testSignerId, http.StatusOK)
 	testHelper.deleteExternalJwtSigner(ctx, signerPermSession, testSignerId, http.StatusOK)
 
 	// Test identity operations - should fail (no identity permission)
@@ -160,7 +165,10 @@ func testExternalJwtSignerEntityActionPermissions(ctx *TestContext) {
 	// Test external-jwt-signer.create permission
 	createSession := testHelper.newIdentityWithPermissions(ctx, []string{"external-jwt-signer.create"})
 
-	newSignerId := testHelper.createExternalJwtSigner(ctx, createSession, "create-only-external-jwt-signer", http.StatusCreated)
+	// Create is admin only, the create action permission is not sufficient
+	testHelper.createExternalJwtSigner(ctx, createSession, "create-only-create", http.StatusUnauthorized)
+
+	newSignerId := testHelper.createExternalJwtSigner(ctx, ctx.AdminManagementSession, "create-only-external-jwt-signer", http.StatusCreated)
 
 	// Create-only should not allow read
 	testHelper.getExternalJwtSigner(ctx, createSession, newSignerId, http.StatusUnauthorized)
@@ -175,9 +183,10 @@ func testExternalJwtSignerEntityActionPermissions(ctx *TestContext) {
 
 	// Test external-jwt-signer.update permission
 	updateSession := testHelper.newIdentityWithPermissions(ctx, []string{"external-jwt-signer.update"})
+	// Update is admin only, the update action permission is not sufficient
 	testHelper.patchExternalJwtSigner(ctx, updateSession, newSignerId, &rest_model.ExternalJWTSignerPatch{
 		Tags: ToPtr(rest_model.Tags{SubTags: rest_model.SubTags{"update-only": true}}),
-	}, http.StatusOK)
+	}, http.StatusUnauthorized)
 
 	// Update-only should not allow read
 	testHelper.getExternalJwtSigner(ctx, updateSession, testSignerId, http.StatusUnauthorized)
