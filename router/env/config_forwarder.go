@@ -31,8 +31,10 @@ const (
 	// endpoint fault before giving up on it. Configured as a positive duration, such as '5m'.
 	// Retention bounds the memory held while a controller is unreachable, since a fault outlives
 	// the circuit it refers to: the set grows with the teardown rate for as long as the outage
-	// lasts. Giving up leaves the controller holding a circuit the router no longer has, until the
-	// controller reconciles circuits on reconnect.
+	// lasts. A fault given up on leaves the controller holding the circuit unless the fault from
+	// its other end, or the controller's cleanup when this router disconnects, removes it. A
+	// circuit with both ends on this router has neither, and stays until the service's max idle
+	// time removes it, if one is set.
 	DefaultEndpointFaultRetention      = 5 * time.Minute
 	DefaultIdleTxInterval              = 60 * time.Second
 	DefaultIdleCircuitTimeout          = 60 * time.Second
