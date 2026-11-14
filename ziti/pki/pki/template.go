@@ -67,4 +67,11 @@ func caTemplate(genReq *Request, intermediateCA bool) error {
 func nonCATemplate(genReq *Request) {
 	genReq.Template.BasicConstraintsValid = true
 	genReq.Template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageContentCommitment
+	// Apple's trust policy (iOS 13 / macOS 10.15+) rejects a TLS certificate that omits id-kp-serverAuth.
+	// IsClientCertificate is set by `ziti pki create client` and left false by `ziti pki create server`.
+	if genReq.IsClientCertificate {
+		genReq.Template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+		return
+	}
+	genReq.Template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 }
