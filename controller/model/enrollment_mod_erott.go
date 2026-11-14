@@ -17,7 +17,10 @@
 package model
 
 import (
+	"crypto/x509"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/openziti/edge-api/rest_model"
@@ -92,7 +95,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apierror.NewInvalidEnrollmentMissingCsr(errors.New("invalid client CSR"))
 	}
 
-	serverCertRaw, err := module.ProcessServerCsrPem(serverCertCsrPem)
+	serverCertRaw, err := module.ProcessServerCsrPem(serverCertCsrPem, edgeRouter.Id)
 
 	if err != nil {
 		apiError := apierror.NewCouldNotProcessCsr()
@@ -147,7 +150,26 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	}, nil
 }
 
-func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte) ([]byte, error) {
+// routerCertSigningOpts returns the subject alternative names a router gets from its CSR. SPIFFE ids
+// are only ever assigned by the controller, so they are left out: a router must not be able to request
+// a controller or identity SPIFFE id for itself.
+func routerCertSigningOpts(csr *x509.CertificateRequest) *cert.SigningOpts {
+	var uris []*url.URL
+	for _, uri := range csr.URIs {
+		if !strings.EqualFold(uri.Scheme, "spiffe") {
+			uris = append(uris, uri)
+		}
+	}
+
+	return &cert.SigningOpts{
+		DNSNames:       csr.DNSNames,
+		EmailAddresses: csr.EmailAddresses,
+		IPAddresses:    csr.IPAddresses,
+		URIs:           uris,
+	}
+}
+
+func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte, routerId string) ([]byte, error) {
 	if len(serverCertCsrPem) == 0 {
 		return nil, errors.New("empty server cert csr")
 	}
@@ -161,12 +183,11 @@ func (module *EnrollModuleEr) ProcessServerCsrPem(serverCertCsrPem []byte) ([]by
 		return nil, apiErr
 	}
 
-	so := &cert.SigningOpts{
-		DNSNames:       serverCsr.DNSNames,
-		EmailAddresses: serverCsr.EmailAddresses,
-		IPAddresses:    serverCsr.IPAddresses,
-		URIs:           serverCsr.URIs,
-	}
+	// The peer id of a channel can be derived from the common name of the presented certificate, so
+	// it is always the router's id rather than whatever the CSR asks for.
+	serverCsr.Subject.CommonName = routerId
+
+	so := routerCertSigningOpts(serverCsr)
 
 	serverCert, err := module.env.GetApiServerCsrSigner().SignCsr(serverCsr, so)
 
@@ -188,12 +209,7 @@ func (module *EnrollModuleEr) ProcessClientCsrPem(clientCertCsrPem []byte, edgeR
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
-	so := &cert.SigningOpts{
-		DNSNames:       clientCsr.DNSNames,
-		EmailAddresses: clientCsr.EmailAddresses,
-		IPAddresses:    clientCsr.IPAddresses,
-		URIs:           clientCsr.URIs,
-	}
+	so := routerCertSigningOpts(clientCsr)
 
 	if clientCsr.Subject.CommonName != edgeRouterId {
 		return nil, &errorz.ApiError{
