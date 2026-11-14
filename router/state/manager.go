@@ -455,26 +455,22 @@ func (self *ManagerImpl) onPostureDataUpdate(data *posture.InstanceData) {
 // evaluatePostureChange re-evaluates an api session's circuits and hosted terminators against the
 // identity's current posture, closing what no longer has access.
 //
-// It reads the posture data itself rather than taking it from the update that scheduled it: several
-// updates for one api session can be in flight, and evaluating the state an older update carried
-// could revoke access that the newer state allows. Reading current data makes a late evaluation
-// redundant instead of wrong.
+// It reads posture data and the RDM itself, after collecting a connection's circuits and
+// terminators, rather than taking them from the update that scheduled it. Everything collected was
+// admitted against data no newer than what is then read, so an evaluation that runs late, behind
+// newer updates or behind dials and binds admitted under them, is redundant rather than wrong.
 //
 // A consequence is that states between updates are not separately acted on: if an endpoint reports
 // non-compliance and then compliance again before this runs, nothing is revoked. Enforcement is
 // against current posture only. Anything that must observe every reported state belongs on the
 // ingest path in posture.Instance.ApplyBatch, which sees every update in the order it arrived.
 func (self *ManagerImpl) evaluatePostureChange(identityId, apiSessionId string) {
-	instance := self.postureCache.GetInstance(apiSessionId)
-	if instance == nil {
+	if self.postureCache.GetInstance(apiSessionId) == nil {
 		// the api session's posture data is gone (the session was evicted), so it has no
 		// connections left to re-evaluate
 		return
 	}
-	snapshot := instance.Snapshot()
-	data := &snapshot
 
-	rdm := self.routerDataModel.Load()
 	channels := self.connectionTracker.GetChannelsByIdentityId(identityId)
 
 	for _, ch := range channels {
@@ -494,18 +490,32 @@ func (self *ManagerImpl) evaluatePostureChange(identityId, apiSessionId string) 
 			continue
 		}
 
-		// Re-evaluate dial access (policy + posture) for every active dial
-		// circuit — both connId mux-sink conns and SDK-hosted xgress circuits.
-		// Collect first, then close: CloseForAccessLoss mutates the circuit
-		// maps being iterated (mirrors handleDialAccessLost).
-		var dialToClose []EdgeCircuit
+		// Serving-side circuits are governed by bind access, handled via the
+		// terminator re-evaluation below; only dial circuits are checked here.
+		var dialCircuits []EdgeCircuit
 		edgeConn.IterateEdgeCircuits(func(c EdgeCircuit) {
-			// Serving-side circuits are governed by bind access, handled via the
-			// terminator re-evaluation below; only dial circuits are checked here.
-			if c.IsHostSide() {
-				return
+			if !c.IsHostSide() {
+				dialCircuits = append(dialCircuits, c)
 			}
-			policy, err := posture.HasAccess(rdm, identityId, c.GetServiceId(), data, edge_ctrl_pb.PolicyType_DialPolicy)
+		})
+
+		var terminators []BindTerminator
+		edgeConn.IterateBindTerminators(func(t BindTerminator) {
+			terminators = append(terminators, t)
+		})
+
+		// must follow the collection above; see the godoc
+		instance := self.postureCache.GetInstance(apiSessionId)
+		if instance == nil {
+			return
+		}
+		data := instance.Snapshot()
+		rdm := self.routerDataModel.Load()
+
+		// Re-evaluate dial access (policy + posture) for every active dial
+		// circuit, both connId mux-sink conns and SDK-hosted xgress circuits.
+		for _, c := range dialCircuits {
+			policy, err := posture.HasAccess(rdm, identityId, c.GetServiceId(), &data, edge_ctrl_pb.PolicyType_DialPolicy)
 			if err != nil || policy == nil {
 				// every HasAccess error is a definitive denial (entity removed,
 				// no granting policies, or failed posture checks), so log it as
@@ -515,31 +525,24 @@ func (self *ManagerImpl) evaluatePostureChange(identityId, apiSessionId string) 
 					WithField("serviceId", c.GetServiceId()).
 					WithField("circuitId", c.GetCircuitId()).
 					Info("dial access lost on posture update, closing circuit")
-				dialToClose = append(dialToClose, c)
+				c.CloseForAccessLoss("dial access lost on posture update")
 			}
-		})
-		for _, c := range dialToClose {
-			c.CloseForAccessLoss("dial access lost on posture update")
 		}
 
 		// Re-evaluate bind access (policy + posture) for every hosted terminator
 		// on this connection. A posture change that fails a BindPolicy's posture
 		// requirements must revoke the host's terminators, same as a policy
 		// change does via handleBindAccessLost.
-		var bindToClose []BindTerminator
-		edgeConn.IterateBindTerminators(func(t BindTerminator) {
-			policy, err := posture.HasAccess(rdm, identityId, t.GetServiceId(), data, edge_ctrl_pb.PolicyType_BindPolicy)
+		for _, t := range terminators {
+			policy, err := posture.HasAccess(rdm, identityId, t.GetServiceId(), &data, edge_ctrl_pb.PolicyType_BindPolicy)
 			if err != nil || policy == nil {
 				pfxlog.Logger().WithError(err).
 					WithField("identityId", identityId).
 					WithField("serviceId", t.GetServiceId()).
 					WithField("terminatorId", t.GetTerminatorId()).
 					Info("bind access lost on posture update, closing terminator")
-				bindToClose = append(bindToClose, t)
+				t.CloseForBindAccessLoss()
 			}
-		})
-		for _, t := range bindToClose {
-			t.CloseForBindAccessLoss()
 		}
 	}
 }
