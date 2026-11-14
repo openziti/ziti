@@ -53,7 +53,6 @@ const ApiSessionTypeJwt = "jwt"
 //		"timestamp": "2021-11-08T14:45:45.785561479-05:00",
 //		"event_type": "created",
 //		"id": "ckvr2r4fs0001oigd6si4akc8",
-//		"token": "77cffde5-f68e-4ef0-bbb5-731db36145f5",
 //		"identity_id": "76BB.shC0",
 //		"ip_address": "127.0.0.1"
 //	}
@@ -71,9 +70,6 @@ type ApiSessionEvent struct {
 	// Type is the api session type. See above for valid values.
 	Type string `json:"type"`
 
-	// The api session token.
-	Token string `json:"token"`
-
 	// The id of the identity that the api session belongs to.
 	IdentityId string `json:"identity_id"`
 
@@ -85,8 +81,8 @@ type ApiSessionEvent struct {
 }
 
 func (event *ApiSessionEvent) String() string {
-	return fmt.Sprintf("%v.%v id=%v timestamp=%v token=%v identityId=%v ipAddress=%v certGenerated=%v",
-		event.Namespace, event.EventType, event.Id, event.Timestamp, event.Token, event.IdentityId, event.IpAddress, event.CertGenerated)
+	return fmt.Sprintf("%v.%v id=%v timestamp=%v identityId=%v ipAddress=%v certGenerated=%v",
+		event.Namespace, event.EventType, event.Id, event.Timestamp, event.IdentityId, event.IpAddress, event.CertGenerated)
 }
 
 type ApiSessionEventHandler interface {
