@@ -66,28 +66,10 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 		h.handleFaultedLink(log, fault)
 
 	case ctrl_pb.FaultSubject_IngressFault:
-		if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
-			invalidCircuitErr := network.InvalidCircuitError{}
-			if errors.As(err, &invalidCircuitErr) {
-				log.Debugf("error handling ingress fault (%s)", err)
-			} else {
-				log.Errorf("error handling ingress fault (%s)", err)
-			}
-		} else {
-			log.Debugf("handled ingress fault for (%s)", fault.Id)
-		}
+		h.handleFaultedXgress(log, fault, "ingress")
 
 	case ctrl_pb.FaultSubject_EgressFault:
-		if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
-			invalidCircuitErr := network.InvalidCircuitError{}
-			if errors.As(err, &invalidCircuitErr) {
-				log.Debugf("error handling egress fault (%s)", err)
-			} else {
-				log.Errorf("error handling egress fault (%s)", err)
-			}
-		} else {
-			log.Debugf("handled egress fault for (%s)", fault.Id)
-		}
+		h.handleFaultedXgress(log, fault, "egress")
 
 	case ctrl_pb.FaultSubject_ForwardFault:
 		circuitIds := strings.Split(fault.Id, " ")
@@ -110,12 +92,62 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 	}
 }
 
+// handleFaultedXgress removes the circuit whose xgress the router reports as gone. Only the router hosting
+// that xgress may report it, so a router cannot remove circuits it is not the ingress or egress of.
+func (h *faultHandler) handleFaultedXgress(log *logrus.Entry, fault *ctrl_pb.Fault, desc string) {
+	if circuit, found := h.network.GetCircuit(fault.Id); found && !hostsFaultedXgress(circuit, fault.Subject, h.r.Id) {
+		log.WithField("circuitId", fault.Id).
+			Warnf("%s fault reported by router which is not the circuit's %s router, ignoring", desc, desc)
+		return
+	}
+
+	if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
+		invalidCircuitErr := network.InvalidCircuitError{}
+		if errors.As(err, &invalidCircuitErr) {
+			log.Debugf("error handling %s fault (%s)", desc, err)
+		} else {
+			log.Errorf("error handling %s fault (%s)", desc, err)
+		}
+	} else {
+		log.Debugf("handled %s fault for (%s)", desc, fault.Id)
+	}
+}
+
+// hostsFaultedXgress reports whether routerId hosts the xgress an ingress or egress fault is about: the first
+// router of the circuit's path for an ingress fault, the last one for an egress fault. A circuit which is still
+// being built has an empty path and no xgress to report on.
+func hostsFaultedXgress(circuit *model.Circuit, subject ctrl_pb.FaultSubject, routerId string) bool {
+	path := circuit.Path
+	if !path.IsValid() {
+		return false
+	}
+
+	switch subject {
+	case ctrl_pb.FaultSubject_IngressFault:
+		return path.Nodes[0].Id == routerId
+	case ctrl_pb.FaultSubject_EgressFault:
+		return path.EgressRouter().Id == routerId
+	default:
+		return false
+	}
+}
+
+// isLinkEndpoint reports whether routerId is one of the two routers the link connects.
+func isLinkEndpoint(link *model.Link, routerId string) bool {
+	return link.Src.Id == routerId || link.DstId == routerId
+}
+
 func (h *faultHandler) handleFaultedLink(log *logrus.Entry, fault *ctrl_pb.Fault) {
 	linkId := fault.Id
 	log = log.WithField("linkId", linkId).WithField("fault.iteration", fault.Iteration)
 
 	if link, found := h.network.GetLink(linkId); found {
 		log = log.WithField("link.iteration", link.Iteration)
+
+		if !isLinkEndpoint(link, h.r.Id) {
+			log.Warn("link fault reported by router which is not an endpoint of the link, ignoring")
+			return
+		}
 
 		if fault.Iteration != 0 && link.Iteration != 0 && fault.Iteration < link.Iteration {
 			log.Info("fault reported, but iteration is older than current link, ignoring")
