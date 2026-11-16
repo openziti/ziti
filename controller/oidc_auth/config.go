@@ -36,6 +36,7 @@ type Config struct {
 	IdTokenDuration      time.Duration
 	RefreshTokenDuration time.Duration
 	AccessTokenDuration  time.Duration
+	AuthRequestDuration  time.Duration
 	RedirectURIs         []string
 	PostLogoutURIs       []string
 
@@ -57,6 +58,7 @@ func NewConfig(issuers []Issuer, cert *x509.Certificate, key crypto.PrivateKey) 
 		RefreshTokenDuration: common.DefaultRefreshTokenDuration,
 		AccessTokenDuration:  common.DefaultAccessTokenDuration,
 		IdTokenDuration:      common.DefaultIdTokenDuration,
+		AuthRequestDuration:  common.DefaultAuthRequestDuration,
 	}
 }
 

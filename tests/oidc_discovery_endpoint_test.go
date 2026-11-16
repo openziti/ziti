@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/openziti/ziti/v2/common"
 )
 
 func Test_OidcDiscoveryEndpoints(t *testing.T) {
@@ -65,6 +67,15 @@ func Test_OidcDiscoveryEndpoints(t *testing.T) {
 					ctx.Req.Equal(expectedUrl, url)
 				})
 			}
+		})
+
+		t.Run("openziti_auth_request_expiration_seconds is the configured auth request duration", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			seconds, ok := discovery["openziti_auth_request_expiration_seconds"].(float64)
+
+			ctx.Req.True(ok, "openziti_auth_request_expiration_seconds should be a number")
+			ctx.Req.Equal(common.DefaultAuthRequestDuration.Seconds(), seconds)
 		})
 	})
 }
