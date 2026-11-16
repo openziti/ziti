@@ -370,7 +370,7 @@ func Test_loadExternalJwtSignersSection(t *testing.T) {
 
 		req.NoError(c.loadExternalJwtSignersSection(map[any]any{}))
 
-		req.False(c.ExternalJwtSigners.JwksFetch.BlockPrivateAddresses)
+		req.True(c.ExternalJwtSigners.JwksFetch.BlockPrivateAddresses, "private and loopback addresses must be blocked unless configured otherwise")
 		req.Empty(c.ExternalJwtSigners.JwksFetch.DeniedIPs)
 		req.Empty(c.ExternalJwtSigners.JwksFetch.AllowedIPs)
 		req.Empty(c.ExternalJwtSigners.JwksFetch.DeniedHostnames)
@@ -388,7 +388,7 @@ func Test_loadExternalJwtSignersSection(t *testing.T) {
 			"externalJwtSigners": map[any]any{},
 		}))
 
-		req.False(c.ExternalJwtSigners.JwksFetch.BlockPrivateAddresses)
+		req.True(c.ExternalJwtSigners.JwksFetch.BlockPrivateAddresses)
 		req.Equal(DefaultJwksFetchTimeout, c.ExternalJwtSigners.JwksFetch.Timeout)
 		req.Equal(DefaultJwksFetchMaxRedirects, c.ExternalJwtSigners.JwksFetch.MaxRedirects)
 	})
@@ -423,6 +423,22 @@ func Test_loadExternalJwtSignersSection(t *testing.T) {
 		req.Len(jwksFetch.AllowedIPs, 2)
 		req.Equal("192.168.10.0/24", jwksFetch.AllowedIPs[0].String())
 		req.Equal("fd00:1234::1/128", jwksFetch.AllowedIPs[1].String(), "a bare IPv6 address should be treated as a /128")
+	})
+
+	t.Run("blockPrivateAddresses can be turned off", func(t *testing.T) {
+		req := require.New(t)
+
+		c := NewEdgeConfig()
+
+		req.NoError(c.loadExternalJwtSignersSection(map[any]any{
+			"externalJwtSigners": map[any]any{
+				"jwksFetch": map[any]any{
+					"blockPrivateAddresses": false,
+				},
+			},
+		}))
+
+		req.False(c.ExternalJwtSigners.JwksFetch.BlockPrivateAddresses)
 	})
 
 	t.Run("host lists are parsed and normalized", func(t *testing.T) {

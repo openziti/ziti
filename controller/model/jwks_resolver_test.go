@@ -43,7 +43,35 @@ func Test_JwksFetchPolicy_CheckIP(t *testing.T) {
 			}
 		})
 
-		t.Run("private and loopback addresses are allowed, the default posture is compatible", func(t *testing.T) {
+		t.Run("private and loopback addresses are blocked, reaching them is opt-in", func(t *testing.T) {
+			blocked := []string{"127.0.0.1", "::1", "10.1.2.3", "172.16.0.1", "192.168.1.1", "fc00::1", "::ffff:10.1.2.3"}
+
+			for _, address := range blocked {
+				t.Run(address, func(t *testing.T) {
+					req := require.New(t)
+
+					err := policy.CheckIP(net.ParseIP(address))
+
+					req.Error(err, "%s must be blocked unless the configuration allows it", address)
+					req.Contains(err.Error(), "blockPrivateAddresses")
+				})
+			}
+		})
+
+		t.Run("a public address is allowed", func(t *testing.T) {
+			req := require.New(t)
+
+			req.NoError(policy.CheckIP(net.ParseIP("93.184.216.34")))
+		})
+	})
+
+	t.Run("with blockPrivateAddresses disabled", func(t *testing.T) {
+		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch.BlockPrivateAddresses = false
+
+		policy := NewJwksFetchPolicy(jwksFetch)
+
+		t.Run("private and loopback addresses are allowed", func(t *testing.T) {
 			allowed := []string{"127.0.0.1", "::1", "10.1.2.3", "172.16.0.1", "192.168.1.1", "fc00::1"}
 
 			for _, address := range allowed {
@@ -55,10 +83,10 @@ func Test_JwksFetchPolicy_CheckIP(t *testing.T) {
 			}
 		})
 
-		t.Run("a public address is allowed", func(t *testing.T) {
+		t.Run("the built-in blocked addresses stay blocked", func(t *testing.T) {
 			req := require.New(t)
 
-			req.NoError(policy.CheckIP(net.ParseIP("93.184.216.34")))
+			req.Error(policy.CheckIP(net.ParseIP("169.254.169.254")))
 		})
 	})
 
@@ -362,7 +390,26 @@ func Test_JwksFetchPolicy_ValidateEndpoint(t *testing.T) {
 			}
 		})
 
-		t.Run("a literal private address is accepted, the default posture allows it", func(t *testing.T) {
+		t.Run("a literal private or loopback address is rejected", func(t *testing.T) {
+			endpoints := []string{"https://10.1.2.3/jwks", "http://127.0.0.1:8080/jwks", "http://[::1]/jwks"}
+
+			for _, endpoint := range endpoints {
+				t.Run(endpoint, func(t *testing.T) {
+					req := require.New(t)
+
+					req.Error(policy.ValidateEndpoint(endpoint))
+				})
+			}
+		})
+	})
+
+	t.Run("with blockPrivateAddresses disabled", func(t *testing.T) {
+		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch.BlockPrivateAddresses = false
+
+		policy := NewJwksFetchPolicy(jwksFetch)
+
+		t.Run("a literal private address is accepted", func(t *testing.T) {
 			req := require.New(t)
 
 			req.NoError(policy.ValidateEndpoint("https://10.1.2.3/jwks"))
@@ -487,7 +534,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 		response, body, err := resolver.Get(server.URL + "/jwks")
 
@@ -495,6 +542,34 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 		req.Len(response.Keys, 1)
 		req.Equal("test-kid", response.Keys[0].KeyId)
 		req.Equal(jwksBody, string(body))
+	})
+
+	t.Run("a private address is refused by default without contacting the endpoint", func(t *testing.T) {
+		req := require.New(t)
+
+		server := newTestJwksServer(t, jwksBody)
+
+		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+
+		_, _, err := resolver.Get(server.URL + "/jwks")
+
+		req.Error(err)
+		req.Contains(err.Error(), "blockPrivateAddresses")
+		req.Zero(server.requestCount(), "the request must be stopped before it reaches the endpoint")
+	})
+
+	t.Run("a redirect to a private address is refused by default", func(t *testing.T) {
+		req := require.New(t)
+
+		server := newTestJwksServer(t, jwksBody)
+
+		// the first hop is carved out, the redirect target is an internal address that is not
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
+
+		_, _, err := resolver.Get(server.URL + "/redirect-to-private")
+
+		req.Error(err)
+		req.Contains(err.Error(), "blockPrivateAddresses", "the redirect hop must be refused by the address policy")
 	})
 
 	t.Run("a blocked address is refused without contacting the endpoint", func(t *testing.T) {
@@ -541,7 +616,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 		_, _, err := resolver.Get(server.URL + "/redirect-to-metadata")
 
@@ -557,7 +632,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 		endpoint, err := server.urlWithHost("localhost")
 		req.NoError(err)
 
-		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch := loopbackJwksFetch(t)
 		jwksFetch.AllowedHostnames = []string{"idp.example.com"}
 
 		resolver := NewHardenedJwksResolver(jwksFetch)
@@ -577,7 +652,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 		endpoint, err := server.urlWithHost("localhost")
 		req.NoError(err)
 
-		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch := loopbackJwksFetch(t)
 		jwksFetch.DeniedHostnames = []string{"localhost"}
 
 		resolver := NewHardenedJwksResolver(jwksFetch)
@@ -597,7 +672,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 		endpoint, err := server.urlWithHost("localhost")
 		req.NoError(err)
 
-		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch := loopbackJwksFetch(t)
 		jwksFetch.AllowedHostnames = []string{"localhost"}
 
 		resolver := NewHardenedJwksResolver(jwksFetch)
@@ -616,7 +691,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 		endpoint, err := server.urlWithHost("localhost")
 		req.NoError(err)
 
-		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch := loopbackJwksFetch(t)
 		jwksFetch.AllowedHostnames = []string{"localhost"}
 
 		resolver := NewHardenedJwksResolver(jwksFetch)
@@ -634,7 +709,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 		response, _, err := resolver.Get(server.URL + "/redirect-to-jwks")
 
@@ -647,7 +722,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch := loopbackJwksFetch(t)
 		jwksFetch.MaxRedirects = 2
 
 		resolver := NewHardenedJwksResolver(jwksFetch)
@@ -663,7 +738,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch := loopbackJwksFetch(t)
 		jwksFetch.MaxRedirects = 0
 
 		resolver := NewHardenedJwksResolver(jwksFetch)
@@ -679,7 +754,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		jwksFetch := config.DefaultJwksFetch()
+		jwksFetch := loopbackJwksFetch(t)
 		jwksFetch.Timeout = 100 * time.Millisecond
 
 		resolver := NewHardenedJwksResolver(jwksFetch)
@@ -704,7 +779,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 			t.Run(endpoint, func(t *testing.T) {
 				req := require.New(t)
 
-				resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+				resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 				_, _, err := resolver.Get(endpoint)
 
@@ -716,7 +791,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 	t.Run("an unparsable url is refused", func(t *testing.T) {
 		req := require.New(t)
 
-		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 		_, _, err := resolver.Get("http://[::1")
 
@@ -728,7 +803,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 		_, _, err := resolver.Get(server.URL + "/not-found")
 
@@ -740,7 +815,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 		_, _, err := resolver.Get(server.URL + "/html")
 
@@ -752,7 +827,7 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 
 		server := newTestJwksServer(t, jwksBody)
 
-		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+		resolver := NewHardenedJwksResolver(loopbackJwksFetch(t))
 
 		_, _, err := resolver.Get(server.URL + "/not-json")
 
@@ -807,6 +882,8 @@ func newTestJwksServer(t *testing.T, jwksBody string) *testJwksServer {
 			http.Redirect(writer, request, "/redirect-loop", http.StatusFound)
 		case "/redirect-to-metadata":
 			http.Redirect(writer, request, "http://169.254.169.254/latest/meta-data/", http.StatusFound)
+		case "/redirect-to-private":
+			http.Redirect(writer, request, "http://10.1.2.3/jwks", http.StatusFound)
 		case "/redirect-to-unlisted-host":
 			http.Redirect(writer, request, "http://unlisted.example.com/jwks", http.StatusFound)
 		case "/hang":
@@ -826,6 +903,17 @@ func newTestJwksServer(t *testing.T, jwksBody string) *testJwksServer {
 		close(done)
 		result.Close()
 	})
+
+	return result
+}
+
+// loopbackJwksFetch returns the default JWKS fetch settings with a carve-out for the loopback
+// addresses the test JWKS server listens on, which the defaults refuse.
+func loopbackJwksFetch(t *testing.T) config.JwksFetch {
+	t.Helper()
+
+	result := config.DefaultJwksFetch()
+	result.AllowedIPs = mustCidrs(t, "127.0.0.0/8", "::1/128")
 
 	return result
 }

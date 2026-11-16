@@ -50,6 +50,17 @@ func Test_ExternalJwtSigner_JwksEndpoint(t *testing.T) {
 		ctx.Req.Nil(detail)
 	})
 
+	t.Run("an endpoint pointing at a private address is rejected by default", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		// the test controller configuration only carves out loopback addresses
+		detail, err := adminManClient.CreateExtJwtSigner(newJwksSignerCreate("https://10.1.2.3/.well-known/jwks.json"))
+
+		ctx.Req.Error(err, "a private address must not be fetchable unless the configuration allows it")
+		ctx.Req.ApiErrorWithCode(err, errorz.InvalidFieldCode)
+		ctx.Req.Nil(detail)
+	})
+
 	t.Run("an endpoint with a non-http scheme is rejected", func(t *testing.T) {
 		ctx.testContextChanged(t)
 

@@ -391,14 +391,14 @@ edge:
       #   - idp.example.com
       #   - '*.idp.example.org'
 
-      # blockPrivateAddresses - optional, default false
+      # blockPrivateAddresses - optional, default true
       # Tier 4 of the ADDRESS gate: blocks private and loopback addresses
       # (127.0.0.0/8, ::1, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7). Defaults to
-      # false so a deployment whose IdP is on an internal address keeps working. Tier 1 is
-      # blocked either way, so the metadata service is never reachable. For the strictest
-      # posture set this to true, list any internal IdP address in allowedIPs, and list
-      # the IdP hostnames in allowedHostnames.
-      # blockPrivateAddresses: false
+      # true, so a deployment whose IdP is on an internal address must either list that address
+      # in allowedIPs (preferred) or set this to false. Tier 1 is blocked either way, so the
+      # metadata service is never reachable. For the strictest posture leave this at true, list
+      # any internal IdP address in allowedIPs, and list the IdP hostnames in allowedHostnames.
+      # blockPrivateAddresses: true
 
       # deniedIPs - optional, default empty
       # Tier 2 of the ADDRESS gate: addresses that are always blocked. Takes flat IP addresses
@@ -414,7 +414,7 @@ edge:
       # Tier 3 of the ADDRESS gate: a carve-out of tier 4 ONLY. Same entry forms as deniedIPs.
       # Listing an address here allows it despite blockPrivateAddresses; it does NOT override
       # tier 1 or deniedIPs, and it does NOT satisfy the hostname gate. Use it to reach a
-      # specific internal IdP while blockPrivateAddresses is true.
+      # specific internal IdP while blockPrivateAddresses is true, which is the default.
       # allowedIPs:
       #   - 10.20.30.0/24
       #   - 10.20.40.7

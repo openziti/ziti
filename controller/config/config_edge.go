@@ -74,10 +74,11 @@ const (
 	DefaultIdentityOnlineStatusUnknownTimeout = 5 * time.Minute
 	DefaultIdentityOnlineStatusSource         = IdentityStatusSourceHybrid
 
-	// DefaultJwksFetchBlockPrivateAddresses leaves private and loopback addresses reachable by
-	// default so that deployments using an internal IdP keep working. Metadata and link-local
-	// addresses are blocked regardless of this setting.
-	DefaultJwksFetchBlockPrivateAddresses = false
+	// DefaultJwksFetchBlockPrivateAddresses blocks private and loopback addresses by default, so
+	// that whoever can write an external JWT signer cannot point the controller at its own
+	// internal network. A deployment with an internal IdP lists it in allowedIPs or turns this
+	// off. Metadata and link-local addresses are blocked regardless of this setting.
+	DefaultJwksFetchBlockPrivateAddresses = true
 
 	// DefaultJwksFetchTimeout bounds the total time spent fetching a JWKS endpoint.
 	DefaultJwksFetchTimeout = 5 * time.Second
@@ -178,8 +179,8 @@ type ExternalJwtSigners struct {
 //  5. everything else - allowed
 type JwksFetch struct {
 	// BlockPrivateAddresses blocks private and loopback addresses (address gate tier 4).
-	// Defaults to false so deployments with an internal IdP keep working; tier 1 applies
-	// regardless.
+	// Defaults to true; an internal IdP is reached by listing it in AllowedIPs or by setting
+	// this to false. Tier 1 applies regardless.
 	BlockPrivateAddresses bool
 
 	// DeniedIPs are CIDRs that are always blocked (address gate tier 2), above
@@ -256,9 +257,9 @@ type IdentityStatusConfig struct {
 	UnknownTimeout time.Duration
 }
 
-// DefaultJwksFetch returns the default JWKS fetch settings. The defaults are deliberately
-// compatible with existing deployments: only the non-disableable built-in blocked addresses
-// are refused.
+// DefaultJwksFetch returns the default JWKS fetch settings. By default the built-in blocked
+// addresses and private and loopback addresses are refused, so reaching an internal IdP is an
+// explicit configuration choice.
 func DefaultJwksFetch() JwksFetch {
 	return JwksFetch{
 		BlockPrivateAddresses: DefaultJwksFetchBlockPrivateAddresses,

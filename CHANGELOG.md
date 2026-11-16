@@ -20,6 +20,7 @@
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
+* [JWKS Fetch Blocks Private Addresses by Default](#jwks-fetch-blocks-private-addresses-by-default) - The controller no longer fetches an external JWT signer's `jwksEndpoint` from a private or loopback address unless configured to. **Read this if your IdP is on an internal address.**
 * [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
@@ -798,6 +799,52 @@ any service policies that both carry posture checks and include router identitie
 routers out into their own policy without posture checks. `ziti edge list service-policies` shows the
 Identity Roles and Posture Check Roles of each policy; `#all` in Identity Roles includes every router
 identity.
+
+## JWKS Fetch Blocks Private Addresses by Default
+
+The controller fetches the `jwksEndpoint` of an external JWT signer itself, from its own network
+position, and the URL is supplied by whoever can manage external JWT signers. The
+`edge.externalJwtSigners.jwksFetch` controller configuration section constrains where that fetch may
+go; see `etc/ctrl.with.edge.yml` for every setting.
+
+Unlike the 1.6.x and 2.0.x releases that have this section, where `blockPrivateAddresses` defaulted
+to `false`, it now defaults to `true`. Private and loopback addresses (`127.0.0.0/8`, `::1`,
+`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`) are refused on the first request and on
+every redirect, alongside the cloud metadata, link-local and unspecified addresses that are always
+refused. The check is made against the address being connected to, so a public hostname that resolves
+to a private address is refused as well.
+
+### Warning: IdPs on internal addresses
+
+**After upgrading, an external JWT signer whose `jwksEndpoint` is on, resolves to, or redirects to a
+private or loopback address can no longer have its keys fetched, and authentication and enrollment
+with that signer will fail** until the controller configuration allows the address. Signers
+configured with a static `certPem` are not affected.
+
+The controller logs the refusal, which names `blockPrivateAddresses`, when a fetch is attempted, and
+logs an error at startup for each existing signer whose `jwksEndpoint` is a literal blocked address. Creating or updating a
+signer with a literal private or loopback address in `jwksEndpoint` is rejected.
+
+To keep using an internal IdP, list its addresses in `allowedIPs`, which keeps every other internal
+address blocked:
+
+```yaml
+edge:
+  externalJwtSigners:
+    jwksFetch:
+      allowedIPs:
+        - 10.20.30.40
+        - 10.20.40.0/24
+```
+
+Alternatively, restore the previous behavior by turning the check off:
+
+```yaml
+edge:
+  externalJwtSigners:
+    jwksFetch:
+      blockPrivateAddresses: false
+```
 
 ## Current Beta Features
 
