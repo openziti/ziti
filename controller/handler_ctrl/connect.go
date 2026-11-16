@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/channel/v5"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/v2/common/cert"
+	"github.com/openziti/ziti/v2/common/ctrlchan"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/network"
 )
@@ -57,9 +58,9 @@ func NewConnectHandler(identity identity.Identity, network *network.Network, sig
 
 // SetSeparatelyValidatedChannelTypes records the control-channel type headers that are dispatched to a
 // separate, self-validating acceptor (e.g. the raft mesh). Connections carrying one of these types are
-// skipped by HandleConnection; everything else - router control channel types, unrecognized types, and
-// legacy (no type header) connections, all of which the dispatcher routes to the router control
-// acceptor - is validated here. This must be populated before the listener begins accepting.
+// skipped by HandleConnection. Router control channel types and legacy (no type header) connections,
+// which the dispatcher routes to the router control acceptor, are validated here, and any other type is
+// rejected. This must be populated before the listener begins accepting.
 func (self *ConnectHandler) SetSeparatelyValidatedChannelTypes(types map[string]struct{}) {
 	self.separatelyValidatedTypes = types
 }
@@ -73,6 +74,18 @@ func (self *ConnectHandler) isSeparatelyValidated(hello *channel.Hello) bool {
 	}
 	_, ok := self.separatelyValidatedTypes[string(underlayType)]
 	return ok
+}
+
+// isRouterCtrlChannelType reports whether the connection's channel type is one the router control
+// acceptor serves: one of the router control channel underlay types, or none at all. Routers that
+// predate multi-underlay control channels send no type header, and the channel library treats an empty
+// type the same as an absent one.
+func isRouterCtrlChannelType(hello *channel.Hello) bool {
+	switch string(hello.Headers[channel.TypeHeader]) {
+	case "", ctrlchan.ChannelTypeDefault, ctrlchan.ChannelTypeHighPriority, ctrlchan.ChannelTypeLowPriority:
+		return true
+	}
+	return false
 }
 
 // isFirstCtrlConnection reports whether this hello establishes a new channel rather than adding an
@@ -103,14 +116,19 @@ func withinChurnLimit(connected *model.Router, churnLimit time.Duration) bool {
 
 func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
 	// Connections whose channel type is handled by a separate, self-validating acceptor (e.g. the raft
-	// mesh) are validated there, so skip them. Everything else - router control channel types,
-	// unrecognized types, and legacy (no type header) connections - is dispatched to the router control
-	// acceptor and must be validated here.
+	// mesh) are validated there, so skip them.
 	if self.isSeparatelyValidated(hello) {
 		return nil
 	}
 
 	id := hello.IdToken
+
+	// The dispatcher hands every connection without a dedicated acceptor to the router control acceptor,
+	// whatever its type. Only router control channel types and legacy (no type header) connections belong
+	// there, so refuse anything else here, before the hello is acknowledged.
+	if !isRouterCtrlChannelType(hello) {
+		return fmt.Errorf("unsupported channel type [%s], routerId: %v", string(hello.Headers[channel.TypeHeader]), id)
+	}
 
 	log := pfxlog.Logger().WithField("routerId", id)
 
