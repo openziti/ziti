@@ -420,12 +420,13 @@ func (a *TokenIssuerCache) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 
 // VerifyTokenByInspection verifies a JWT by examining its issuer claim to locate the appropriate issuer.
 // Parses the token and validates signature, audience, and extracts identity/name/attribute claims.
+// Tokens without an exp claim are rejected, as they would otherwise never expire.
 // Returns the verification result containing extracted claims and the verifying issuer.
 func (a *TokenIssuerCache) VerifyTokenByInspection(candidateToken string) (*common.TokenVerificationResult, common.TokenIssuer) {
 
 	claims := jwt.MapClaims{}
 
-	token, err := jwt.ParseWithClaims(candidateToken, claims, a.pubKeyLookup)
+	token, err := jwt.ParseWithClaims(candidateToken, claims, a.pubKeyLookup, jwt.WithExpirationRequired())
 
 	result := &common.TokenVerificationResult{
 		Token:  token,
@@ -631,6 +632,7 @@ func (r *TokenIssuerExtJwt) EnrollmentAuthPolicyId() string {
 
 // VerifyToken verifies a JWT using this issuer's configuration.
 // Attempts resolution of keys if not already cached before verification.
+// Tokens without an exp claim are rejected, as they would otherwise never expire.
 func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationResult {
 	err := r.Resolve(false)
 
@@ -639,7 +641,7 @@ func (r *TokenIssuerExtJwt) VerifyToken(token string) *common.TokenVerificationR
 	}
 
 	claims := jwt.MapClaims{}
-	resultToken, err := jwt.ParseWithClaims(token, claims, r.keyFunc)
+	resultToken, err := jwt.ParseWithClaims(token, claims, r.keyFunc, jwt.WithExpirationRequired())
 
 	result := &common.TokenVerificationResult{
 		Error:           err,
