@@ -9,6 +9,7 @@ import (
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -212,5 +213,101 @@ func Test_TokenIssuerExtJwt_VerifyToken_EnforcesIssuerAndAudience(t *testing.T) 
 
 		result := signerRec.VerifyToken(signed)
 		req.False(result.IsValid(), "token without an audience claim must be rejected")
+	})
+}
+
+// A token only has to name a known issuer and audience to reach the key lookup, which happens
+// before its signature is checked. Tokens carrying a kid the signer does not have must not each
+// cause a fetch of the signer's JWKS endpoint.
+func Test_TokenIssuerCache_UnknownKidDoesNotBypassJwksThrottle(t *testing.T) {
+	req := require.New(t)
+
+	testRootCa := newRootCa()
+	leafKeyPair := testRootCa.NewLeafWithAKID()
+	unknownKeyPair := testRootCa.NewLeafWithAKID()
+
+	jwksEndpoint := "https://example.com/.well-known/jwks"
+
+	jwksResolver, err := newTestJwksResolver()
+	req.NoError(err)
+
+	leafKey, err := newKey(leafKeyPair.cert, []*x509.Certificate{leafKeyPair.cert, testRootCa.cert})
+	req.NoError(err)
+
+	jwksResolver.AddKey(leafKey, leafKeyPair.key)
+
+	expectedIssuer := "https://idp.example.com"
+	expectedAudience := "ziti-controller"
+
+	signerRec := &TokenIssuerExtJwt{
+		kidToPubKey: map[string]common.IssuerPublicKey{},
+		externalJwtSigner: &db.ExternalJwtSigner{
+			BaseExtEntity: boltz.BaseExtEntity{
+				Id:        "fake-id",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+			Name:         "test-signer",
+			JwksEndpoint: &jwksEndpoint,
+			Issuer:       &expectedIssuer,
+			Audience:     &expectedAudience,
+			Enabled:      true,
+		},
+		jwksResolver: jwksResolver,
+	}
+
+	cache := &TokenIssuerCache{
+		externalIssuers:   cmap.New[common.TokenIssuer](),
+		controllerIssuers: cmap.New[common.TokenIssuer](),
+	}
+	cache.externalIssuers.Set(expectedIssuer, signerRec)
+
+	// signed by a key the signer does not publish, which anyone can produce
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"iss": expectedIssuer,
+		"aud": expectedAudience,
+		"sub": "user-123",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+	token.Header["kid"] = "unknown-kid"
+	signed, err := token.SignedString(unknownKeyPair.key)
+	req.NoError(err)
+
+	const attempts = 25
+
+	start := time.Now()
+
+	for i := 0; i < attempts; i++ {
+		result, _ := cache.VerifyTokenByInspection(signed)
+		req.False(result.IsValid(), "a token with an unknown kid must be rejected")
+	}
+
+	// the throttle permits one fetch per JwksQueryTimeout, so the number of fetches is bounded
+	// by the time the attempts took and not by how many attempts there were
+	maxFetches := 1 + int(time.Since(start)/JwksQueryTimeout)
+	req.LessOrEqual(jwksResolver.callCount, maxFetches, "unknown kids must not bypass the jwks query throttle")
+
+	t.Run("a key published after the throttle interval is still picked up", func(t *testing.T) {
+		req := require.New(t)
+
+		unknownKey, err := newKey(unknownKeyPair.cert, []*x509.Certificate{unknownKeyPair.cert, testRootCa.cert})
+		req.NoError(err)
+
+		jwksResolver.AddKey(unknownKey, unknownKeyPair.key)
+
+		rotated := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+			"iss": expectedIssuer,
+			"aud": expectedAudience,
+			"sub": "user-123",
+			"exp": time.Now().Add(time.Hour).Unix(),
+		})
+		rotated.Header["kid"] = unknownKey.KeyId
+		rotatedSigned, err := rotated.SignedString(unknownKeyPair.key)
+		req.NoError(err)
+
+		time.Sleep(JwksQueryTimeout)
+
+		result, _ := cache.VerifyTokenByInspection(rotatedSigned)
+		req.Truef(result.IsValid(), "a token signed by a newly published key must be accepted: %v", result.Error)
 	})
 }

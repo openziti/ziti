@@ -890,8 +890,11 @@ func (r *TokenIssuerExtJwt) PubKeyByKid(kid string) (common.IssuerPublicKey, boo
 }
 
 // Resolve loads public keys from either the configured certificate PEM or JWKS endpoint.
-// If force is true, refreshes keys even if already cached.
-// Handles timeout caching for JWKS endpoint queries to avoid excessive network calls.
+// If force is true, certificate PEM keys are reloaded even if already cached.
+//
+// JWKS endpoint queries are limited to one per JwksQueryTimeout whether or not force is set.
+// Resolve is reached with force set for tokens whose signature has not been verified yet, so
+// force must not be a way to make the controller query the endpoint on demand.
 func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 	r.Mutex.Lock()
 	defer r.Mutex.Unlock()
@@ -927,7 +930,7 @@ func (r *TokenIssuerExtJwt) Resolve(force bool) error {
 		return nil
 
 	} else if r.externalJwtSigner.JwksEndpoint != nil {
-		if (!r.jwksLastRequest.IsZero() && time.Since(r.jwksLastRequest) < JwksQueryTimeout) && !force {
+		if !r.jwksLastRequest.IsZero() && time.Since(r.jwksLastRequest) < JwksQueryTimeout {
 			return nil
 		}
 

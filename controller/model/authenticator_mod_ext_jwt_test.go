@@ -96,7 +96,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 			req.Equal(existingCallCount+1, jwksResolver.callCount)
 		})
 
-		t.Run("asking to resolve twice in succession with force does trigger multiple calls", func(t *testing.T) {
+		t.Run("asking to resolve twice in succession with force does not trigger multiple calls", func(t *testing.T) {
 			req := require.New(t)
 
 			time.Sleep(JwksQueryTimeout)
@@ -106,7 +106,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 			req.NoError(signerRec.Resolve(true))
 			req.NoError(signerRec.Resolve(true))
 
-			req.Equal(existingCallCount+2, jwksResolver.callCount)
+			req.Equal(existingCallCount+1, jwksResolver.callCount)
 		})
 	})
 }

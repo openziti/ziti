@@ -31,6 +31,10 @@ import (
 	"github.com/openziti/ziti/v2/controller/db"
 )
 
+// MaxJwksResponseSize is the maximum number of JWKS response body bytes the controller reads
+// from a JWKS endpoint. A larger response is rejected instead of being buffered.
+const MaxJwksResponseSize = 1024 * 1024
+
 // builtInBlockedCidrs are always refused for a JWKS fetch and cannot be re-enabled by
 // configuration. They are the addresses that turn the controller's network position into a
 // credential oracle, plus the addresses that have no meaning as an IdP endpoint.
@@ -365,10 +369,16 @@ func (self *HardenedJwksResolver) Get(endpoint string) (*jwks.Response, []byte, 
 		return nil, nil, fmt.Errorf("invalid content type %s, expected application/json", contentType)
 	}
 
-	body, err := io.ReadAll(response.Body)
+	// read one byte past the limit so that an oversized response can be told apart from one
+	// that is exactly at the limit
+	body, err := io.ReadAll(io.LimitReader(response.Body, MaxJwksResponseSize+1))
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not read jwks response: %w", err)
+	}
+
+	if len(body) > MaxJwksResponseSize {
+		return nil, nil, fmt.Errorf("jwks response exceeds the maximum size of %d bytes", MaxJwksResponseSize)
 	}
 
 	jwksResponse := &jwks.Response{}
