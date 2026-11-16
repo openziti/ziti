@@ -1267,23 +1267,33 @@ func tokenTypeToName(oidcType oidc.TokenType) string {
 
 // ValidateTokenExchangeRequest implements the op.TokenExchangeStorage interface
 func (s *HybridStorage) ValidateTokenExchangeRequest(_ context.Context, request op.TokenExchangeRequest) error {
-	if request.GetRequestedTokenType() == "" {
-		request.SetRequestedTokenType(oidc.RefreshTokenType)
-	}
-
-	requestedType := request.GetExchangeSubjectTokenType()
 	proofType := request.GetExchangeSubjectTokenType()
 
+	// When no token type is requested, default to the type of the subject token. An access token
+	// must never yield a refresh token: it is a short-lived bearer credential that is also
+	// presented to edge routers, while a refresh token is only ever sent to the controller.
+	if request.GetRequestedTokenType() == "" {
+		if proofType == oidc.AccessTokenType {
+			request.SetRequestedTokenType(oidc.AccessTokenType)
+		} else {
+			request.SetRequestedTokenType(oidc.RefreshTokenType)
+		}
+	}
+
+	requestedType := request.GetRequestedTokenType()
+
+	// Requesting an id token is allowed for both subject token types: it is not accepted as an
+	// API credential and SDKs request one alongside every exchange.
 	switch proofType {
 	case oidc.AccessTokenType:
-		if requestedType != oidc.AccessTokenType {
-			return fmt.Errorf("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
+		if requestedType != oidc.AccessTokenType && requestedType != oidc.IDTokenType {
+			return oidc.ErrInvalidRequest().WithDescription("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
 		}
 	case oidc.IDTokenType:
 		return fmt.Errorf("exchanging %s for any token type is not supported", tokenTypeToName(proofType))
 	case oidc.RefreshTokenType:
-		if requestedType != oidc.AccessTokenType && requestedType != oidc.RefreshTokenType {
-			return fmt.Errorf("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
+		if requestedType != oidc.AccessTokenType && requestedType != oidc.RefreshTokenType && requestedType != oidc.IDTokenType {
+			return oidc.ErrInvalidRequest().WithDescription("exchanging %s for %s is not supported", tokenTypeToName(proofType), tokenTypeToName(requestedType))
 		}
 	default:
 		return fmt.Errorf("exchange subject type (%s) is not supported", proofType)
