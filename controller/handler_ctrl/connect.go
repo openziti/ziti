@@ -123,7 +123,9 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	// fingerprint check to that verified leaf. Matching the enrolled fingerprint against any presented
 	// certificate would let a peer present its own leaf followed by a target router's public
 	// certificate and pass without that router's private key.
-	leaf, err := cert.VerifyLeafCertChain(self.identity.CA(), certificates, self.signingCertRoots...)
+	// The router is always the dialing side of a control channel, so the leaf must also be usable as a
+	// client certificate.
+	leaf, err := cert.VerifyClientLeafCertChain(self.identity.CA(), certificates, self.signingCertRoots...)
 	if err != nil {
 		return fmt.Errorf("unable to verify dialer, routerId: %v: %w", id, err)
 	}

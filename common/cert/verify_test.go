@@ -252,3 +252,141 @@ func TestVerifyLeafCertChain_AdditionalRootsDoNotMutateCallerPool(t *testing.T) 
 	_, err = VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert})
 	req.Error(err, "the signing root must not have been added to the caller's pool")
 }
+
+// TestVerifyClientLeafCertChain_RequiresClientAuth covers the client-certificate variant: a leaf whose
+// extended key usage extension is present must permit client authentication, while a leaf without the
+// extension (as issued by `ziti pki`) stays unrestricted.
+func TestVerifyClientLeafCertChain_RequiresClientAuth(t *testing.T) {
+	root := vMkCA(t, "root", nil)
+	inter := vMkCA(t, "int", root)
+	roots := vPoolOf(root.cert, inter.cert)
+
+	for _, test := range []struct {
+		name     string
+		ekus     []x509.ExtKeyUsage
+		accepted bool
+	}{
+		{name: "no eku extension", ekus: nil, accepted: true},
+		{name: "clientAuth", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, accepted: true},
+		{name: "clientAuth and serverAuth", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, accepted: true},
+		{name: "anyExtendedKeyUsage", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}, accepted: true},
+		{name: "serverAuth only", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, accepted: false},
+		{name: "emailProtection only", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageEmailProtection}, accepted: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			req := require.New(t)
+			leaf := vMkLeaf(t, "leaf", "/identity/real", test.ekus, inter)
+
+			verified, err := VerifyClientLeafCertChain(roots, []*x509.Certificate{leaf.cert})
+			if test.accepted {
+				req.NoError(err)
+				req.Same(leaf.cert, verified)
+			} else {
+				req.Error(err)
+				req.Nil(verified)
+			}
+
+			_, err = VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert})
+			req.NoError(err, "the role-agnostic check applies no EKU restriction")
+		})
+	}
+}
+
+// TestVerifyClientLeafCertChain_EnrollmentIssuedCerts verifies the certificates the controller issues
+// during enrollment: the client certificate is accepted as a client certificate, the serverAuth-only
+// server certificate issued alongside it is not.
+func TestVerifyClientLeafCertChain_EnrollmentIssuedCerts(t *testing.T) {
+	req := require.New(t)
+	signingCa := vMkCA(t, "signing-ca", nil)
+	roots := vPoolOf(signingCa.cert)
+
+	csrKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	req.NoError(err)
+	csrDer, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{
+		Subject: pkix.Name{CommonName: "router1"},
+	}, csrKey)
+	req.NoError(err)
+	csr, err := x509.ParseCertificateRequest(csrDer)
+	req.NoError(err)
+
+	clientDer, err := NewClientSigner(signingCa.cert, signingCa.key).SignCsr(csr, nil)
+	req.NoError(err)
+	clientCert, err := x509.ParseCertificate(clientDer)
+	req.NoError(err)
+
+	serverDer, err := NewServerSigner(signingCa.cert, signingCa.key).SignCsr(csr, nil)
+	req.NoError(err)
+	serverCert, err := x509.ParseCertificate(serverDer)
+	req.NoError(err)
+
+	_, err = VerifyClientLeafCertChain(roots, []*x509.Certificate{clientCert})
+	req.NoError(err, "an enrollment-issued client certificate must be accepted")
+
+	_, err = VerifyClientLeafCertChain(roots, []*x509.Certificate{serverCert})
+	req.Error(err, "an enrollment-issued server certificate must not be accepted as a client certificate")
+}
+
+// TestVerifyClientLeafCertChain_IssuerEKU pins how an extended key usage extension on an issuing CA is
+// treated: as with crypto/tls client certificate verification, a CA that restricts its usages must
+// permit clientAuth for the leaves it issues to be accepted as client certificates.
+func TestVerifyClientLeafCertChain_IssuerEKU(t *testing.T) {
+	req := require.New(t)
+	root := vMkCA(t, "root", nil)
+	roots := vPoolOf(root.cert)
+
+	mkRestrictedInter := func(cn string, ekus []x509.ExtKeyUsage) *vCertAndKey {
+		interKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		req.NoError(err)
+		der, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+			SerialNumber:          vNextSerial(),
+			Subject:               pkix.Name{CommonName: cn},
+			NotBefore:             time.Now().Add(-time.Hour),
+			NotAfter:              time.Now().Add(time.Hour),
+			IsCA:                  true,
+			KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+			ExtKeyUsage:           ekus,
+			BasicConstraintsValid: true,
+		}, root.cert, &interKey.PublicKey, root.key)
+		req.NoError(err)
+		c, err := x509.ParseCertificate(der)
+		req.NoError(err)
+		return &vCertAndKey{cert: c, key: interKey}
+	}
+
+	clientInter := mkRestrictedInter("client-int", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth})
+	leaf := vMkLeaf(t, "leaf", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, clientInter)
+	_, err := VerifyClientLeafCertChain(roots, []*x509.Certificate{leaf.cert, clientInter.cert})
+	req.NoError(err, "an issuer that permits clientAuth is accepted")
+
+	serverInter := mkRestrictedInter("server-int", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth})
+	leaf = vMkLeaf(t, "leaf", "/identity/real", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, serverInter)
+	_, err = VerifyClientLeafCertChain(roots, []*x509.Certificate{leaf.cert, serverInter.cert})
+	req.Error(err, "an issuer restricted to serverAuth cannot issue client certificates")
+
+	_, err = VerifyLeafCertChain(roots, []*x509.Certificate{leaf.cert, serverInter.cert})
+	req.NoError(err, "the role-agnostic check applies no EKU restriction")
+}
+
+// TestVerifyClientLeafCertChain_AdditionalRoots verifies the client variant honors additional trust
+// anchors the same way VerifyLeafCertChain does, without lifting the clientAuth requirement.
+func TestVerifyClientLeafCertChain_AdditionalRoots(t *testing.T) {
+	req := require.New(t)
+	ctrlRoot := vMkCA(t, "ctrl-root", nil)
+	signingRoot := vMkCA(t, "signing-root", nil)
+	roots := vPoolOf(ctrlRoot.cert)
+
+	clientLeaf := vMkLeaf(t, "router", "/identity/r1", []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, signingRoot)
+	serverLeaf := vMkLeaf(t, "router", "/identity/r1", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, signingRoot)
+
+	_, err := VerifyClientLeafCertChain(roots, []*x509.Certificate{clientLeaf.cert})
+	req.Error(err, "without the signing root the leaf chains to nothing trusted")
+
+	_, err = VerifyClientLeafCertChain(roots, []*x509.Certificate{clientLeaf.cert}, signingRoot.cert)
+	req.NoError(err)
+
+	_, err = VerifyClientLeafCertChain(roots, []*x509.Certificate{serverLeaf.cert}, signingRoot.cert)
+	req.Error(err, "a serverAuth-only leaf is rejected even when it chains to an additional anchor")
+
+	_, err = VerifyClientLeafCertChain(roots, []*x509.Certificate{clientLeaf.cert})
+	req.Error(err, "the signing root must not have been added to the caller's pool")
+}

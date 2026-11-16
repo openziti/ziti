@@ -61,7 +61,8 @@ func (module *AuthModuleCert) CanHandle(method string) bool {
 // verifyClientCerts will verify a set of x509.Certificates provided by a client during the TLS handshake. It is
 // required, as it is required by the TLS spec, that the first certificate is the client's identity. Any additional
 // certificates may be provided in order to provide intermediate CAs that map back to a known root CA in the `roots`
-// argument. The result is an array of valid chains or an error.
+// argument. The result is an array of valid chains or an error. Chains must be valid for the clientAuth extended
+// key usage.
 //
 // Note: this function does not validate expiration times specifically to allow for situations where expired
 // certificates are allowed by authentication policy. Due to the way certificate authentication works, we may
@@ -78,10 +79,13 @@ func (module *AuthModuleCert) verifyClientCerts(clientCerts []*x509.Certificate,
 		intermediates.AddCert(curCert)
 	}
 
+	// Require the chain to be usable for client authentication, so a certificate issued for another
+	// purpose only (e.g. a serverAuth-only server certificate) cannot be used to authenticate. A leaf
+	// without an extended key usage extension is unrestricted and still accepted.
 	opts := x509.VerifyOptions{
 		Roots:         roots,
 		Intermediates: intermediates,
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 
 	return leafCopy.Verify(opts)

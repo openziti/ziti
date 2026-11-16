@@ -173,10 +173,13 @@ func (self *certValidatingIdentity) verifyConnection(state tls.ConnectionState) 
 	leafCopy.NotBefore = time.Now().Add(-1 * time.Hour)
 	leafCopy.NotAfter = time.Now().Add(1 * time.Hour)
 
+	// Require the chain to be usable for client authentication, so a certificate issued for another
+	// purpose only (e.g. a serverAuth-only server certificate) is not accepted as a client certificate.
+	// A leaf without an extended key usage extension is unrestricted and still accepted.
 	opts := x509.VerifyOptions{
 		Roots:         rootPool,
 		Intermediates: intermediatePool,
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 
 	if _, err := leafCopy.Verify(opts); err != nil {

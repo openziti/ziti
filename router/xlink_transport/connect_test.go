@@ -127,6 +127,67 @@ func Test_ConnectionHandler_AcceptsTrustedDialer(t *testing.T) {
 		"a leaf chaining to the CA must be accepted")
 }
 
+// ltMkLeafWithEku issues a leaf from signer whose extended key usage extension lists exactly the given
+// usages. Without usages the leaf carries no extended key usage extension.
+func ltMkLeafWithEku(t *testing.T, cn string, signer *ltCertAndKey, usages ...x509.ExtKeyUsage) *x509.Certificate {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	ltSerial++
+	der, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber:          big.NewInt(ltSerial),
+		Subject:               pkix.Name{CommonName: cn},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           usages,
+	}, signer.cert, &key.PublicKey, signer.key)
+	require.NoError(t, err)
+	c, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+	return c
+}
+
+// Test_ConnectionHandler_RequiresClientAuthEku verifies that the dialing router's leaf must be usable as
+// a client certificate. A leaf that chains to the CA but is restricted to another purpose, such as a
+// router's serverAuth-only server certificate, is rejected. A leaf without an extended key usage
+// extension is unrestricted and stays accepted.
+func Test_ConnectionHandler_RequiresClientAuthEku(t *testing.T) {
+	root := ltMkCert(t, "root", true, nil)
+	inter := ltMkCert(t, "int", true, root)
+	handler := ltHandler(ltPool(root.cert, inter.cert), "router1")
+
+	tests := []struct {
+		name     string
+		usages   []x509.ExtKeyUsage
+		accepted bool
+	}{
+		{name: "no eku extension", accepted: true},
+		{name: "clientAuth", usages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, accepted: true},
+		{name: "clientAuth and serverAuth", usages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth}, accepted: true},
+		{name: "anyExtendedKeyUsage", usages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}, accepted: true},
+		{name: "serverAuth only", usages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}},
+		{name: "emailProtection only", usages: []x509.ExtKeyUsage{x509.ExtKeyUsageEmailProtection}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := require.New(t)
+			leaf := ltMkLeafWithEku(t, "router", inter, test.usages...)
+			req.Equal(len(test.usages), len(leaf.ExtKeyUsage), "leaf must carry exactly the requested usages")
+
+			err := handler.HandleConnection(&channel.Hello{Headers: channel.Headers{}}, []*x509.Certificate{leaf})
+			if test.accepted {
+				req.NoError(err)
+			} else {
+				req.ErrorContains(err, "unable to verify dialing router")
+				req.ErrorContains(err, "incompatible key usage")
+			}
+		})
+	}
+}
+
 // Test_ConnectionHandler_DialedRouterIdMismatch verifies the dial is rejected when it names a different
 // target router, even if the presented certificate is otherwise valid.
 func Test_ConnectionHandler_DialedRouterIdMismatch(t *testing.T) {
