@@ -20,6 +20,7 @@
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
+* [Client Certificates Must Permit Client Authentication](#client-certificates-must-permit-client-authentication) - A certificate restricted to another purpose, such as a serverAuth-only server certificate, is no longer accepted as a client certificate. **Read the compatibility note if client certificates come from an external PKI.**
 * [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
@@ -798,6 +799,34 @@ any service policies that both carry posture checks and include router identitie
 routers out into their own policy without posture checks. `ziti edge list service-policies` shows the
 Identity Roles and Posture Check Roles of each policy; `#all` in Identity Roles includes every router
 identity.
+
+## Client Certificates Must Permit Client Authentication
+
+Four checks that verify a certificate presented by a TLS client now require the chain to be valid for
+the `clientAuth` extended key usage (EKU). Previously they accepted any EKU, so a certificate issued
+for another purpose only, for example the `serverAuth`-only server certificate a router receives at
+enrollment, verified as a client certificate as long as it chained to a trusted CA. The checks are:
+
+* certificate authentication on the controller's edge APIs
+* the client certificate check on router edge listeners
+* the router certificate check on the controller's control channel listener
+* the router certificate check on router link listeners
+
+Certificates issued by the controller during enrollment and by `ziti pki` are unaffected. Enrollment
+issues client certificates with the `clientAuth` EKU, and `ziti pki` issues certificates without an EKU
+extension, which are valid for any usage.
+
+### Compatibility note: external PKIs
+
+Client certificates from an external PKI, such as third-party CA identities, are now rejected if
+either of the following holds:
+
+* the certificate has an EKU extension that lists neither `clientAuth` nor `anyExtendedKeyUsage`
+* a CA certificate in its chain has an EKU extension that lists neither of them
+
+A certificate, or CA certificate, without an EKU extension is not restricted and continues to work.
+This matches what `ottca` and `ca` enrollment and certificate authenticator extension already
+required. Certificate checks between controllers in a cluster are unchanged.
 
 ## Current Beta Features
 

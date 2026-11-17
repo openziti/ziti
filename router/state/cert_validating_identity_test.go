@@ -17,11 +17,18 @@
 package state
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/openziti/identity"
+	"github.com/openziti/ziti/v2/common/pb/edge_ctrl_pb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -89,4 +96,77 @@ func TestCertValidatingIdentityHonorsLateClientAuthChange(t *testing.T) {
 func TestCertValidatingIdentityNilServerConfig(t *testing.T) {
 	wrapped := &certValidatingIdentity{Identity: &stubServerIdentity{}}
 	require.Nil(t, wrapped.ServerTLSConfig())
+}
+
+// issueLeafWithEku issues a leaf certificate from the CA with the given extended key usages. Nil ekus
+// produces a certificate without an extended key usage extension.
+func issueLeafWithEku(t *testing.T, ca *testCa, ekus []x509.ExtKeyUsage) *x509.Certificate {
+	t.Helper()
+
+	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	serial, err := rand.Int(rand.Reader, big.NewInt(int64(1)<<62))
+	require.NoError(t, err)
+
+	der, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber: serial,
+		Subject:      pkix.Name{CommonName: "leaf"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  ekus,
+	}, ca.cert, &leafKey.PublicKey, ca.key)
+	require.NoError(t, err)
+
+	cert, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+
+	return cert
+}
+
+// TestCertValidatingIdentityRequiresClientAuthEku verifies that the edge listener only accepts client
+// certificates usable for client authentication: a leaf that chains to a published trust anchor but is
+// restricted to another purpose, such as a serverAuth-only server certificate, is rejected, while a
+// leaf without an extended key usage extension remains accepted.
+func TestCertValidatingIdentityRequiresClientAuthEku(t *testing.T) {
+	signingCa, err := newTestRootCa("edge-signing-root")
+	require.NoError(t, err)
+
+	mgr := newCertOriginTestManager(nil)
+	publishPublicKey(mgr, "signing-root", signingCa.cert, []edge_ctrl_pb.DataState_PublicKey_Usage{
+		edge_ctrl_pb.DataState_PublicKey_FirstPartyX509CertValidation,
+	})
+
+	wrapped := &certValidatingIdentity{
+		Identity: &stubServerIdentity{
+			cfg: &tls.Config{ClientAuth: tls.RequireAnyClientCert},
+		},
+		stateManager: mgr,
+	}
+	cfg := wrapped.ServerTLSConfig()
+	require.NotNil(t, cfg.VerifyConnection)
+
+	for _, test := range []struct {
+		name     string
+		ekus     []x509.ExtKeyUsage
+		accepted bool
+	}{
+		{name: "no eku extension", ekus: nil, accepted: true},
+		{name: "clientAuth", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, accepted: true},
+		{name: "clientAuth and serverAuth", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, accepted: true},
+		{name: "anyExtendedKeyUsage", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}, accepted: true},
+		{name: "serverAuth only", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, accepted: false},
+		{name: "emailProtection only", ekus: []x509.ExtKeyUsage{x509.ExtKeyUsageEmailProtection}, accepted: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			leaf := issueLeafWithEku(t, signingCa, test.ekus)
+			err := cfg.VerifyConnection(tls.ConnectionState{PeerCertificates: []*x509.Certificate{leaf}})
+			if test.accepted {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, "client certificate not issued by a trusted CA")
+			}
+		})
+	}
 }

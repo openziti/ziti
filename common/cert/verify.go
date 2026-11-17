@@ -33,12 +33,31 @@ import (
 // chain terminus, whether a self-signed root or an intermediate distributed as a trust anchor, matching
 // how the node's TLS configuration establishes trust. No extended-key-usage restriction is applied:
 // certificates issued by an external PKI with arbitrary or absent EKUs are accepted as long as the leaf
-// chains to a trusted CA.
+// chains to a trusted CA. This suits checks that run for both ends of a connection, where the peer's
+// leaf may be a server certificate. Use VerifyClientLeafCertChain when the peer is always the client.
 //
 // additionalRoots are trust anchors the caller trusts for this check but which are not in the node's TLS
 // pool, such as a CA the node itself issues peer certificates from. They are added to a copy of roots, so
 // the caller's pool - which the identity shares with its live tls.Configs - is never modified.
 func VerifyLeafCertChain(roots *x509.CertPool, certs []*x509.Certificate, additionalRoots ...*x509.Certificate) (*x509.Certificate, error) {
+	return verifyLeafCertChain(roots, certs, x509.ExtKeyUsageAny, additionalRoots)
+}
+
+// VerifyClientLeafCertChain is VerifyLeafCertChain for a leaf presented as a TLS client certificate. It
+// additionally requires the chain to be usable for client authentication: a leaf whose extended key
+// usage extension is present must list clientAuth (or anyExtendedKeyUsage), so a certificate issued for
+// another purpose only, such as a serverAuth-only server certificate, is rejected. A leaf without an
+// extended key usage extension is unrestricted and still accepted, as are the certificates issued by
+// `ziti pki`, which carry no such extension. As with crypto/tls client certificate verification, a CA
+// in the chain that carries an extended key usage extension must permit clientAuth as well.
+//
+// It must only be used where the peer is known to be the dialing side. Checks that also run against a
+// listener's server certificate must use VerifyLeafCertChain.
+func VerifyClientLeafCertChain(roots *x509.CertPool, certs []*x509.Certificate, additionalRoots ...*x509.Certificate) (*x509.Certificate, error) {
+	return verifyLeafCertChain(roots, certs, x509.ExtKeyUsageClientAuth, additionalRoots)
+}
+
+func verifyLeafCertChain(roots *x509.CertPool, certs []*x509.Certificate, keyUsage x509.ExtKeyUsage, additionalRoots []*x509.Certificate) (*x509.Certificate, error) {
 	if roots == nil {
 		return nil, errors.New("no ca pool provided")
 	}
@@ -62,7 +81,7 @@ func VerifyLeafCertChain(roots *x509.CertPool, certs []*x509.Certificate, additi
 	if _, err := certs[0].Verify(x509.VerifyOptions{
 		Roots:         roots,
 		Intermediates: intermediates,
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		KeyUsages:     []x509.ExtKeyUsage{keyUsage},
 	}); err != nil {
 		return nil, fmt.Errorf("leaf certificate not trusted: %w", err)
 	}

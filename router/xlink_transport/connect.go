@@ -47,7 +47,9 @@ func (self *ConnectionHandler) HandleConnection(hello *channel.Hello, certificat
 		}
 	}
 
-	if _, err := cert.VerifyLeafCertChain(self.routerId.CA(), certificates); err != nil {
+	// The peer of a link listener is always the dialing router, so the leaf must also be usable as a
+	// client certificate.
+	if _, err := cert.VerifyClientLeafCertChain(self.routerId.CA(), certificates); err != nil {
 		return fmt.Errorf("unable to verify dialing router: %w", err)
 	}
 

@@ -163,6 +163,45 @@ func Test_ConnectHandler_HandleConnection_RejectsUntrustedLeaf(t *testing.T) {
 		"self-signed leaf backed by a scraped CA-chained filler cert must be rejected")
 }
 
+// Test_ConnectHandler_HandleConnection_RejectsServerAuthOnlyLeaf verifies that a leaf which chains to the
+// controller CA but is restricted to server authentication, such as a router's or controller's server
+// certificate, is not accepted as a router control channel client certificate. The rejection happens
+// during certificate verification, before any network state is consulted.
+func Test_ConnectHandler_HandleConnection_RejectsServerAuthOnlyLeaf(t *testing.T) {
+	req := require.New(t)
+
+	root := ctMkCert(t, "root", true, nil)
+	roots := x509.NewCertPool()
+	roots.AddCert(root.cert)
+
+	handler := &ConnectHandler{
+		identity:                 &caPoolIdentity{roots: roots},
+		separatelyValidatedTypes: map[string]struct{}{},
+	}
+
+	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	req.NoError(err)
+	ctSerial++
+	der, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber:          big.NewInt(ctSerial),
+		Subject:               pkix.Name{CommonName: "server-only"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}, root.cert, &leafKey.PublicKey, root.key)
+	req.NoError(err)
+	serverOnly, err := x509.ParseCertificate(der)
+	req.NoError(err)
+
+	hello := &channel.Hello{IdToken: "router1", Headers: channel.Headers{}}
+
+	err = handler.HandleConnection(hello, []*x509.Certificate{serverOnly})
+	req.ErrorContains(err, "unable to verify dialer")
+	req.ErrorContains(err, "incompatible key usage")
+}
+
 // Test_ConnectHandler_HandleConnection_SkipsSeparatelyValidated verifies that connections whose type is
 // handled by a separate acceptor (e.g. the raft mesh on a clustered controller) are not validated here,
 // even when the presented certificate would fail the router control-channel check.
