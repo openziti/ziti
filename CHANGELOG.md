@@ -7,6 +7,27 @@
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
 * Removal of the edge router API proxy (see Removed Features below)
 * [Router Data Model Subscriber Metrics](#router-data-model-subscriber-metrics) - New router metrics for diagnosing router data model performance issues
+* [Security Advisories](#security-advisories) - Two security advisories
+
+## Security Advisories
+
+This release addresses two security advisories. See the linked GitHub Security Advisories for full details,
+impact, and affected versions.
+
+* [GHSA-5m4x-r6jg-v3wq](https://github.com/openziti/ziti/security/advisories/GHSA-5m4x-r6jg-v3wq) (High) - Router enrollment and
+  certificate renewal copied the URI SANs a router's CSRs requested into the signed certificates, SPIFFE IDs
+  included. A router could obtain a certificate naming a controller, which an HA cluster whose edge signer
+  shares the controllers' root CA accepts as a cluster peer, or naming another identity's API session, which
+  satisfies the certificate binding of that session's access tokens. Router CSRs that request a SPIFFE ID are
+  now rejected with `ROUTER_CSR_SPIFFE_ID_NOT_ALLOWED`. A router whose configuration lists a SPIFFE URI under
+  `csr.sans.uri` can't enroll or renew until that entry is removed.
+* [GHSA-ccq6-vc5v-4ghh](https://github.com/openziti/ziti/security/advisories/GHSA-ccq6-vc5v-4ghh) (Low) - The controller and the router
+  wrote complete service session tokens into structured log fields during edge control operations, several of
+  them at Error or Info, so the values appeared in logs at default verbosity during ordinary operation. A
+  service session token does not authenticate a client on its own, because the controller validates it only
+  against a matching api session token, but logging it placed one half of a credential pair into logging
+  infrastructure, which carries its own access controls, retention, backups and exports. These log events now
+  carry the session id, which is not a credential.
 
 ## Router Data Model Subscriber Metrics
 
@@ -243,25 +264,11 @@ identity.
 
 ## What's New
 
-* Security fixes (see below)
 * Bug fixes
 
 ### End-to-End Encryption (e2ee) Improvements
 
 * Add support for negotiating e2ee crypto material during Dial/Accept handshake. This allows hosting-side crypto material to be per connection (instead of per terminator) and using TLS stream for e2ee.
-
-## Security Advisories
-
-This release addresses one security advisory. See the linked GitHub Security Advisory for full details,
-impact, and affected versions.
-
-* [GHSA-ccq6-vc5v-4ghh](https://github.com/openziti/ziti/security/advisories/GHSA-ccq6-vc5v-4ghh) (Low): The controller and the router
-  wrote complete service session tokens into structured log fields during edge control operations, several of
-  them at Error or Info, so the values appeared in logs at default verbosity during ordinary operation. A
-  service session token does not authenticate a client on its own, because the controller validates it only
-  against a matching api session token, but logging it placed one half of a credential pair into logging
-  infrastructure, which carries its own access controls, retention, backups and exports. These log events now
-  carry the session id, which is not a credential.
 
 ## Component Updates and Bug Fixes
 
