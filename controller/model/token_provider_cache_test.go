@@ -9,6 +9,7 @@ import (
 	"github.com/openziti/ziti/v2/common"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -212,5 +213,105 @@ func Test_TokenIssuerExtJwt_VerifyToken_EnforcesIssuerAndAudience(t *testing.T) 
 
 		result := signerRec.VerifyToken(signed)
 		req.False(result.IsValid(), "token without an audience claim must be rejected")
+	})
+}
+
+// Test_ExternalJwt_RequiresExpiration verifies that a validly-signed external token without an exp
+// claim is rejected. The JWT library treats exp as optional by default, which would leave such a
+// token valid forever. Both external token verification paths are covered.
+func Test_ExternalJwt_RequiresExpiration(t *testing.T) {
+	req := require.New(t)
+
+	testRootCa := newRootCa()
+	leafKeyPair := testRootCa.NewLeafWithAKID()
+
+	jwksEndpoint := "https://example.com/.well-known/jwks"
+
+	jwksResolver, err := newTestJwksResolver()
+	req.NoError(err)
+
+	leafKey, err := newKey(leafKeyPair.cert, []*x509.Certificate{leafKeyPair.cert, testRootCa.cert})
+	req.NoError(err)
+
+	jwksResolver.AddKey(leafKey, leafKeyPair.key)
+
+	expectedIssuer := "https://idp.example.com"
+	expectedAudience := "ziti-controller"
+
+	signerRec := &TokenIssuerExtJwt{
+		kidToPubKey: map[string]common.IssuerPublicKey{},
+		externalJwtSigner: &db.ExternalJwtSigner{
+			BaseExtEntity: boltz.BaseExtEntity{
+				Id:        "fake-id",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+			Name:         "test-signer",
+			JwksEndpoint: &jwksEndpoint,
+			Issuer:       &expectedIssuer,
+			Audience:     &expectedAudience,
+			Enabled:      true,
+		},
+		jwksResolver: jwksResolver,
+	}
+
+	req.NoError(signerRec.Resolve(false))
+
+	issuerCache := &TokenIssuerCache{
+		externalIssuers:   cmap.New[common.TokenIssuer](),
+		controllerIssuers: cmap.New[common.TokenIssuer](),
+	}
+	issuerCache.externalIssuers.Set(expectedIssuer, signerRec)
+
+	sign := func(claims jwt.MapClaims) string {
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+		token.Header["kid"] = leafKey.KeyId
+		signed, err := token.SignedString(leafKeyPair.key)
+		req.NoError(err)
+		return signed
+	}
+
+	withExp := sign(jwt.MapClaims{
+		"iss": expectedIssuer,
+		"aud": expectedAudience,
+		"sub": "user-123",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+
+	withoutExp := sign(jwt.MapClaims{
+		"iss": expectedIssuer,
+		"aud": expectedAudience,
+		"sub": "user-123",
+	})
+
+	t.Run("VerifyToken accepts a token with an unexpired exp claim", func(t *testing.T) {
+		req := require.New(t)
+
+		result := signerRec.VerifyToken(withExp)
+		req.Truef(result.IsValid(), "token with an unexpired exp claim must be accepted: %v", result.Error)
+	})
+
+	t.Run("VerifyToken rejects a token without an exp claim", func(t *testing.T) {
+		req := require.New(t)
+
+		result := signerRec.VerifyToken(withoutExp)
+		req.False(result.IsValid(), "token without an exp claim must be rejected")
+		req.ErrorIs(result.Error, jwt.ErrTokenRequiredClaimMissing)
+	})
+
+	t.Run("VerifyTokenByInspection accepts a token with an unexpired exp claim", func(t *testing.T) {
+		req := require.New(t)
+
+		result, tokenIssuer := issuerCache.VerifyTokenByInspection(withExp)
+		req.Truef(result.IsValid(), "token with an unexpired exp claim must be accepted: %v", result.Error)
+		req.Equal(signerRec, tokenIssuer)
+	})
+
+	t.Run("VerifyTokenByInspection rejects a token without an exp claim", func(t *testing.T) {
+		req := require.New(t)
+
+		result, _ := issuerCache.VerifyTokenByInspection(withoutExp)
+		req.False(result.IsValid(), "token without an exp claim must be rejected")
+		req.ErrorIs(result.Error, jwt.ErrTokenRequiredClaimMissing)
 	})
 }

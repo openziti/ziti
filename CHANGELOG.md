@@ -20,6 +20,7 @@
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
+* [External JWTs Must Carry an Expiration](#external-jwts-must-carry-an-expiration) - Tokens from an ext-jwt-signer without an `exp` claim are now rejected
 * [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
@@ -798,6 +799,16 @@ any service policies that both carry posture checks and include router identitie
 routers out into their own policy without posture checks. `ziti edge list service-policies` shows the
 Identity Roles and Posture Check Roles of each policy; `#all` in Identity Roles includes every router
 identity.
+
+## External JWTs Must Carry an Expiration
+
+The controller now rejects tokens from an ext-jwt-signer that have no `exp` claim, both when
+authenticating and when enrolling with an external token. Previously the claim was validated only when
+present, so a validly signed token without it was accepted indefinitely.
+
+Identity providers that follow OIDC or the OAuth 2.0 JWT access token profile always set `exp` and are
+not affected. **After upgrading, a provider or a custom token minter that omits `exp` will have its
+tokens rejected**; configure it to issue tokens with an expiration.
 
 ## Current Beta Features
 
