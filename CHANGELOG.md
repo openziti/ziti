@@ -20,11 +20,11 @@
 * [Logging Now Uses slog with an Async Handler](#logging-now-uses-slog-with-an-async-handler) - Logging moves to Go's `log/slog` behind an asynchronous sink; output is unchanged by default, with new flags to tune buffering
 * [Build Flags](#build-flags) - A build of the controller can name the build time choices it was made with, and clients can read them from `/version`
 * [Edge Router Tunneler Policy Enforcement](#edge-router-tunneler-policy-enforcement) - Removing a tunneler's dial access now closes its live circuits, and the controller verifies the dial policy for tunneler circuits. **Read the posture check warning.**
-* [Security Advisories](#security-advisories) - Eight security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
+* [Security Advisories](#security-advisories) - Eleven security advisories, plus the two control-plane certificate validation fixes first released in 2.0.2
 
 ## Security Advisories
 
-This release addresses nine security advisories. It also includes the two control-plane certificate and
+This release addresses eleven security advisories. It also includes the two control-plane certificate and
 identity validation fixes first released in 2.0.2 and 1.6.18; anyone upgrading from 2.0.1 or earlier is
 picking those up here for the first time. See the linked GitHub Security Advisories for full details, impact,
 and affected versions.
@@ -42,6 +42,13 @@ and affected versions.
   identity or enrollment read access could read an admin identity's enrollment secret and redeem it through
   the public enrollment endpoints, minting a certificate or password authenticator on that admin identity
   and escalating to admin. The top level `/enrollments` routes were already scoped.
+* [GHSA-5m4x-r6jg-v3wq](https://github.com/openziti/ziti/security/advisories/GHSA-5m4x-r6jg-v3wq) (High) - Router enrollment and
+  certificate renewal copied the URI SANs a router's CSRs requested into the signed certificates, SPIFFE IDs
+  included. A router could obtain a certificate naming a controller, which an HA cluster whose edge signer
+  shares the controllers' root CA accepts as a cluster peer, or naming another identity's API session, which
+  satisfies the certificate binding of that session's access tokens. Router CSRs that request a SPIFFE ID are
+  now rejected with `ROUTER_CSR_SPIFFE_ID_NOT_ALLOWED`. A router whose configuration lists a SPIFFE URI under
+  `csr.sans.uri` can't enroll or renew until that entry is removed.
 * [GHSA-hhm9-wf63-g7qj](https://github.com/openziti/ziti/security/advisories/GHSA-hhm9-wf63-g7qj) (Medium) - When accepting an incoming router-to-router link, a
   router verified the dialing router's identity against the whole presented certificate chain instead of the
   leaf certificate whose key the TLS handshake proved. An attacker holding enrolled router credentials could
