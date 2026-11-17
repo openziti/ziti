@@ -46,6 +46,12 @@ edge:
       duration: 20m
     edgeRouter:
       duration: 60m
+  externalJwtSigners:
+    jwksFetch:
+      # the external JWT signer tests serve their JWKS endpoints on localhost
+      allowedIPs:
+        - 127.0.0.0/8
+        - ::1
 
 
 web:
