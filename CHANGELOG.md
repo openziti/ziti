@@ -2,10 +2,23 @@
 
 ## What's New
 
+* Security fixes (see below)
 * Bug fixes
 * Edge router tunnelers now close a service's circuits when the router loses dial access to it, and
   the controller verifies the dial policy for tunneler circuits
 * Removal of the edge router API proxy (see Removed Features below)
+
+## Security Advisories
+
+This release addresses one security advisory. See the linked GitHub Security Advisory for full details,
+impact, and affected versions.
+
+* [GHSA-5m4x-r6jg-v3wq](https://github.com/openziti/ziti/security/advisories/GHSA-5m4x-r6jg-v3wq) (High) - Router enrollment and
+  certificate renewal copied the URI SANs a router's CSRs requested into the signed certificates, SPIFFE IDs
+  included. A router could obtain a certificate naming a controller, which an HA cluster whose edge signer
+  shares the controllers' root CA accepts as a cluster peer. Router CSRs that request a SPIFFE ID are now
+  rejected with `ROUTER_CSR_SPIFFE_ID_NOT_ALLOWED`. A router whose configuration lists a SPIFFE URI under
+  `csr.sans.uri` can't enroll or renew until that entry is removed.
 
 ## Removed Features
 
