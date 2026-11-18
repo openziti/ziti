@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/env"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/permissions"
 	"github.com/openziti/ziti/v2/controller/response"
 )
 
@@ -56,8 +57,21 @@ func (factory *ApiSessionLinkFactoryImpl) Links(entity models.Entity) rest_model
 	}
 }
 
-func MapApiSessionToRestInterface(ae *env.AppEnv, _ *response.RequestContext, apiSession *model.ApiSession) (interface{}, error) {
-	return MapApiSessionToRestModel(ae, apiSession)
+// MapApiSessionToRestInterface renders an api session for the management API. The token is the bearer
+// credential of the session, so it is withheld from callers that are not admins: anyone who can read
+// it can act as the session's identity.
+func MapApiSessionToRestInterface(ae *env.AppEnv, rc *response.RequestContext, apiSession *model.ApiSession) (interface{}, error) {
+	ret, err := MapApiSessionToRestModel(ae, apiSession)
+	if err != nil {
+		return nil, err
+	}
+
+	if rc == nil || !rc.HasPermission(permissions.AdminPermission) {
+		token := ""
+		ret.Token = &token
+	}
+
+	return ret, nil
 }
 
 func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*rest_model.APISessionDetail, error) {
