@@ -1,9 +1,24 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package state
 
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,6 +31,222 @@ import (
 	"github.com/openziti/ziti/v2/router/posture"
 	"github.com/stretchr/testify/require"
 )
+
+const (
+	passingMac = "001122334455"
+	failingMac = "66778899aabb"
+)
+
+func Test_EvaluatePostureChange(t *testing.T) {
+	t.Run("an evicted api session is not evaluated", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange: the api session has no posture data
+		mgr, tracker := newPostureEvalTestManager(nil)
+
+		// act
+		mgr.evaluatePostureChange("identity-1", "evicted-session")
+
+		// assert
+		req.Empty(tracker.lookups, "an evicted session has nothing to re-evaluate and no connections to look for")
+	})
+
+	t.Run("an api session with posture data has its connections evaluated", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		mgr, tracker := newPostureEvalTestManager(nil)
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(passingMac))
+
+		// act
+		mgr.evaluatePostureChange("identity-1", "session-1")
+
+		// assert
+		req.Len(tracker.lookups, 1, "the evaluation must look up the identity's connections")
+	})
+}
+
+// Test_EvaluatePostureChange_JudgesAgainstPostureReadAfterCollecting covers an evaluation that is
+// overtaken while it runs: a newer, passing posture report lands, and a dial or bind is admitted
+// under it, before the evaluation reaches that circuit or terminator. Each "admitted under newer
+// passing posture" case lands the newer report while the connection is being iterated, so an
+// evaluation judging against posture read before iterating closes what current posture allows.
+func Test_EvaluatePostureChange_JudgesAgainstPostureReadAfterCollecting(t *testing.T) {
+	t.Run("a dial circuit is closed when current posture fails", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		mgr, tracker := newPostureEvalTestManager(nil)
+		mgr.routerDataModel.Store(newPostureEvalTestRdm())
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
+		circuit := &postureEvalTestCircuit{serviceId: "svc-1"}
+		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
+		conn.circuits = []*postureEvalTestCircuit{circuit}
+		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
+
+		// act
+		mgr.evaluatePostureChange("identity-1", "session-1")
+
+		// assert
+		req.True(circuit.closed, "the MAC check fails, so the dial circuit loses access")
+	})
+
+	t.Run("a dial circuit admitted under newer passing posture is kept", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		mgr, tracker := newPostureEvalTestManager(nil)
+		mgr.routerDataModel.Store(newPostureEvalTestRdm())
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
+		circuit := &postureEvalTestCircuit{serviceId: "svc-1"}
+		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
+		conn.circuits = []*postureEvalTestCircuit{circuit}
+		conn.newerPosture = macPostureResponses(passingMac)
+		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
+
+		// act
+		mgr.evaluatePostureChange("identity-1", "session-1")
+
+		// assert
+		req.False(circuit.closed, "the circuit was admitted under passing posture, which is still current")
+	})
+
+	t.Run("a terminator is closed when current posture fails", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		mgr, tracker := newPostureEvalTestManager(nil)
+		mgr.routerDataModel.Store(newPostureEvalTestRdm())
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
+		terminator := &postureEvalTestTerminator{serviceId: "svc-1"}
+		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
+		conn.terminators = []*postureEvalTestTerminator{terminator}
+		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
+
+		// act
+		mgr.evaluatePostureChange("identity-1", "session-1")
+
+		// assert
+		req.True(terminator.closed, "the MAC check fails, so the terminator loses bind access")
+	})
+
+	t.Run("a terminator admitted under newer passing posture is kept", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		mgr, tracker := newPostureEvalTestManager(nil)
+		mgr.routerDataModel.Store(newPostureEvalTestRdm())
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
+		terminator := &postureEvalTestTerminator{serviceId: "svc-1"}
+		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
+		conn.terminators = []*postureEvalTestTerminator{terminator}
+		conn.newerPosture = macPostureResponses(passingMac)
+		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
+
+		// act
+		mgr.evaluatePostureChange("identity-1", "session-1")
+
+		// assert
+		req.False(terminator.closed, "the terminator was admitted under passing posture, which is still current")
+	})
+}
+
+func Test_OnPostureDataUpdate(t *testing.T) {
+	// Dropping an evaluation that can't be queued would leave access in place that current posture
+	// no longer permits.
+	t.Run("an evaluation the pool rejects runs inline", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		mgr, tracker := newPostureEvalTestManager(rejectingPool{})
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(passingMac))
+
+		// act
+		mgr.onPostureDataUpdate(&posture.InstanceData{IdentityId: "identity-1", ApiSessionId: "session-1"})
+
+		// assert
+		req.Len(tracker.lookups, 1, "a rejected evaluation must still run, before the update returns")
+	})
+
+	t.Run("an evaluation is scheduled onto the pool", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange
+		pool, err := goroutines.NewPool(goroutines.PoolConfig{
+			QueueSize:   16,
+			MaxWorkers:  1,
+			IdleTime:    time.Second,
+			CloseNotify: make(chan struct{}),
+		})
+		req.NoError(err)
+		t.Cleanup(pool.Shutdown)
+		mgr, tracker := newPostureEvalTestManager(pool)
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(passingMac))
+
+		// act
+		mgr.onPostureDataUpdate(&posture.InstanceData{IdentityId: "identity-1", ApiSessionId: "session-1"})
+
+		// assert
+		select {
+		case identityId := <-tracker.lookups:
+			req.Equal("identity-1", identityId)
+		case <-time.After(5 * time.Second):
+			req.Fail("the scheduled evaluation never ran")
+		}
+	})
+}
+
+func Test_HasAccess(t *testing.T) {
+	// The access check reads the session's posture data while responses are applied to it. Handing
+	// the evaluator a pointer into the live instance is an unsynchronized read of fields the response
+	// path writes under the instance lock. The race detector is what fails this subtest.
+	t.Run("checking access while posture responses apply does not race", func(t *testing.T) {
+		req := require.New(t)
+
+		// arrange: the model must resolve a policy carrying a posture check, or the check never reads
+		// posture data and there is nothing to race
+		mgr, _ := newPostureEvalTestManager(nil)
+		rdm := newPostureEvalTestRdm()
+		policies, err := rdm.GetServiceAccessPolicies("identity-1", "svc-1", edge_ctrl_pb.PolicyType_DialPolicy)
+		req.NoError(err, "the model must resolve a dial policy")
+		req.NotEmpty(policies.PostureChecks, "the dial policy must carry a posture check")
+		mgr.routerDataModel.Store(rdm)
+		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(passingMac))
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		// act
+		go reportAlternatingMacs(mgr.postureCache, 500, &wg)
+		go checkDialAccess(mgr, 500, &wg)
+		wg.Wait()
+
+		// assert
+		req.NotNil(mgr.postureCache.GetInstance("session-1"), "the session's posture must still be cached")
+	})
+}
+
+// reportAlternatingMacs reports count MAC responses for identity-1's session-1, alternating between
+// failingMac and passingMac, then marks wg done. A response that reports what is already held is not
+// applied, and a writer that never writes can't race a reader.
+func reportAlternatingMacs(cache *posture.Cache, count int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for i := range count {
+		mac := failingMac
+		if i%2 == 1 {
+			mac = passingMac
+		}
+		cache.AddResponses("identity-1", "session-1", macPostureResponses(mac))
+	}
+}
+
+// checkDialAccess checks identity-1's dial access to svc-1 through session-1 count times, then marks
+// wg done.
+func checkDialAccess(mgr *ManagerImpl, count int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for range count {
+		_, _ = mgr.HasAccess("identity-1", "session-1", "svc-1", edge_ctrl_pb.PolicyType_DialPolicy)
+	}
+}
 
 // rejectingPool is a goroutines.Pool that accepts no work, standing in for a pool whose workers
 // and queue are saturated. Shutting a real pool down is not usable here: QueueOrError selects over
@@ -34,11 +265,11 @@ func (rejectingPool) Shutdown()                                    {}
 func (rejectingPool) ShutdownAndWait(time.Duration) error          { return nil }
 func (rejectingPool) AwaitIdle(time.Duration) error                { return nil }
 
-// stubConnectionTracker records whether the posture evaluation reached the point of looking for
-// the identity's connections, which is the first thing it does once it has posture data. It
-// returns channels for any identity.
+// stubConnectionTracker returns channels for any identity, and sends the identity id on lookups
+// each time it is asked for them. Posture evaluation asks once it has found the session's posture
+// data.
 type stubConnectionTracker struct {
-	lookups  atomic.Int32
+	lookups  chan string
 	channels []channel.Channel
 }
 
@@ -46,280 +277,24 @@ func (self *stubConnectionTracker) GetChannels() map[string][]channel.Channel {
 	return nil
 }
 
-func (self *stubConnectionTracker) GetChannelsByIdentityId(string) []channel.Channel {
-	self.lookups.Add(1)
+func (self *stubConnectionTracker) GetChannelsByIdentityId(identityId string) []channel.Channel {
+	self.lookups <- identityId
 	return self.channels
 }
 
-func newPostureEvalTestManager(t *testing.T, pool goroutines.Pool) (*ManagerImpl, *stubConnectionTracker) {
-	t.Helper()
-
-	tracker := &stubConnectionTracker{}
+// newPostureEvalTestManager returns a manager with an empty posture cache and router data model,
+// which evaluates posture changes on pool. pool may be nil when the test calls
+// evaluatePostureChange directly.
+func newPostureEvalTestManager(pool goroutines.Pool) (*ManagerImpl, *stubConnectionTracker) {
+	tracker := &stubConnectionTracker{lookups: make(chan string, 16)}
 	mgr := &ManagerImpl{
 		postureCache:      posture.NewCache(nil),
 		postureEvalPool:   pool,
 		connectionTracker: tracker,
 	}
 	mgr.routerDataModel.Store(common.NewBareRouterDataModel())
-	t.Cleanup(func() {
-		if pool != nil {
-			pool.Shutdown()
-		}
-	})
 	return mgr, tracker
 }
-
-func newTestPool(t *testing.T, queueSize uint32) goroutines.Pool {
-	t.Helper()
-
-	pool, err := goroutines.NewPool(goroutines.PoolConfig{
-		QueueSize:    queueSize,
-		MinWorkers:   0,
-		MaxWorkers:   1,
-		IdleTime:     time.Second,
-		CloseNotify:  make(chan struct{}),
-		PanicHandler: func(interface{}) {},
-	})
-	require.NoError(t, err)
-	return pool
-}
-
-func seedPosture(mgr *ManagerImpl, apiSessionId string) {
-	mgr.postureCache.AddResponses("identity-1", apiSessionId, &edge_client_pb.PostureResponses{
-		Responses: []*edge_client_pb.PostureResponse{
-			{
-				Type: &edge_client_pb.PostureResponse_Domain_{
-					Domain: &edge_client_pb.PostureResponse_Domain{Name: "example.com"},
-				},
-			},
-		},
-	})
-}
-
-func Test_EvaluatePostureChange_NoPostureDataIsANoop(t *testing.T) {
-	req := require.New(t)
-	mgr, tracker := newPostureEvalTestManager(t, newTestPool(t, 16))
-
-	// the api session's posture data has been evicted; there is nothing to re-evaluate and no
-	// connections to look for
-	mgr.evaluatePostureChange("identity-1", "evicted-session")
-
-	req.Equal(int32(0), tracker.lookups.Load())
-}
-
-func Test_EvaluatePostureChange_ReadsCurrentPostureData(t *testing.T) {
-	req := require.New(t)
-	mgr, tracker := newPostureEvalTestManager(t, newTestPool(t, 16))
-
-	seedPosture(mgr, "session-1")
-	mgr.evaluatePostureChange("identity-1", "session-1")
-
-	req.Equal(int32(1), tracker.lookups.Load(), "posture data present, so the evaluation proceeds")
-}
-
-// Test_OnPostureDataUpdate_RunsInlineWhenPoolRejects covers the fail-safe: an evaluation that
-// cannot be queued must still run, since dropping it would leave access in place that current
-// posture no longer permits.
-func Test_OnPostureDataUpdate_RunsInlineWhenPoolRejects(t *testing.T) {
-	req := require.New(t)
-
-	mgr, tracker := newPostureEvalTestManager(t, rejectingPool{})
-	seedPosture(mgr, "session-1")
-
-	mgr.onPostureDataUpdate(&posture.InstanceData{IdentityId: "identity-1", ApiSessionId: "session-1"})
-
-	req.Equal(int32(1), tracker.lookups.Load(), "a rejected evaluation must still run inline")
-}
-
-func Test_OnPostureDataUpdate_SchedulesOntoThePool(t *testing.T) {
-	req := require.New(t)
-	mgr, tracker := newPostureEvalTestManager(t, newTestPool(t, 16))
-	seedPosture(mgr, "session-1")
-
-	mgr.onPostureDataUpdate(&posture.InstanceData{IdentityId: "identity-1", ApiSessionId: "session-1"})
-
-	req.Eventually(func() bool {
-		return tracker.lookups.Load() == 1
-	}, 5*time.Second, time.Millisecond, "the scheduled evaluation must run")
-}
-
-// postureCheckedRdm builds the smallest data model in which an access check actually evaluates
-// posture: an identity, a service, and a dial policy joining them that carries a MAC check.
-// Without the policy the check short-circuits before it reads any posture data.
-func postureCheckedRdm(req *require.Assertions) *common.RouterDataModel {
-	rdm := common.NewBareRouterDataModel()
-
-	rdm.HandleIdentityEvent(1, &edge_ctrl_pb.DataState_Event{Action: edge_ctrl_pb.DataState_Create},
-		&edge_ctrl_pb.DataState_Event_Identity{Identity: &edge_ctrl_pb.DataState_Identity{Id: "identity-1", Name: "identity-1"}})
-
-	rdm.HandleServiceEvent(2, &edge_ctrl_pb.DataState_Event{Action: edge_ctrl_pb.DataState_Create},
-		&edge_ctrl_pb.DataState_Event_Service{Service: &edge_ctrl_pb.DataState_Service{Id: "service-1", Name: "service-1"}})
-
-	// A domain check, so evaluation reads the same field the posture responses below write. A check
-	// on some other field would never touch the memory being mutated.
-	rdm.HandlePostureCheckEvent(3, &edge_ctrl_pb.DataState_Event{Action: edge_ctrl_pb.DataState_Create},
-		&edge_ctrl_pb.DataState_Event_PostureCheck{PostureCheck: &edge_ctrl_pb.DataState_PostureCheck{
-			Id: "check-1", Name: "domain-check", TypeId: "DOMAIN",
-			Subtype: &edge_ctrl_pb.DataState_PostureCheck_Domains_{
-				Domains: &edge_ctrl_pb.DataState_PostureCheck_Domains{Domains: []string{"example.com"}},
-			},
-		}})
-
-	rdm.HandleServicePolicyEvent(4, &edge_ctrl_pb.DataState_Event{Action: edge_ctrl_pb.DataState_Create},
-		&edge_ctrl_pb.DataState_Event_ServicePolicy{ServicePolicy: &edge_ctrl_pb.DataState_ServicePolicy{
-			Id: "policy-1", Name: "policy-1", PolicyType: edge_ctrl_pb.PolicyType_DialPolicy,
-		}})
-
-	link := func(index uint64, entityType edge_ctrl_pb.ServicePolicyRelatedEntityType, id string) {
-		rdm.Handle(index, &edge_ctrl_pb.DataState_Event{
-			Action: edge_ctrl_pb.DataState_Create,
-			Model: &edge_ctrl_pb.DataState_Event_ServicePolicyChange{
-				ServicePolicyChange: &edge_ctrl_pb.DataState_ServicePolicyChange{
-					PolicyId:          "policy-1",
-					RelatedEntityIds:  []string{id},
-					RelatedEntityType: entityType,
-					Add:               true,
-				},
-			},
-		})
-	}
-
-	link(5, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedIdentity, "identity-1")
-	link(6, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedService, "service-1")
-	link(7, edge_ctrl_pb.ServicePolicyRelatedEntityType_RelatedPostureCheck, "check-1")
-
-	rdm.SetCurrentIndex(8)
-
-	policies, err := rdm.GetServiceAccessPolicies("identity-1", "service-1", edge_ctrl_pb.PolicyType_DialPolicy)
-	req.NoError(err, "the model must actually resolve a policy, or the check never reads posture data")
-	req.NotEmpty(policies.PostureChecks, "the policy must carry a posture check")
-
-	return rdm
-}
-
-// Test_HasAccess_DoesNotRacePostureResponses covers the access-check path reading posture data
-// while responses are applied to it. Handing the evaluator a pointer into the live instance is an
-// unsynchronized read of fields the response path writes under the instance lock. Run under -race.
-func Test_HasAccess_DoesNotRacePostureResponses(t *testing.T) {
-	req := require.New(t)
-	mgr, _ := newPostureEvalTestManager(t, newTestPool(t, 16))
-	mgr.routerDataModel.Store(postureCheckedRdm(req))
-
-	const apiSessionId = "session-1"
-
-	// Alternating values, because Apply skips a response that reports what it already holds: a
-	// writer that never writes cannot race a reader.
-	reportDomain := func(domain string) {
-		mgr.postureCache.AddResponses("identity-1", apiSessionId, &edge_client_pb.PostureResponses{
-			Responses: []*edge_client_pb.PostureResponse{
-				{
-					Type: &edge_client_pb.PostureResponse_Domain_{
-						Domain: &edge_client_pb.PostureResponse_Domain{Name: domain},
-					},
-				},
-			},
-		})
-	}
-	reportDomain("example.com")
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		for i := range 500 {
-			if i%2 == 0 {
-				reportDomain("example.com")
-			} else {
-				reportDomain("other.example.com")
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for range 500 {
-			_, _ = mgr.HasAccess("identity-1", apiSessionId, "service-1", edge_ctrl_pb.PolicyType_DialPolicy)
-		}
-	}()
-
-	wg.Wait()
-	req.NotNil(mgr.postureCache.GetInstance(apiSessionId))
-}
-
-// Test_EvaluatePostureChange_JudgesAgainstPostureReadAfterCollecting covers an evaluation that is
-// overtaken while it runs: a newer, passing posture report lands, and a dial or bind is admitted
-// under it, before the evaluation reaches that circuit or terminator. Each "admitted under newer
-// passing posture" case lands the newer report while the connection is being iterated, so an
-// evaluation judging against posture read before iterating closes what current posture allows.
-func Test_EvaluatePostureChange_JudgesAgainstPostureReadAfterCollecting(t *testing.T) {
-	t.Run("dial circuit is closed when current posture fails", func(t *testing.T) {
-		req := require.New(t)
-		mgr, tracker := newPostureEvalTestManager(t, nil)
-		mgr.routerDataModel.Store(newPostureEvalTestRdm())
-		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
-		circuit := &postureEvalTestCircuit{serviceId: "svc-1"}
-		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
-		conn.circuits = []*postureEvalTestCircuit{circuit}
-		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
-
-		mgr.evaluatePostureChange("identity-1", "session-1")
-
-		req.True(circuit.closed, "the MAC check fails, so the dial circuit loses access")
-	})
-
-	t.Run("dial circuit admitted under newer passing posture is kept", func(t *testing.T) {
-		req := require.New(t)
-		mgr, tracker := newPostureEvalTestManager(t, nil)
-		mgr.routerDataModel.Store(newPostureEvalTestRdm())
-		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
-		circuit := &postureEvalTestCircuit{serviceId: "svc-1"}
-		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
-		conn.circuits = []*postureEvalTestCircuit{circuit}
-		conn.newerPosture = macPostureResponses(passingMac)
-		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
-
-		mgr.evaluatePostureChange("identity-1", "session-1")
-
-		req.False(circuit.closed, "the circuit was admitted under passing posture, which is still current")
-	})
-
-	t.Run("terminator is closed when current posture fails", func(t *testing.T) {
-		req := require.New(t)
-		mgr, tracker := newPostureEvalTestManager(t, nil)
-		mgr.routerDataModel.Store(newPostureEvalTestRdm())
-		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
-		terminator := &postureEvalTestTerminator{serviceId: "svc-1"}
-		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
-		conn.terminators = []*postureEvalTestTerminator{terminator}
-		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
-
-		mgr.evaluatePostureChange("identity-1", "session-1")
-
-		req.True(terminator.closed, "the MAC check fails, so the terminator loses bind access")
-	})
-
-	t.Run("terminator admitted under newer passing posture is kept", func(t *testing.T) {
-		req := require.New(t)
-		mgr, tracker := newPostureEvalTestManager(t, nil)
-		mgr.routerDataModel.Store(newPostureEvalTestRdm())
-		mgr.postureCache.AddResponses("identity-1", "session-1", macPostureResponses(failingMac))
-		terminator := &postureEvalTestTerminator{serviceId: "svc-1"}
-		conn := newPostureEvalTestConn(mgr.postureCache, "identity-1", "session-1")
-		conn.terminators = []*postureEvalTestTerminator{terminator}
-		conn.newerPosture = macPostureResponses(passingMac)
-		tracker.channels = []channel.Channel{&postureEvalTestChannel{userData: conn}}
-
-		mgr.evaluatePostureChange("identity-1", "session-1")
-
-		req.False(terminator.closed, "the terminator was admitted under passing posture, which is still current")
-	})
-}
-
-const (
-	passingMac = "001122334455"
-	failingMac = "66778899aabb"
-)
 
 // postureEvalTestChannel is a channel.Channel that carries only user data, which is all posture
 // evaluation reads from a channel. Any other method panics.
@@ -343,6 +318,8 @@ type postureEvalTestConn struct {
 	newerPosture *edge_client_pb.PostureResponses
 }
 
+// newPostureEvalTestConn returns a connection for the given api session with no circuits or
+// terminators, reading and writing posture through cache.
 func newPostureEvalTestConn(cache *posture.Cache, identityId, apiSessionId string) *postureEvalTestConn {
 	return &postureEvalTestConn{
 		cache: cache,
@@ -376,6 +353,7 @@ func (self *postureEvalTestConn) IterateBindTerminators(f func(BindTerminator)) 
 	}
 }
 
+// landNewerPosture applies newerPosture to the posture cache, if it is set.
 func (self *postureEvalTestConn) landNewerPosture() {
 	if self.newerPosture != nil {
 		self.cache.AddResponses(self.token.IdentityId, self.token.Id, self.newerPosture)
