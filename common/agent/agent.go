@@ -96,6 +96,44 @@ type Options struct {
 // Note: The agent exposes an endpoint via a TCP connection that can be used by
 // any program on the system. Review your security requirements before starting
 // the agent.
+// requireLoopback rejects an address that is reachable from off the host.
+//
+// The agent authenticates nothing. Whoever reaches the socket can dump the heap, read the
+// memory profile, pull the running binary and run the application's own operations, which for
+// a router includes quiescing and decommissioning it. A unix socket is created 0700 and is
+// therefore limited to the user running the process. A network listener has no such gate, so
+// it is held to loopback. Use the unix socket, reached over ssh or a ziti service, when the
+// agent has to be available from elsewhere.
+func requireLoopback(addr string) error {
+	host, _, err := net.SplitHostPort(addr)
+
+	if err != nil {
+		return errors.Wrapf(err, "gops: could not parse agent address %v", addr)
+	}
+
+	if host == "" {
+		return errors.Errorf("gops: agent address %v listens on all interfaces, the agent has no authentication and must be bound to a loopback address", addr)
+	}
+
+	ips, err := net.LookupIP(host)
+
+	if err != nil {
+		return errors.Wrapf(err, "gops: could not resolve agent address host %v", host)
+	}
+
+	if len(ips) == 0 {
+		return errors.Errorf("gops: agent address host %v resolved to no addresses", host)
+	}
+
+	for _, ip := range ips {
+		if !ip.IsLoopback() {
+			return errors.Errorf("gops: agent address %v resolves to non-loopback address %v, the agent has no authentication and must be bound to a loopback address", addr, ip)
+		}
+	}
+
+	return nil
+}
+
 func Listen(opts Options) error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -128,6 +166,12 @@ func Listen(opts Options) error {
 		}
 		if network == "unix" {
 			tmpfile = addr
+		}
+	}
+
+	if network != "unix" {
+		if err := requireLoopback(addr); err != nil {
+			return err
 		}
 	}
 
@@ -486,7 +530,10 @@ func (self *handler) handle(conn net.Conn, op byte) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		f, err := os.Create(outputFileName)
+		// O_EXCL so a dump cannot land on top of an existing file: the name comes off the wire,
+		// and the process may be able to write to config, keys or its own binary. 0600 because a
+		// heap dump carries whatever the process holds in memory, including secrets.
+		f, err := os.OpenFile(outputFileName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 		if err != nil {
 			return false, err
 		}
