@@ -894,7 +894,9 @@ func TestDialCtrlChannel_ReconnectRedialsFreshGroup(t *testing.T) {
 	req.Eventually(firstAccepted.IsClosed, 5*time.Second, 10*time.Millisecond,
 		"peer channel should close once its underlays are gone")
 	req.False(multiCh.IsClosed(), "dial-side channel must stay open across a reconnect")
-	req.True(sawZero.Load(), "the change callback must report the drop to zero underlays")
+	// The dial side sees its underlays close independently of the peer, so the report can trail the peer's close.
+	req.Eventually(sawZero.Load, 5*time.Second, 10*time.Millisecond,
+		"the change callback must report the drop to zero underlays")
 
 	req.Eventually(func() bool {
 		second := acceptedChannel(1)
