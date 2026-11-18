@@ -1,3 +1,28 @@
+# Release 1.6.24
+
+## What's New
+
+* HA and OIDC are not supported on 1.6, and generated controller configs no longer bind edge-oidc (see below)
+
+## HA and OIDC Not Supported
+
+HA (controller clusters) and OIDC are not supported on 1.6. Use v2 for either.
+
+Current Go and C SDKs use OIDC sessions automatically whenever the controller binds the `edge-oidc` API.
+Routers on 1.6 don't fully enforce changes for OIDC sessions: when service policy, posture or revocations
+change, existing connections and hosted terminators stay up. With legacy API sessions they are closed.
+
+* `ziti create config controller`, and the quickstarts and packages built on it, no longer bind `edge-oidc`
+  unless the config is clustered, since clustered controllers require it.
+* Existing standalone controllers should remove the `edge-oidc` binding from their web listeners to keep
+  clients on legacy API sessions.
+* The controller logs a warning at startup when `edge-oidc` is bound, or when it runs clustered.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.23 -> v1.6.24](https://github.com/openziti/ziti/compare/v1.6.23...v1.6.24)
+    * [Issue #4788](https://github.com/openziti/ziti/issues/4788) - Generated controller configs bind edge-oidc, which 1.6 doesn't support
+
 # Release 1.6.23
 
 ## What's New

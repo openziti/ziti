@@ -446,11 +446,13 @@ web:
       - binding: fabric
       - binding: edge-management
       - binding: edge-client
-      - binding: edge-oidc
-        options:
-          redirectURIs:
-            - "http://localhost:*/auth/callback"
-            - "http://127.0.0.1:*/auth/callback"
+      # OIDC is not supported on this release. SDKs use OIDC sessions whenever edge-oidc is bound, so leave
+      # it unbound unless the controller is clustered, whose clients require it.
+      #- binding: edge-oidc
+      #  options:
+      #    redirectURIs:
+      #      - "http://localhost:*/auth/callback"
+      #      - "http://127.0.0.1:*/auth/callback"
 
 commandRateLimiter:
     enabled: true

@@ -2,17 +2,18 @@ package create
 
 import (
 	"fmt"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/constants"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"os"
 	"runtime"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
+
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/constants"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 /* BEGIN Controller config template structure */
@@ -1007,6 +1008,32 @@ func TestCtrlEdgeAltAddress(t *testing.T) {
 	assert.Equal(t, altAddy, data2.Controller.Ctrl.AltAdvertisedAddress)
 	assert.Equal(t, altAddy+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig2.Web[0].BindPoints[0].Address)
 	assert.Equal(t, altAddy+":"+testDefaultCtrlEdgeAdvertisedPort, ctrlConfig2.Edge.Api.Address)
+}
+
+func TestCtrlEdgeOidcBindingOnlyWhenClustered(t *testing.T) {
+	t.Run("non-clustered config does not bind edge-oidc", func(t *testing.T) {
+		ctrlConfig, _ := execCreateConfigControllerCommand(nil, map[string]string{})
+
+		assert.NotEmpty(t, ctrlConfig.Web[0].Apis)
+		assert.NotContains(t, webApiBindings(ctrlConfig), "edge-oidc")
+	})
+
+	t.Run("clustered config binds edge-oidc", func(t *testing.T) {
+		ctrlConfig, _ := execCreateConfigControllerCommand([]string{"--clustered"}, map[string]string{})
+
+		assert.Contains(t, webApiBindings(ctrlConfig), "edge-oidc")
+	})
+}
+
+// webApiBindings returns the API bindings of every web listener in config.
+func webApiBindings(config ControllerConfig) []string {
+	var result []string
+	for _, web := range config.Web {
+		for _, api := range web.Apis {
+			result = append(result, api.Binding)
+		}
+	}
+	return result
 }
 
 func configToStruct(config string) ControllerConfig {

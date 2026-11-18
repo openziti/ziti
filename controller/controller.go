@@ -482,6 +482,8 @@ func (c *Controller) Run() error {
 		panic(err)
 	}
 
+	c.warnUnsupportedFeatures()
+
 	c.xweb.Run()
 
 	for _, helloHeader := range c.GetHelloHeaderProviders() {

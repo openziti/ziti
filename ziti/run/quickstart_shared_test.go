@@ -533,7 +533,7 @@ func performQuickstartTest(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
 	body, _ := io.ReadAll(resp.Body)
 	strBody := string(body)
-	assert.Contains(t, strBody, "\"path\":\"/oidc\"")
+	assert.Contains(t, strBody, "\"path\":\"/edge/client/v1\"")
 	fmt.Println(strBody)
 }
 
