@@ -51,7 +51,6 @@ const SessionProviderJwt = "jwt"
 //	 "provider" : "legacy",
 //	 "session_type": "Bind",
 //	 "id": "cm611bn75000jdhj9s5xrwynr",
-//	 "token": "4ed77b84-650e-4b4b-9fbb-2466c9c94abb",
 //	 "api_session_id": "cm611bn6l000hdhj9urp9xlnw",
 //	 "identity_id": "IahyE.5Scw",
 //	 "service_id": "3pjMOKY2icS8fkQ1lfHmrP"
@@ -67,7 +66,6 @@ const SessionProviderJwt = "jwt"
 //	 "provider" : "legacy",
 //	 "session_type": "Bind",
 //	 "id": "cm611bgxa0008dhj9k3yo3vox",
-//	 "token": "f8a447a2-2bd0-4821-8142-27c1770d06ab",
 //	 "api_session_id": "cm611bgwn0006dhj9m4cv1obf",
 //	 "identity_id": "IahyE.5Scw",
 //	 "service_id": "3pjMOKY2icS8fkQ1lfHmrP"
@@ -89,9 +87,6 @@ type SessionEvent struct {
 	// The session identifier.
 	Id string `json:"id"`
 
-	// The session token.
-	Token string `json:"token,omitempty"`
-
 	// The id of the api session used to create this session.
 	ApiSessionId string `json:"api_session_id"`
 
@@ -103,8 +98,8 @@ type SessionEvent struct {
 }
 
 func (event *SessionEvent) String() string {
-	return fmt.Sprintf("%v.%v id=%v timestamp=%v token=%v apiSessionId=%v identityId=%v",
-		event.Namespace, event.EventType, event.Id, event.Timestamp, event.Token, event.ApiSessionId, event.IdentityId)
+	return fmt.Sprintf("%v.%v id=%v timestamp=%v apiSessionId=%v identityId=%v",
+		event.Namespace, event.EventType, event.Id, event.Timestamp, event.ApiSessionId, event.IdentityId)
 }
 
 type SessionEventHandler interface {

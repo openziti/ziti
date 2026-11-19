@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/event"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 )
 
@@ -64,7 +64,6 @@ func (self *Dispatcher) sessionCreated(session *db.Session) {
 		SessionType:  session.Type,
 		Provider:     event.SessionProviderLegacy,
 		Timestamp:    time.Now(),
-		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
 		IdentityId:   session.IdentityId,
 		ServiceId:    session.ServiceId,
@@ -84,7 +83,6 @@ func (self *Dispatcher) sessionDeleted(session *db.Session) {
 		SessionType:  session.Type,
 		Provider:     event.SessionProviderLegacy,
 		Timestamp:    time.Now(),
-		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
 		IdentityId:   session.IdentityId,
 		ServiceId:    session.ServiceId,

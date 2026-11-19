@@ -175,8 +175,9 @@ func (store *authenticatorStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldAuthenticatorCertLastAuthResolvedToRoot, ast.NodeTypeBool)
 	store.AddSymbol(FieldAuthenticatorCertLastExtendRolledKeys, ast.NodeTypeBool)
 	usernameSymbol := store.AddSymbol(FieldAuthenticatorUpdbUsername, ast.NodeTypeString)
-	store.AddSymbol(FieldAuthenticatorUpdbPassword, ast.NodeTypeString)
-	store.AddSymbol(FieldAuthenticatorUpdbSalt, ast.NodeTypeString)
+	// Private: a filter or sort on the hash or salt reveals it a character at a time.
+	store.AddPrivateSymbol(FieldAuthenticatorUpdbPassword, ast.NodeTypeString)
+	store.AddPrivateSymbol(FieldAuthenticatorUpdbSalt, ast.NodeTypeString)
 
 	store.symbolIdentityId = store.AddFkSymbol(FieldAuthenticatorIdentity, store.stores.identity)
 
