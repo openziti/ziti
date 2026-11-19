@@ -47,7 +47,6 @@ type ApiSessionEvent struct {
 	EventType  string    `json:"event_type"`
 	Id         string    `json:"id"`
 	Type       string    `json:"type"`
-	Token      string    `json:"token"`
 	IdentityId string    `json:"identity_id"`
 	IpAddress  string    `json:"ip_address"`
 }

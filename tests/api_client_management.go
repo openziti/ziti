@@ -555,6 +555,20 @@ func (helper *ManagementHelperClient) GetIdentityAuthenticators(identityId strin
 	return resp.Payload.Data, nil
 }
 
+// ListAuthenticatorsByFilter lists the authenticators matching filter. A rejected filter is returned
+// as a wrapped API error.
+func (helper *ManagementHelperClient) ListAuthenticatorsByFilter(filter string) ([]*rest_model.AuthenticatorDetail, error) {
+	resp, err := helper.API.Authenticator.ListAuthenticators(&managementAuthenticator.ListAuthenticatorsParams{
+		Filter: &filter,
+	}, nil)
+
+	if err != nil {
+		return nil, rest_util.WrapErr(err)
+	}
+
+	return resp.Payload.Data, nil
+}
+
 func (helper *ManagementHelperClient) RefreshEnrollmentJwt(id string) (*rest_model.EnrollmentDetail, error) {
 	refreshParams := &managementEnrollment.RefreshEnrollmentParams{
 		ID: id,
