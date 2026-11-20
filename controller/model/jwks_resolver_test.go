@@ -747,6 +747,35 @@ func Test_HardenedJwksResolver_Get(t *testing.T) {
 		req.Error(err)
 	})
 
+	t.Run("a body at the size limit resolves", func(t *testing.T) {
+		req := require.New(t)
+
+		padding := strings.Repeat(" ", MaxJwksResponseSize-len(jwksBody))
+		server := newTestJwksServer(t, jwksBody+padding)
+
+		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+
+		response, body, err := resolver.Get(server.URL + "/jwks")
+
+		req.NoError(err)
+		req.Len(response.Keys, 1)
+		req.Len(body, MaxJwksResponseSize)
+	})
+
+	t.Run("a body over the size limit is an error", func(t *testing.T) {
+		req := require.New(t)
+
+		padding := strings.Repeat(" ", MaxJwksResponseSize-len(jwksBody)+1)
+		server := newTestJwksServer(t, jwksBody+padding)
+
+		resolver := NewHardenedJwksResolver(config.DefaultJwksFetch())
+
+		_, _, err := resolver.Get(server.URL + "/jwks")
+
+		req.Error(err)
+		req.Contains(err.Error(), "exceeds the maximum")
+	})
+
 	t.Run("a body that is not a JWKS response is an error", func(t *testing.T) {
 		req := require.New(t)
 
