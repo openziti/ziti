@@ -81,7 +81,9 @@ func (h *ExtendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 			var serverPem string
 			var newCerts *model.ExtendedCerts
 
-			if router, _ := h.appEnv.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); router != nil {
+			routerId := ch.Id()
+
+			if router, _ := h.appEnv.Managers.EdgeRouter.Read(routerId); router != nil {
 				changeCtx := newRouterChangeContext(router, ch)
 
 				log = log.WithFields(map[string]interface{}{
@@ -100,7 +102,7 @@ func (h *ExtendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 					return
 				}
 
-			} else if router, _ := h.appEnv.Managers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
+			} else if router, _ := h.appEnv.Managers.TransitRouter.Read(routerId); router != nil {
 				changeCtx := newRouterChangeContext(router, ch)
 
 				if req.RequireVerification {
@@ -114,7 +116,7 @@ func (h *ExtendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 					return
 				}
 			} else {
-				log.WithError(err).Errorf("request to extend route enrollment failed, router not found by fingerprint")
+				log.WithField("routerId", routerId).Error("request to extend router enrollment failed, router not found by id")
 				return
 			}
 
