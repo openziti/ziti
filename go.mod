@@ -12,7 +12,7 @@ require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/antchfx/jsonquery v1.3.7
+	github.com/antchfx/jsonquery v1.3.8
 	github.com/antlr4-go/antlr/v4 v4.13.1
 	github.com/biogo/store v0.0.0-20201120204734-aad293a2328f
 	github.com/blang/semver v3.5.1+incompatible
@@ -29,13 +29,13 @@ require (
 	github.com/go-jose/go-jose/v4 v4.1.9
 	github.com/go-openapi/errors v0.22.9
 	github.com/go-openapi/jsonpointer v1.0.2
-	github.com/go-openapi/loads v0.25.3
+	github.com/go-openapi/loads v0.25.4
 	github.com/go-openapi/runtime v0.33.4
 	github.com/go-openapi/spec v1.0.1
 	github.com/go-openapi/strfmt v0.27.4
 	github.com/go-openapi/swag v0.29.2
 	github.com/go-openapi/swag/jsonutils v0.29.2
-	github.com/go-openapi/validate v1.0.1
+	github.com/go-openapi/validate v1.0.2
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -50,7 +50,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/raft v1.8.0
 	github.com/hashicorp/raft-boltdb/v2 v2.4.2
-	github.com/jedib0t/go-pretty/v6 v6.9.0
+	github.com/jedib0t/go-pretty/v6 v6.9.2
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/jinzhu/copier v0.4.0
@@ -116,7 +116,7 @@ require (
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/brotli v1.3.0 // indirect
-	github.com/antchfx/xpath v1.3.8 // indirect
+	github.com/antchfx/xpath v1.3.9 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.4 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -133,7 +133,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/analysis v1.0.1 // indirect
+	github.com/go-openapi/analysis v1.0.2 // indirect
 	github.com/go-openapi/jsonreference v1.0.3 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.33.4 // indirect
 	github.com/go-openapi/swag/cmdutils v0.29.2 // indirect
