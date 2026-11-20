@@ -589,6 +589,10 @@ func Test_PostureChecks_MFA(t *testing.T) {
 						t.Run("updating the posture check further advances updatedAt", func(t *testing.T) {
 							ctx.testContextChanged(t)
 
+							// On Windows two time.Now() calls inside one clock tick return the same value. Sleeping past
+							// a tick puts the woke time strictly before the posture check patch time.
+							time.Sleep(25 * time.Millisecond)
+
 							newTimeout := int64(600)
 							mfaPatch := &rest_model.PostureCheckMfaPatch{}
 							mfaPatch.TimeoutSeconds = &newTimeout
