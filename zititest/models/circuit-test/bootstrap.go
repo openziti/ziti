@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
+	"github.com/openziti/ziti/zititest/zitilab/ctrlmode"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 )
 
@@ -46,15 +47,15 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/* ctrl.db"))
 	workflow.AddAction(host.GroupExec("component.ctrl", 5, "rm -rf ./fablab/ctrldata"))
 
-	isHA := len(m.SelectComponents(".ctrl")) > 1
+	clustered := ctrlmode.IsClustered(m)
 
-	if !isHA {
+	if !clustered {
 		workflow.AddAction(component.Exec("#ctrl1", zitilab.ControllerActionInitStandalone))
 	}
 
 	workflow.AddAction(component.Start(".ctrl"))
 
-	if isHA {
+	if clustered {
 		workflow.AddAction(semaphore.Sleep(2 * time.Second))
 		workflow.AddAction(edge.InitRaftController("#ctrl1"))
 	}

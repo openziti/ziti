@@ -1,8 +1,42 @@
 name: Validation (SDK Terminators)
+run-name: ${{ format('Validation (SDK Terminators, {0}{1}, {2})', inputs.cluster_mode, !inputs.oidc && ', OIDC off' || '', inputs.duration) }}
 
 on:
   workflow_call:
+    inputs:
+      cluster_mode:
+        description: How the controllers run, cluster-3, cluster-1 or non-ha
+        type: string
+        required: false
+        default: cluster-3
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        required: false
+        default: true
+      duration:
+        description: How long to run the test for
+        type: string
+        required: false
+        default: '2h'
   workflow_dispatch:
+    inputs:
+      cluster_mode:
+        description: How the controllers run
+        type: choice
+        options:
+          - cluster-3
+          - cluster-1
+          - non-ha
+        default: cluster-3
+      oidc:
+        description: Whether the controllers serve the OIDC API. Only non-ha can turn it off
+        type: boolean
+        default: true
+      duration:
+        description: How long to run the test for, such as 2h or 10m
+        type: string
+        default: '2h'
 
 jobs:
   sdk-terminator-validation:
@@ -11,3 +45,6 @@ jobs:
     secrets: inherit
     with:
       test: sdk-hosting-test
+      cluster_mode: ${{ inputs.cluster_mode }}
+      oidc: ${{ inputs.oidc }}
+      duration: ${{ inputs.duration }}
