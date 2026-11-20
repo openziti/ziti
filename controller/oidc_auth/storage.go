@@ -303,6 +303,7 @@ func (s *HybridStorage) CompleteTotpEnrollment(changeCtx *change.Context, authRe
 
 	authRequest.IsTotpEnrolled = true
 	authRequest.AddAmr(AuthMethodSecondaryTotp)
+	authRequest.AuthTime = time.Now()
 
 	return authRequest, nil
 }
@@ -518,6 +519,7 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 	}
 
 	authRequest.AddAmr(AuthMethodSecondaryTotp)
+	authRequest.AuthTime = time.Now()
 
 	return authRequest, nil
 }
@@ -737,7 +739,7 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 		claims.CustomClaims = subjectClaims.CustomClaims
 		// keep the original auth_time so an exchange does not reset authentication recency
 		claims.AuthTime = subjectClaims.AuthTime
-		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
+		claims.AccessTokenClaims.AuthenticationMethodsReferences = subjectClaims.AuthenticationMethodsReferences
 		claims.ClientID = req.GetClientID()
 
 		if ts, tsErr := TokenStateFromContext(ctx); tsErr == nil && ts.CsrPem != "" {
