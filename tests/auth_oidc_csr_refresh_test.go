@@ -939,6 +939,113 @@ func Test_OIDC_TokenExchange_PreservesAuthTime(t *testing.T) {
 		"auth_time must carry the subject token's original authentication time through the exchange, never the mint time")
 }
 
+// Test_OIDC_TokenExchange_RequestedTokenType verifies which token types the token-exchange grant
+// issues for a given subject token type. An access token is a bearer credential that is also
+// presented to edge routers, so it must never be exchangeable for a refresh token, either by
+// asking for one or by omitting requested_token_type.
+func Test_OIDC_TokenExchange_RequestedTokenType(t *testing.T) {
+	ctx := NewTestContext(t)
+	defer ctx.Teardown()
+	ctx.StartServer()
+
+	clientHelper := ctx.NewEdgeClientApi(nil)
+
+	updbCreds := edge_apis.NewUpdbCredentials(ctx.AdminAuthenticator.Username, ctx.AdminAuthenticator.Password)
+	updbCreds.CaPool = ctx.ControllerCaPool()
+
+	// No CSR: the tokens carry no cert binding, so the exchange needs no client TLS certs.
+	accessToken, refreshToken, _, _, clientID := oidcAuthWithCsr(ctx, clientHelper, updbCreds, "")
+	ctx.Req.NotEmpty(accessToken)
+	ctx.Req.NotEmpty(refreshToken)
+
+	exchange := func(subjectToken string, subjectTokenType, requestedTokenType oidc.TokenType) (*oidc.TokenExchangeResponse, int) {
+		dst := map[string][]string{
+			"grant_type":         {string(oidc.GrantTypeTokenExchange)},
+			"subject_token":      {subjectToken},
+			"subject_token_type": {string(subjectTokenType)},
+			"client_id":          {clientID},
+		}
+
+		if requestedTokenType != "" {
+			dst["requested_token_type"] = []string{string(requestedTokenType)}
+		}
+
+		result := &oidc.TokenExchangeResponse{}
+		resp, err := ctx.newAnonymousClientApiRequest().
+			SetHeader("content-type", oidc_auth.FormContentType).
+			SetMultiValueFormData(dst).
+			SetResult(result).
+			Post("https://" + ctx.ApiHost + "/oidc/oauth/token")
+		ctx.Req.NoError(err)
+
+		return result, resp.StatusCode()
+	}
+
+	t.Run("access token without a requested type yields an access token only", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		result, statusCode := exchange(accessToken, oidc.AccessTokenType, "")
+		ctx.Req.Equal(http.StatusOK, statusCode)
+		ctx.Req.NotEmpty(result.AccessToken)
+		ctx.Req.Equal(oidc.AccessTokenType, result.IssuedTokenType)
+		ctx.Req.Empty(result.RefreshToken, "an access token must not be exchangeable for a refresh token")
+	})
+
+	t.Run("access token for an access token yields an access token only", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		result, statusCode := exchange(accessToken, oidc.AccessTokenType, oidc.AccessTokenType)
+		ctx.Req.Equal(http.StatusOK, statusCode)
+		ctx.Req.NotEmpty(result.AccessToken)
+		ctx.Req.Empty(result.RefreshToken, "an access token must not be exchangeable for a refresh token")
+	})
+
+	t.Run("access token for a refresh token is rejected", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		result, statusCode := exchange(accessToken, oidc.AccessTokenType, oidc.RefreshTokenType)
+		ctx.Req.Equal(http.StatusBadRequest, statusCode)
+		ctx.Req.Empty(result.AccessToken)
+		ctx.Req.Empty(result.RefreshToken, "an access token must not be exchangeable for a refresh token")
+	})
+
+	t.Run("access token for an id token succeeds", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		result, statusCode := exchange(accessToken, oidc.AccessTokenType, oidc.IDTokenType)
+		ctx.Req.Equal(http.StatusOK, statusCode)
+		ctx.Req.NotEmpty(result.AccessToken, "the id token is returned in the access_token field")
+		ctx.Req.Empty(result.RefreshToken)
+	})
+
+	t.Run("refresh token for an access token yields an access token only", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		result, statusCode := exchange(refreshToken, oidc.RefreshTokenType, oidc.AccessTokenType)
+		ctx.Req.Equal(http.StatusOK, statusCode)
+		ctx.Req.NotEmpty(result.AccessToken)
+		ctx.Req.Empty(result.RefreshToken)
+	})
+
+	t.Run("refresh token for an id token succeeds", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		result, statusCode := exchange(refreshToken, oidc.RefreshTokenType, oidc.IDTokenType)
+		ctx.Req.Equal(http.StatusOK, statusCode)
+		ctx.Req.NotEmpty(result.AccessToken, "the id token is returned in the access_token field")
+		ctx.Req.Empty(result.RefreshToken)
+	})
+
+	t.Run("refresh token without a requested type yields access and refresh tokens", func(t *testing.T) {
+		ctx.NextTest(t)
+
+		result, statusCode := exchange(refreshToken, oidc.RefreshTokenType, "")
+		ctx.Req.Equal(http.StatusOK, statusCode)
+		ctx.Req.NotEmpty(result.AccessToken)
+		ctx.Req.NotEmpty(result.RefreshToken)
+	})
+}
+
 func Test_OIDC_CSR_SpiffeFallback(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
