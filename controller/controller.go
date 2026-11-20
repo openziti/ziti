@@ -569,9 +569,9 @@ func (c *Controller) Run() error {
 	}
 
 	// Channel types with a dedicated acceptor below validate their own peers; the connect handler
-	// must skip exactly those and validate everything else (which the routing acceptor sends to the
-	// default router control acceptor, including unrecognized types). Set this before the listener
-	// starts accepting connections.
+	// must skip exactly those. The routing acceptor sends everything else to the default router control
+	// acceptor, including unrecognized types, so the connect handler validates the router control
+	// channel types and rejects the rest. Set this before the listener starts accepting connections.
 	separatelyValidatedTypes := map[string]struct{}{}
 	for chType := range ctrlAcceptors {
 		separatelyValidatedTypes[chType] = struct{}{}

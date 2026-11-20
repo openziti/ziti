@@ -54,7 +54,7 @@ func Test_ConnectHandler_isSeparatelyValidated(t *testing.T) {
 	require.True(t, clustered.isSeparatelyValidated(helloWithType(meshChannelType)), "mesh is validated by its own acceptor")
 	require.False(t, clustered.isSeparatelyValidated(helloWithType(ctrlchan.ChannelTypeDefault)), "router ctrl type is validated here")
 	require.False(t, clustered.isSeparatelyValidated(helloWithType(ctrlchan.ChannelTypeHighPriority)))
-	require.False(t, clustered.isSeparatelyValidated(helloWithType("bogus")), "unrecognized types route to the router acceptor and must be validated")
+	require.False(t, clustered.isSeparatelyValidated(helloWithType("bogus")), "unrecognized types route to the router acceptor and must not be skipped")
 	require.False(t, clustered.isSeparatelyValidated(helloWithType("")), "legacy (no type) connections are validated here")
 
 	// Non-clustered controller: no dedicated acceptors, so even a mesh-typed connection routes to the
@@ -62,6 +62,65 @@ func Test_ConnectHandler_isSeparatelyValidated(t *testing.T) {
 	standalone := &ConnectHandler{separatelyValidatedTypes: map[string]struct{}{}}
 	require.False(t, standalone.isSeparatelyValidated(helloWithType(meshChannelType)), "mesh on a non-clustered controller must be validated")
 	require.False(t, standalone.isSeparatelyValidated(helloWithType(ctrlchan.ChannelTypeDefault)))
+}
+
+// Test_ConnectHandler_HandleConnection_RejectsUnknownChannelType covers the rule that the router control
+// acceptor, which the dispatcher falls back to for every type without a dedicated acceptor, only ever
+// receives router control channel types and legacy (no type header) connections. Anything else is
+// refused, even when the peer presents a certificate that would pass router validation.
+func Test_ConnectHandler_HandleConnection_RejectsUnknownChannelType(t *testing.T) {
+	req := require.New(t)
+
+	root := ctMkCert(t, "root", true, nil)
+	roots := x509.NewCertPool()
+	roots.AddCert(root.cert)
+	trusted := []*x509.Certificate{ctMkCert(t, "router1", false, root).cert}
+
+	const unsupported = "unsupported channel type"
+
+	withId := func(hello *channel.Hello) *channel.Hello {
+		hello.IdToken = "router1"
+		return hello
+	}
+
+	clustered := &ConnectHandler{
+		identity:                 &caPoolIdentity{roots: roots},
+		separatelyValidatedTypes: map[string]struct{}{meshChannelType: {}},
+	}
+	req.ErrorContains(clustered.HandleConnection(withId(helloWithType("bogus")), trusted), unsupported)
+	req.NoError(clustered.HandleConnection(withId(helloWithType(meshChannelType)), trusted),
+		"mesh is validated by its own acceptor")
+
+	// Non-clustered controller: there is no mesh acceptor, so a mesh-typed connection would fall
+	// through to the router acceptor as well.
+	standalone := &ConnectHandler{
+		identity:                 &caPoolIdentity{roots: roots},
+		separatelyValidatedTypes: map[string]struct{}{},
+	}
+	req.ErrorContains(standalone.HandleConnection(withId(helloWithType(meshChannelType)), trusted), unsupported)
+	req.ErrorContains(standalone.HandleConnection(withId(helloWithType("bogus")), trusted), unsupported)
+
+	// Supported types are not refused for their type. They proceed to certificate validation, which
+	// fails here because no certificate is presented.
+	for _, chType := range []string{"", ctrlchan.ChannelTypeDefault, ctrlchan.ChannelTypeHighPriority, ctrlchan.ChannelTypeLowPriority} {
+		err := standalone.HandleConnection(withId(helloWithType(chType)), nil)
+		req.ErrorContains(err, "no certificates provided", "type [%s]", chType)
+	}
+
+	// A type header that is present but empty is equivalent to an absent one.
+	emptyType := channel.Headers{}
+	emptyType.PutStringHeader(channel.TypeHeader, "")
+	req.ErrorContains(standalone.HandleConnection(withId(&channel.Hello{Headers: emptyType}), nil), "no certificates provided")
+}
+
+func Test_isRouterCtrlChannelType(t *testing.T) {
+	require.True(t, isRouterCtrlChannelType(helloWithType("")), "legacy (no type) connections")
+	require.True(t, isRouterCtrlChannelType(helloWithType(ctrlchan.ChannelTypeDefault)))
+	require.True(t, isRouterCtrlChannelType(helloWithType(ctrlchan.ChannelTypeHighPriority)))
+	require.True(t, isRouterCtrlChannelType(helloWithType(ctrlchan.ChannelTypeLowPriority)))
+	require.False(t, isRouterCtrlChannelType(helloWithType(meshChannelType)))
+	require.False(t, isRouterCtrlChannelType(helloWithType("bogus")))
+	require.False(t, isRouterCtrlChannelType(helloWithType("CTRL.DEFAULT")), "types are matched exactly")
 }
 
 func Test_isFirstCtrlConnection(t *testing.T) {
