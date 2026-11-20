@@ -87,7 +87,7 @@ edge:
 {{ end }}
 
 {{ if not .Router.IsWss }}#{{ end }}transport:
-{{ if not .Router.IsWss }}#{{ end }}  ws:
+{{ if not .Router.IsWss }}#{{ end }}  wss:
 {{ if not .Router.IsWss }}#{{ end }}    writeTimeout: {{ .Router.Wss.WriteTimeout.Seconds }}
 {{ if not .Router.IsWss }}#{{ end }}    readTimeout: {{ .Router.Wss.ReadTimeout.Seconds }}
 {{ if not .Router.IsWss }}#{{ end }}    idleTimeout: {{ .Router.Wss.IdleTimeout.Seconds }}
