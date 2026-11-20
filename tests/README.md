@@ -417,3 +417,33 @@ Tests that move traffic use the `dataflow` build tag and the same context, plus:
 - Asserting on unfiltered list contents or counts.
 - `time.Sleep` to wait for async behavior.
 - Dependent subtests placed as siblings instead of nested.
+
+## Gotchas
+
+### Windows clock resolution
+
+On Windows the system clock advances in ticks that can be as long as about 15.6ms. Two
+`time.Now()` calls inside one tick return the same value. On Linux and macOS two consecutive
+calls almost always differ.
+
+A test that records a time, acts, and then asserts a strict `Before` or `After` against a second
+`time.Now()` passes on Linux and fails on Windows. The same applies to code under test that
+compares a stored time with `time.Now()`, such as an expiry or retention check called with a
+zero duration.
+
+When a test needs two instants to differ, sleep for 25ms between them and say why in a comment:
+
+```go
+cache.MarkDisconnected("gone")
+// On Windows two time.Now() calls inside one clock tick return the same value. Sleeping past
+// a tick puts the disconnect time strictly before the eviction time.
+time.Sleep(25 * time.Millisecond)
+
+req.Equal(1, cache.EvictInactive(0))
+```
+
+This is the one accepted use of `time.Sleep`. It separates two clock readings. It does not wait
+for async behavior, which still goes through channels with explicit timeouts.
+
+Claims carried in seconds, such as `auth_time`, `iat`, and `exp`, need a sleep longer than one
+second for the same reason.
