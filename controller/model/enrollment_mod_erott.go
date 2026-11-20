@@ -30,6 +30,7 @@ import (
 	"github.com/openziti/ziti/v2/common/cert"
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/pkg/errors"
 )
 
@@ -130,15 +131,21 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, err
 	}
 
+	// The enrollment is consumed before anything is stored on the router. Deleting it is the one step that
+	// concurrent requests presenting the same token compete on, so only the request whose delete succeeds
+	// goes on to store its fingerprint. A request that loses is answered as if the token were unknown.
+	if err := module.env.GetManagers().Enrollment.Delete(enrollment.Id, context.GetChangeContext()); err != nil {
+		if boltz.IsErrNotFoundErr(err) {
+			return nil, apierror.NewInvalidEnrollmentToken()
+		}
+		return nil, fmt.Errorf("could not delete enrollment: %s", err)
+	}
+
 	edgeRouter.CertPem = &clientChainPem
 	edgeRouter.IsVerified = true
 	edgeRouter.Fingerprint = &clientCertFingerprint
 	if err := module.env.GetManagers().EdgeRouter.Update(edgeRouter, true, nil, context.GetChangeContext()); err != nil {
-		return nil, fmt.Errorf("could not update edge router: %s", err)
-	}
-
-	if err := module.env.GetManagers().Enrollment.Delete(enrollment.Id, context.GetChangeContext()); err != nil {
-		return nil, fmt.Errorf("could not delete enrollment: %s", err)
+		return nil, fmt.Errorf("could not update edge router after its enrollment was consumed, the router must be re-enrolled: %s", err)
 	}
 
 	content := &rest_model.EnrollmentCerts{
