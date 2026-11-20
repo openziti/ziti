@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/db"
 	"github.com/openziti/ziti/v2/controller/models"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/sirupsen/logrus"
 )
 
@@ -164,7 +165,10 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 
 	log = log.WithField("requestedName", requestedName)
 
-	identityName := module.getIdentityName(ca, enrollmentCert, requestedName, identityId)
+	identityName, err := module.getIdentityName(ca, enrollmentCert, requestedName, identityId)
+	if err != nil {
+		return nil, err
+	}
 
 	log = log.WithField("determinedName", identityName)
 
@@ -225,7 +229,10 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	log = log.WithField("requestedName", requestedName)
 
-	identityName := module.getIdentityName(ca, enrollmentCert, requestedName, identityId)
+	identityName, err := module.getIdentityName(ca, enrollmentCert, requestedName, identityId)
+	if err != nil {
+		return nil, err
+	}
 
 	log = log.WithField("determinedName", identityName)
 
@@ -269,7 +276,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 //     The requested name is only used if the CA's name format allows it to be used.
 //
 //     If the resulting name is not unique a six digit zero-padded numerical suffix is appended (i.e. 000001).
-func (module *EnrollModuleCa) getIdentityName(ca *Ca, enrollmentCert *x509.Certificate, requestedName string, identityId string) string {
+func (module *EnrollModuleCa) getIdentityName(ca *Ca, enrollmentCert *x509.Certificate, requestedName string, identityId string) (string, error) {
 	formatter := NewIdentityNameFormatter(ca, enrollmentCert, requestedName, identityId)
 	nameFormat := ca.IdentityNameFormat
 
@@ -283,17 +290,21 @@ func (module *EnrollModuleCa) getIdentityName(ca *Ca, enrollmentCert *x509.Certi
 	suffixCount := 0
 	for !identityNameIsValid {
 		//check for name collisions append 4 digit incrementing number to end till ok
-		entity, _ := module.env.GetManagers().Identity.readEntityByQuery(fmt.Sprintf(`%s="%s"`, db.FieldName, identityName))
+		// The name comes from the enrollment request or the client certificate. It is looked up by
+		// index rather than formatted into a filter, which it could turn into one that always matches.
+		_, err := module.env.GetManagers().Identity.ReadByName(identityName)
 
-		if entity != nil {
+		if err == nil {
 			suffixCount = suffixCount + 1
 			identityName = identityName + fmt.Sprintf("%06d", suffixCount)
-		} else {
+		} else if boltz.IsErrNotFoundErr(err) {
 			identityNameIsValid = true
+		} else {
+			return "", err
 		}
 	}
 
-	return identityName
+	return identityName, nil
 }
 
 func NewIdentityNameFormatter(ca *Ca, clientCert *x509.Certificate, identityName, identityId string) *Formatter {
