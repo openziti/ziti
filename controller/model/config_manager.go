@@ -17,6 +17,7 @@
 package model
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -161,16 +162,20 @@ func (self *ConfigManager) Marshall(entity *Config) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-func (self *ConfigManager) Unmarshall(bytes []byte) (*Config, error) {
+func (self *ConfigManager) Unmarshall(dataBytes []byte) (*Config, error) {
 	msg := &edge_cmd_pb.Config{}
-	if err := proto.Unmarshal(bytes, msg); err != nil {
+	if err := proto.Unmarshal(dataBytes, msg); err != nil {
 		return nil, err
 	}
 
 	data := map[string]interface{}{}
-	if err := json.Unmarshal(msg.Data, &data); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(msg.Data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&data); err != nil {
 		return nil, err
 	}
+
+	NarrowJsonTypes(data)
 
 	return &Config{
 		BaseEntity: models.BaseEntity{

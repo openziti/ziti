@@ -18,7 +18,6 @@ package routes
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
@@ -45,7 +44,7 @@ func MapCreateConfigToModel(config *rest_model.ConfigCreate) (*model.Config, err
 	if config.Data != nil {
 		if dataMap, ok := config.Data.(map[string]interface{}); ok {
 			ret.Data = dataMap
-			narrowJsonTypesMap(ret.Data)
+			model.NarrowJsonTypes(ret.Data)
 		} else {
 			return nil, errorz.NewFieldError("invalid type, expected object", "data", config.Data)
 		}
@@ -66,7 +65,7 @@ func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) (*model.
 	if config.Data != nil {
 		if dataMap, ok := config.Data.(map[string]interface{}); ok {
 			ret.Data = dataMap
-			narrowJsonTypesMap(ret.Data)
+			model.NarrowJsonTypes(ret.Data)
 		} else {
 			return nil, errorz.NewFieldError("invalid type, expected object", "data", config.Data)
 		}
@@ -87,13 +86,13 @@ func MapPatchConfigToModel(id string, config *rest_model.ConfigPatch) (*model.Co
 	if config.Data != nil {
 		if dataMap, ok := config.Data.(map[string]interface{}); ok {
 			ret.Data = dataMap
-			narrowJsonTypesMap(ret.Data)
+			model.NarrowJsonTypes(ret.Data)
 		} else {
 			return nil, errorz.NewFieldError("invalid type, expected object", "data", config.Data)
 		}
 	}
 
-	narrowJsonTypesMap(ret.Data)
+	model.NarrowJsonTypes(ret.Data)
 
 	return ret, nil
 }
@@ -119,56 +118,4 @@ func MapConfigToRestModel(ae *env.AppEnv, config *model.Config) (*rest_model.Con
 	}
 
 	return ret, nil
-}
-
-func resolveParsedNumber(v interface{}) interface{} {
-	if parsedNumber, ok := v.(ParsedNumber); ok {
-		//floats don't parse as int, try int first, then float, else give up
-		if intVal, err := parsedNumber.Int64(); err == nil {
-			v = intVal
-		} else if floatVal, err := parsedNumber.Float64(); err == nil {
-			v = floatVal
-			intVal := math.Trunc(floatVal)
-			if intVal == floatVal {
-				v = intVal
-			}
-		}
-	}
-	return v
-}
-
-func narrowJsonTypesList(l []interface{}) {
-	for i, v := range l {
-		v = resolveParsedNumber(v)
-
-		switch val := v.(type) {
-		case []interface{}:
-			narrowJsonTypesList(val)
-		case map[string]interface{}:
-			narrowJsonTypesMap(val)
-		default:
-			l[i] = v
-		}
-	}
-}
-
-func narrowJsonTypesMap(m map[string]interface{}) {
-	for k, v := range m {
-		v = resolveParsedNumber(v)
-
-		switch val := v.(type) {
-		case []interface{}:
-			narrowJsonTypesList(val)
-		case map[string]interface{}:
-			narrowJsonTypesMap(val)
-		default:
-			m[k] = v
-		}
-	}
-}
-
-type ParsedNumber interface {
-	String() string
-	Float64() (float64, error)
-	Int64() (int64, error)
 }
