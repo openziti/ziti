@@ -30,6 +30,10 @@ updates:
   schedule:
     interval: weekly
   open-pull-requests-limit: 10
+  # The ZET integration tests' workflow ref must move with the zetA-version release in release.yml,
+  # which Dependabot doesn't bump. Dependabot names a reusable workflow by repo and workflow path.
+  ignore:
+    - dependency-name: "openziti/ziti-tunnel-sdk-c*"
   groups:
     all:
       applies-to: version-updates

@@ -138,11 +138,13 @@ jobs:
     name: ZET Integration Tests
     if: contains(github.ref_name, '-pre') || contains(github.ref_name, '-rc')
     needs: [ linux-build, mac-os-build, windows-build ]
-    uses: openziti/ziti-tunnel-sdk-c/.github/workflows/integration-tests.yml@main
+    # The @ref selects both the workflow and the test sources it checks out, so it must name the
+    # same ZET release as zetA-version. Bump them together.
+    uses: openziti/ziti-tunnel-sdk-c/.github/workflows/integration-tests.yml@v1.20.0
     with:
       ziti-artifact: release-${{ github.run_id }}
       tests-repo: openziti/ziti-tunnel-sdk-c
-      zetA-version: latest
+      zetA-version: v1.20.0
       label: ${{ github.ref_name }}
 
   publish:
