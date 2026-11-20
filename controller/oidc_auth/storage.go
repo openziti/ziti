@@ -303,6 +303,7 @@ func (s *HybridStorage) CompleteTotpEnrollment(changeCtx *change.Context, authRe
 
 	authRequest.IsTotpEnrolled = true
 	authRequest.AddAmr(AuthMethodSecondaryTotp)
+	authRequest.AuthTime = time.Now()
 
 	return authRequest, nil
 }
@@ -518,6 +519,7 @@ func (s *HybridStorage) VerifyTotp(ctx *change.Context, code string, id string) 
 	}
 
 	authRequest.AddAmr(AuthMethodSecondaryTotp)
+	authRequest.AuthTime = time.Now()
 
 	return authRequest, nil
 }
@@ -739,7 +741,7 @@ func (s *HybridStorage) createAccessToken(ctx context.Context, request op.TokenR
 		// exchange rather than leaving the mint-time default, which would falsely refresh
 		// authentication-recency semantics (e.g. router-side MFA posture baselines).
 		claims.AuthTime = subjectClaims.AuthTime
-		claims.AccessTokenClaims.AuthenticationMethodsReferences = req.GetAMR()
+		claims.AccessTokenClaims.AuthenticationMethodsReferences = subjectClaims.AuthenticationMethodsReferences
 		claims.ClientID = req.GetClientID()
 
 		if ts, tsErr := TokenStateFromContext(ctx); tsErr == nil && ts.CsrPem != "" {

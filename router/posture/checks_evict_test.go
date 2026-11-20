@@ -59,6 +59,9 @@ func Test_EvictInactive_EvictsAfterRetention(t *testing.T) {
 	seedInstance(cache, "gone")
 
 	cache.MarkDisconnected("gone")
+	// On Windows two time.Now() calls inside one clock tick return the same value. Sleeping past
+	// a tick puts the disconnect time strictly before the eviction time.
+	time.Sleep(25 * time.Millisecond)
 
 	req.Equal(1, cache.EvictInactive(0))
 	req.Nil(cache.GetInstance("gone"))
@@ -73,6 +76,9 @@ func Test_EvictInactive_EvictsOnlyDisconnectedSessions(t *testing.T) {
 
 	cache.MarkDisconnected("drop-1")
 	cache.MarkDisconnected("drop-2")
+	// On Windows two time.Now() calls inside one clock tick return the same value. Sleeping past
+	// a tick puts the disconnect times strictly before the eviction time.
+	time.Sleep(25 * time.Millisecond)
 
 	req.Equal(2, cache.EvictInactive(0))
 	req.NotNil(cache.GetInstance("keep"))
@@ -153,6 +159,9 @@ func Test_ReconcileDisconnected_RecordsMissedDisconnect(t *testing.T) {
 
 	// reconciling against the connection tracker records the disconnect, making it evictable
 	cache.ReconcileDisconnected(connectedSet())
+	// On Windows two time.Now() calls inside one clock tick return the same value. Sleeping past
+	// a tick puts the disconnect time strictly before the eviction time.
+	time.Sleep(25 * time.Millisecond)
 	req.Equal(1, cache.EvictInactive(0))
 	req.Nil(cache.GetInstance("drifted"))
 }

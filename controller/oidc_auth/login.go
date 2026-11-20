@@ -378,6 +378,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if secondaryJwtResult != nil && secondaryJwtResult.IsSuccessful() {
 			authRequest.AddAmrExtJwtId(authRequest.SecondaryExtJwtSigner.Id)
+			authRequest.AuthTime = time.Now()
 		}
 	}
 
