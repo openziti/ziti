@@ -97,11 +97,32 @@ func Test_SDK_MfaBaselineSeededFromApiSession(t *testing.T) {
 	ctx.Req.True(er.WaitForIdentityWithServices(identity.Id, 10*time.Second),
 		"identity service policies should reach the router RDM")
 
+	// controllerMfaCheckPassing returns the isPassing the controller lists for the MFA posture query of the
+	// service, for the api session of zitiCtx: what apps show the user, evaluated by the controller and not
+	// the router.
+	controllerMfaCheckPassing := func(zitiCtx *ziti.ContextImpl) bool {
+		detail, err := zitiCtx.RefreshService(service.Name)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(detail)
+
+		for _, querySet := range detail.PostureQueries {
+			for _, query := range querySet.PostureQueries {
+				if query.ID != nil && *query.ID == checkId {
+					ctx.Req.NotNil(query.IsPassing)
+					return *query.IsPassing
+				}
+			}
+		}
+		ctx.Req.Failf("mfa posture query not found", "service %s has no posture query for check %s", service.Name, checkId)
+		return false
+	}
+
 	t.Run("without totp at auth the mfa check blocks the dial", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
 		_, err := enrollCtx.Dial(service.Name)
 		ctx.Req.Error(err, "MFA never passed and no seed applies: the posture gate must block the dial")
+		ctx.Req.False(controllerMfaCheckPassing(enrollCtx), "the controller must agree: the MFA check is failing")
 	})
 
 	// Enroll TOTP on the first context, then discard it. The second context authenticates fresh,
@@ -155,5 +176,25 @@ func Test_SDK_MfaBaselineSeededFromApiSession(t *testing.T) {
 		}, 15*time.Second, 250*time.Millisecond, "the MFA check should be pushed as passing from the api session seed")
 
 		ctx.Req.False(totpTokenRequested.Load(), "no posture TOTP token may be requested: the session seed is the only MFA source")
+	})
+
+	// GH-4558: the controller seeds its own posture cache from the same token, so the service it lists for the
+	// session reports the MFA check passing, not only the router.
+	t.Run("totp at auth passes the controller mfa check", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		ctx.Req.True(controllerMfaCheckPassing(clientCtx), "the controller should report the MFA check passing from the api session token")
+		ctx.Req.False(totpTokenRequested.Load(), "no posture TOTP token may be requested: the session token is the only MFA source")
+	})
+
+	// The token keeps amr=totp through refresh, so it must not keep passing the check once MFA is gone.
+	t.Run("admin mfa removal fails the controller mfa check", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		ctx.Req.NoError(adminManagementApi.RemoveIdentityMfa(identity.Id))
+
+		ctx.Req.Eventually(func() bool {
+			return !controllerMfaCheckPassing(clientCtx)
+		}, 5*time.Second, 100*time.Millisecond, "the controller should report the MFA check failing after MFA removal")
 	})
 }

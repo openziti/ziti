@@ -471,6 +471,14 @@ func (ctx *SecurityCtx) resolveOidcSession(securityToken *common.SecurityToken) 
 		IsCertKeyRollRequested:  claims.IsCertKeyRollRequested,
 		ImproperClientCertChain: claims.ImproperClientCertChain,
 	}
+
+	// A token whose amr includes totp passed MFA at auth_time, as /authenticate/mfa does for legacy sessions.
+	// OIDC sessions have no other path into the posture cache, so without this MFA posture checks never pass.
+	if claims.TotpComplete() {
+		if passedAt := claims.AuthTime.AsTime(); passedAt.Unix() > 0 {
+			ctx.env.GetManagers().PostureResponse.SeedMfaPosture(identity.Id, claims.ApiSessionId, passedAt.UTC())
+		}
+	}
 }
 
 // verifyCertProofOfPossession validates that the TLS client certificate presented on this request
