@@ -31,22 +31,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// reconcileTestChannel answers only Label and IsClosed. Every other method dispatches through the nil
-// embedded interface and panics.
+// reconcileTestChannel is an open channel that answers only Label, IsClosed and TrySend, which accepts
+// and discards every message. Every other method dispatches through the nil embedded interface and
+// panics.
 type reconcileTestChannel struct {
 	channel.Channel
-	closed bool
 }
 
-func (self *reconcileTestChannel) Label() string  { return "reconcile-test" }
-func (self *reconcileTestChannel) IsClosed() bool { return self.closed }
+func (self *reconcileTestChannel) Label() string                          { return "reconcile-test" }
+func (self *reconcileTestChannel) IsClosed() bool                         { return false }
+func (self *reconcileTestChannel) TrySend(channel.Sendable) (bool, error) { return true, nil }
 
 type reconcileTestSdkChannel struct {
 	sdkedge.SdkChannel
 	ch *reconcileTestChannel
 }
 
-func (self *reconcileTestSdkChannel) GetChannel() channel.Channel { return self.ch }
+func (self *reconcileTestSdkChannel) GetChannel() channel.Channel      { return self.ch }
+func (self *reconcileTestSdkChannel) GetDefaultSender() channel.Sender { return self.ch }
 
 func newReconcileTestRegistry() *hostedServiceRegistry {
 	return &hostedServiceRegistry{
@@ -87,12 +89,11 @@ func newBoundTerminator(registry *hostedServiceRegistry, connId uint32, cost uin
 	return term
 }
 
-// takeOver runs the listener id check for replacement against a registry holding existing, whose sdk
-// connection is closed so the takeover does not try to notify it.
+// takeOver runs the listener id check for replacement against a registry holding existing, and requires
+// that replacement took existing over.
 func takeOver(t *testing.T, registry *hostedServiceRegistry, existing, replacement *edgeTerminator) {
 	t.Helper()
 
-	existing.MsgChannel.SdkChannel.(*reconcileTestSdkChannel).ch.closed = true
 	registry.Put(existing)
 
 	event := &findMatchingEvent{terminator: replacement, resultC: make(chan listenerIdCheckResult, 1)}

@@ -56,6 +56,7 @@ const (
 	ErrorTypePortNotAllowed          = 7
 	ErrorTypeInvalidLinkDestination  = 8
 	ErrorTypeResourcesNotAvailable   = 9
+	ErrorTypeUnusableTerminator      = 10
 
 	CreateCircuitPeerDataHeader = 10
 

@@ -152,6 +152,9 @@ func (self *createTerminatorV2Handler) CreateTerminatorV2(ctx *CreateTerminatorV
 		}
 	}
 
+	// A create for an existing terminator fires no create event, so no store event clears an unusable mark.
+	self.getNetwork().TerminatorEstablished(ctx.req.Address)
+
 	response := &edge_ctrl_pb.CreateTerminatorV2Response{
 		TerminatorId: terminator.Id,
 		Result:       edge_ctrl_pb.CreateTerminatorResult_Success,

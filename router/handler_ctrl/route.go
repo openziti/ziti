@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/ziti/v2/controller/xt"
 	"github.com/openziti/ziti/v2/router/env"
 	"github.com/openziti/ziti/v2/router/forwarder"
+	"github.com/openziti/ziti/v2/router/xgress_router"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -203,6 +204,8 @@ func classifyDialError(err error) byte {
 		return ctrl_msg.ErrorTypeMisconfiguredTerminator
 	case errors.As(err, &xgress.InvalidTerminatorError{}):
 		return ctrl_msg.ErrorTypeInvalidTerminator
+	case errors.As(err, &xgress_router.UnusableTerminatorError{}):
+		return ctrl_msg.ErrorTypeUnusableTerminator
 	case isPortNotAllowedError(err):
 		return ctrl_msg.ErrorTypePortNotAllowed
 	case isRejectedByApplicationError(err):
