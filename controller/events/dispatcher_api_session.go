@@ -62,7 +62,6 @@ func (self *Dispatcher) apiSessionCreated(apiSession *db.ApiSession) {
 		Id:         apiSession.Id,
 		Type:       event.ApiSessionTypeLegacy,
 		Timestamp:  time.Now(),
-		Token:      apiSession.Token,
 		IdentityId: apiSession.IdentityId,
 		IpAddress:  apiSession.IPAddress,
 	}
@@ -78,7 +77,6 @@ func (self *Dispatcher) apiSessionDeleted(apiSession *db.ApiSession) {
 		Id:         apiSession.Id,
 		Type:       event.ApiSessionTypeLegacy,
 		Timestamp:  time.Now(),
-		Token:      apiSession.Token,
 		IdentityId: apiSession.IdentityId,
 		IpAddress:  apiSession.IPAddress,
 	}
