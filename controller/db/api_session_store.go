@@ -267,7 +267,10 @@ func (store *apiSessionStoreImpl) GetTokenIndex() boltz.ReadIndex {
 
 func (store *apiSessionStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
-	symbolToken := store.AddSymbol(FieldApiSessionToken, ast.NodeTypeString)
+	// The token is the session's bearer credential. A public symbol would let anyone who may list api
+	// sessions recover it through filter and sort results, even though the value itself is withheld.
+	symbolToken := store.NewEntitySymbol(FieldApiSessionToken, ast.NodeTypeString)
+	store.AddEntitySymbol(symbolToken)
 	store.indexToken = store.AddUniqueIndex(symbolToken)
 	store.symbolIdentity = store.AddFkSymbol(FieldApiSessionIdentity, store.stores.identity)
 	store.AddSymbol(FieldApiSessionLastActivityAt, ast.NodeTypeDatetime)
