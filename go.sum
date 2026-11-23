@@ -487,8 +487,8 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7mt48=
 github.com/onsi/gomega v1.13.0 h1:7lLHu94wT9Ij0o6EWWclhu0aOh32VxhkwEJvzuWPeak=
 github.com/onsi/gomega v1.13.0/go.mod h1:lRk9szgn8TxENtWd0Tp4c3wjlRfMTMH27I+3Je41yGY=
-github.com/openziti/channel/v5 v5.0.40 h1:C2ybEkpzkEnUO2SLdZuf7S/syZTAtkDcDeRUXK/8jiw=
-github.com/openziti/channel/v5 v5.0.40/go.mod h1:MvngkapSPCNxlSolPCpKtgnYi08Ex2NWFFIc1l41pfc=
+github.com/openziti/channel/v5 v5.0.41 h1:tnrOQ9MEkcms/Q5HuCaRnmGwWRbD4xBKIy+tF1mlZs8=
+github.com/openziti/channel/v5 v5.0.41/go.mod h1:ce0KRWab618tnPn1DVINwZ9ja5aqOudNQLhOBDn0tkY=
 github.com/openziti/cobra-to-md v1.0.1 h1:WRinNoIRmwWUSJm+pSNXMjOrtU48oxXDZgeCYQfVXxE=
 github.com/openziti/cobra-to-md v1.0.1/go.mod h1:FjCpk/yzHF7/r28oSTNr5P57yN5VolpdAtS/g7KNi2c=
 github.com/openziti/edge-api v0.36.1 h1:f6ncmo7KjzSC0rEY0cxig+BQVI0B8896tfeNF2fMo1w=
@@ -509,8 +509,8 @@ github.com/openziti/sdk-golang/v2 v2.0.0-pre6 h1:Ashx++kKtKW2KbWVO70yHv5ziauRCz5
 github.com/openziti/sdk-golang/v2 v2.0.0-pre6/go.mod h1:SIUM4MXIK/QVtpd1ZnERSWN/L1tRox+O1vl20YHcpW8=
 github.com/openziti/secretstream v0.1.53 h1:UHkuk71U24vdzTC0wXq+DTwPOQnFApfRvOA9mat0L4c=
 github.com/openziti/secretstream v0.1.53/go.mod h1:gk8JnDEKR/YNwWfHaQXsUSdSn3w7+mmw9O/Cgqox1II=
-github.com/openziti/transport/v2 v2.0.229 h1:NYe1NpUgv2zHPsY6/BB3dABNtA+UKpeIXfeMP3bqpfQ=
-github.com/openziti/transport/v2 v2.0.229/go.mod h1:S77UkTfd331FlJRtq2sHa9beFhcIpoeBSmsGsj2ni18=
+github.com/openziti/transport/v2 v2.0.230 h1:2XEA87rneciLU9ZH7L5ZPDkWmGbbKm3j0QuzujXOoIQ=
+github.com/openziti/transport/v2 v2.0.230/go.mod h1:S77UkTfd331FlJRtq2sHa9beFhcIpoeBSmsGsj2ni18=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
 github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/openziti/xweb/v3 v3.0.6 h1:t9he/0taQdBYgkjTO0xr/IQsACrxrbC47PLC11TXKgs=
