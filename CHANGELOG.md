@@ -1,3 +1,28 @@
+# Release 1.6.24
+
+## What's New
+
+* Api session events and session events no longer carry session tokens (see below). **Event
+  consumers that read `token` need updating.**
+
+## Session Tokens Removed from Events
+
+Api session events carried the raw api session token, and session events the raw service session
+token. Events land in files, AMQP and other sinks with their own access controls and retention, so
+anyone able to read them could take over a legacy api session. Both events no longer have a `token`
+field, and their text form no longer prints one. Use `id` to identify a session, and
+`api_session_id` to tie a session event to its api session.
+
+## Contributors
+
+* [@dmuensterer](https://github.com/dmuensterer) reported and fixed the api session token disclosure in
+  [#4777](https://github.com/openziti/ziti/issues/4777), which this change comes from.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti: [v1.6.23 -> v1.6.24](https://github.com/openziti/ziti/compare/v1.6.23...v1.6.24)
+    * [Issue #4818](https://github.com/openziti/ziti/issues/4818) - [Backport-1.6] Api session list and detail disclose session tokens to read-only roles
+
 # Release 1.6.23
 
 ## What's New
