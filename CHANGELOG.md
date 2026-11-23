@@ -1,3 +1,44 @@
+# Release 2.0.10
+
+## What's New
+
+* [Credentials Withheld from Management Reads and Events](#credentials-withheld-from-management-reads-and-events) - Non-admins can no longer read api session tokens, nobody can filter or sort on them or on password hashes, and events no longer carry session tokens. **Event consumers that read `token` need updating.**
+
+## Credentials Withheld from Management Reads and Events
+
+2.0 opened management reads to non-admin roles such as `admin_readonly`, `ops` and `ops.read`. A few
+stored credentials were still reachable through those reads, and through controller events.
+
+* **API session tokens** - The api session list and detail returned every session's `token` to any
+  caller allowed to read api sessions. The token is the bearer credential of a legacy api session, so
+  a read-only user could take over another identity's session, an admin's included
+  ([#4777](https://github.com/openziti/ziti/issues/4777)). Non-admins now get an empty `token`. Your
+  own token is still returned by `current-api-session` and the authenticate response.
+* **Password hashes** - The UPDB password hash and salt were never returned, but `updbPassword` and
+  `updbSalt` could be used in authenticator list filters. Anyone allowed to list authenticators could
+  recover both a character at a time and attack the password offline
+  ([#4814](https://github.com/openziti/ziti/issues/4814)).
+* **Filters and sorts** - `token` on api sessions, and `updbPassword` and `updbSalt` on
+  authenticators, can no longer be used in a `filter` or `sort`, by anyone. A `filter` that uses them,
+  including an inline `sort by`, fails with `INVALID_FILTER`; the `sort` parameter fails with
+  `INVALID_SORT`.
+* **Events** - Api session events and session events no longer have a `token` field, and their text
+  form no longer prints one. Events land in files, AMQP and other sinks with their own access
+  controls and retention, and the management event stream is open to non-admins with ops access. Use
+  `id` to identify a session, and `api_session_id` to tie a session event to its api session. JWT
+  session events carried the session id in `token`; it is in `id`.
+
+## Contributors
+
+* [@dmuensterer](https://github.com/dmuensterer) reported and fixed the api session token disclosure in
+  [#4777](https://github.com/openziti/ziti/issues/4777).
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.9 -> v2.0.10](https://github.com/openziti/ziti/compare/v2.0.9...v2.0.10)
+    * [Issue #4817](https://github.com/openziti/ziti/issues/4817) - [Backport-2.0] Authenticator filters reveal UPDB password hashes and salts to read-only roles
+    * [Issue #4816](https://github.com/openziti/ziti/issues/4816) - [Backport-2.0] Api session list and detail disclose session tokens to read-only roles
+
 # Release 2.0.9
 
 ## What's New

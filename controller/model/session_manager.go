@@ -231,7 +231,6 @@ func (self *SessionManager) CreateJwt(entity *Session, isLegacy bool) (string, e
 			ApiSessionId: entity.ApiSessionId,
 			IdentityId:   entity.IdentityId,
 			ServiceId:    entity.ServiceId,
-			Token:        entity.Id,
 		})
 	}
 

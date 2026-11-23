@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/v2/controller/permissions"
 )
 
@@ -80,6 +81,16 @@ func testApiSessionTokenDisclosure(ctx *TestContext) {
 
 		detail = testHelper.getApiSession(ctx, session, apiSessionId, http.StatusOK)
 		ctx.Req.Empty(*detail.Token, "token disclosed to %s", perm)
+
+		list := &rest_model.ListAPISessionsEnvelope{}
+		resp, err := session.newAuthenticatedRequest().
+			SetResult(list).
+			SetQueryParam("filter", `id = "`+apiSessionId+`"`).
+			Get("/api-sessions")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		ctx.Req.Len(list.Data, 1)
+		ctx.Req.Empty(*list.Data[0].Token, "token disclosed to %s in list", perm)
 
 		for _, query := range []map[string]string{
 			{"filter": `token contains "` + token[:4] + `"`},
