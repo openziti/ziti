@@ -1,6 +1,9 @@
 name: mattermost-ziti-py-webhook
 on:
+  create:
+  delete:
   issues:
+    types: [ opened, closed, reopened ]
   issue_comment:
   pull_request_review:
     types: [ submitted ]
@@ -9,8 +12,8 @@ on:
     types: [ opened, reopened, ready_for_review, closed ]
   fork:
   push:
-    tags:
-      - '*'
+    branches:
+      - '**'
   release:
     types: [ released ]
   workflow_dispatch:
@@ -26,29 +29,13 @@ jobs:
     continue-on-error: true
     # the webhook is dialed over the ziti overlay with no client-side connect timeout, so cap the job instead
     timeout-minutes: 5
-    if: github.actor != 'dependabot[bot]'
+    if: github.repository_owner == 'openziti' && github.actor != 'dependabot[bot]'
     steps:
-      # per-step too, so an unreachable webhook in the first post doesn't skip the second
-      - uses: openziti/ziti-mattermost-action-py@v1
-        continue-on-error: true
-        if: |
-          github.repository_owner == 'openziti'
-          && ((github.event_name != 'pull_request_review')
-          || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
+      - uses: openziti/ziti-mattermost-action-py@main
         with:
           zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-          webhookUrl: ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
-          eventJson: ${{ toJson(github.event) }}
-          senderUsername: "GitHubZ"
-
-      - uses: openziti/ziti-mattermost-action-py@v1
-        continue-on-error: true
-        if: |
-          github.repository_owner == 'openziti'
-          && ((github.event_name != 'pull_request_review')
-          || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
-        with:
-          zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-          webhookUrl: ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
+          webhookUrl: |
+            ${{ secrets.ZHOOK_URL_DEV_NOTIFICATIONS }}
+            ${{ secrets.ZHOOK_URL_GITHUB_SIG_CORE }}
           eventJson: ${{ toJson(github.event) }}
           senderUsername: "GitHubZ"
