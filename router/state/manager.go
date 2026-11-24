@@ -60,6 +60,9 @@ const (
 	EventRemovedApiSession = "RemovedApiSession"
 
 	DefaultSubscriptionTimeout = 5 * time.Minute
+
+	// Renew early enough to cover the 30-second subscription check interval.
+	subscriptionRenewWindow = time.Minute
 )
 
 type RemoveListener func()
@@ -800,6 +803,10 @@ func (self *ManagerImpl) manageRouterDataModelSubscription() {
 	}
 }
 
+func subscriptionNeedsRenewal(now, expiresAt time.Time) bool {
+	return !now.Before(expiresAt.Add(-subscriptionRenewWindow))
+}
+
 // checkRouterDataModelSubscription verifies subscription health and switches
 // controllers when necessary.
 func (self *ManagerImpl) checkRouterDataModelSubscription() {
@@ -809,7 +816,7 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 
 	currentSubscription := self.GetCurrentDataModelSubscription()
 	ctrl := self.env.GetNetworkControllers().GetNetworkController(currentSubscription.CtrlId)
-	if currentSubscription.CtrlId == "" || ctrl == nil || time.Now().After(self.dataModelSubTimeout) {
+	if currentSubscription.CtrlId == "" || ctrl == nil || subscriptionNeedsRenewal(time.Now(), self.dataModelSubTimeout) {
 		if bestCtrl := self.env.GetNetworkControllers().AnyChannel(); bestCtrl != nil {
 			logger := pfxlog.Logger().
 				WithField("ctrlId", bestCtrl.Id()).
@@ -818,7 +825,7 @@ func (self *ManagerImpl) checkRouterDataModelSubscription() {
 			if ctrl == nil {
 				logger.Info("no current data model subscription active, subscribing")
 			} else {
-				logger.Info("current data model subscription expired, resubscribing")
+				logger.Info("current data model subscription expiring, renewing")
 			}
 			self.subscribeToDataModelUpdates(bestCtrl)
 		}
