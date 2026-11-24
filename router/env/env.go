@@ -97,6 +97,7 @@ type Forwarder interface {
 	// not wait for the controller.
 	ReportCircuitEndpointFault(circuitId string, ctrlId string, subject ctrl_pb.FaultSubject)
 	RegisterDestination(circuitId string, address xgress.Address, destination Destination)
+	UnregisterDestination(circuitId string, address xgress.Address, destination Destination)
 	EndCircuit(circuitId string)
 }
 

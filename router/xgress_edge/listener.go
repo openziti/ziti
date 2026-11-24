@@ -956,7 +956,8 @@ func (self *edgeClientConn) cleanupXgressCircuit(edgeForwarder *xgEdgeForwarder)
 	circuitId := edgeForwarder.circuitId
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
-	self.forwarder.EndCircuit(circuitId)
+	// Retire only this endpoint: on a single-router circuit the other endpoint is registered here too.
+	self.forwarder.UnregisterDestination(circuitId, edgeForwarder.address, edgeForwarder)
 	self.xgCircuits.Remove(circuitId)
 
 	// Notify the controller of the xgress fault. Handed to the forwarder rather than sent here:
