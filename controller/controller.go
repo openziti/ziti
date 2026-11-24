@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -424,12 +423,9 @@ func (c *Controller) IsEdgeEnabled() bool {
 	return c.config.Edge.Enabled
 }
 
-// ensureOidcOnClientApiServer is an xweb InstanceValidator that automatically co-locates the edge OIDC
-// API on the same web listener as the edge client API when the OIDC API is not explicitly configured
-// anywhere. Selection prefers the web listener whose bind point address matches edge.api.address. If
-// no bind point matches and there is only one edge-client web listener, OIDC is added there with a
-// warning. If multiple edge-client web listeners exist and none match, OIDC is added to all of them
-// with a warning.
+// ensureOidcOnClientApiServer is an xweb InstanceValidator that automatically adds the edge OIDC
+// API to each web listener hosting an edge client or management API unless that listener already
+// has an OIDC API configured. Edge must be enabled and OIDC auto-binding must not be disabled.
 func (c *Controller) ensureOidcOnClientApiServer(instanceConfig *xweb.InstanceConfig) error {
 	if !c.IsEdgeEnabled() {
 		return nil
@@ -438,16 +434,6 @@ func (c *Controller) ensureOidcOnClientApiServer(instanceConfig *xweb.InstanceCo
 	if c.config.Edge.Api.DisableOidcAutoBinding {
 		return nil
 	}
-
-	for _, serverConfig := range instanceConfig.ServerConfigs {
-		for _, api := range serverConfig.APIs {
-			if api.Binding() == webapis.OidcApiBinding {
-				return nil
-			}
-		}
-	}
-
-	edgeApiAddress := c.config.Edge.Api.Address
 
 	addOidc := func(serverConfig *xweb.ServerConfig) error {
 		oidcApiConfig := &xweb.ApiConfig{}
@@ -460,58 +446,23 @@ func (c *Controller) ensureOidcOnClientApiServer(instanceConfig *xweb.InstanceCo
 		return nil
 	}
 
-	var addressMatchedServers []*xweb.ServerConfig
-	var clientApiServers []*xweb.ServerConfig
-
 	for _, serverConfig := range instanceConfig.ServerConfigs {
-		hasClientApi := false
+		hasEdgeApi := false
+		hasOidcApi := false
 		for _, api := range serverConfig.APIs {
-			if api.Binding() == webapis.ClientApiBinding {
-				hasClientApi = true
-				break
+			switch api.Binding() {
+			case webapis.OidcApiBinding:
+				hasOidcApi = true
+			case webapis.ClientApiBinding, webapis.ManagementApiBinding:
+				hasEdgeApi = true
 			}
 		}
-		if !hasClientApi {
-			continue
-		}
-		clientApiServers = append(clientApiServers, serverConfig)
-		for _, bp := range serverConfig.BindPoints {
-			if bp.ServerAddress() == edgeApiAddress {
-				addressMatchedServers = append(addressMatchedServers, serverConfig)
-				break
-			}
-		}
-	}
-
-	if len(addressMatchedServers) > 0 {
-		for _, serverConfig := range addressMatchedServers {
+		if hasEdgeApi && !hasOidcApi {
 			if err := addOidc(serverConfig); err != nil {
 				return err
 			}
-			pfxlog.Logger().Infof("edge OIDC API not explicitly configured; automatically added to '%s' web listener", serverConfig.Name)
+			pfxlog.Logger().Infof("edge OIDC API not explicitly configured on '%s' web listener; automatically added", serverConfig.Name)
 		}
-		return nil
-	}
-
-	switch len(clientApiServers) {
-	case 0:
-		return nil
-	case 1:
-		if err := addOidc(clientApiServers[0]); err != nil {
-			return err
-		}
-		pfxlog.Logger().Warnf("edge OIDC API not explicitly configured; no edge-client bind point matched [edge.api.address] value [%s]; automatically added to '%s' web listener", edgeApiAddress, clientApiServers[0].Name)
-	default:
-		for _, serverConfig := range clientApiServers {
-			if err := addOidc(serverConfig); err != nil {
-				return err
-			}
-		}
-		var names []string
-		for _, s := range clientApiServers {
-			names = append(names, "'"+s.Name+"'")
-		}
-		pfxlog.Logger().Warnf("edge OIDC API not explicitly configured; no edge-client bind point matched [edge.api.address] value [%s]; automatically added to all edge-client web listeners: %s", edgeApiAddress, strings.Join(names, ", "))
 	}
 
 	return nil
