@@ -1,9 +1,6 @@
 name: mattermost-ziti-py-webhook
 on:
-  create:
-  delete:
   issues:
-    types: [ opened, closed, reopened ]
   issue_comment:
   pull_request_review:
     types: [ submitted ]
@@ -12,8 +9,8 @@ on:
     types: [ opened, reopened, ready_for_review, closed ]
   fork:
   push:
-    branches:
-      - '**'
+    tags:
+      - '*'
   release:
     types: [ released ]
   workflow_dispatch:
