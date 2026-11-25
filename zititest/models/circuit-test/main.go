@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/chaos"
+	"github.com/openziti/ziti/zititest/zitilab/ctrlmode"
 	"github.com/openziti/ziti/zititest/zitilab/models"
 	zitilibOps "github.com/openziti/ziti/zititest/zitilab/runlevel/5_operation"
 )
@@ -144,7 +145,6 @@ var m = &model.Model{
 	Id: "circuit-test",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"ha":          "true",
 			"tcpdump":     "false",
 			"environment": "circuit-test",
 			"credentials": model.Variables{
@@ -181,6 +181,7 @@ var m = &model.Model{
 	},
 	StructureFactories: []model.Factory{
 		model.NewScaleFactoryWithDefaultEntityFactory(scaleStrategy{}),
+		ctrlmode.Factory(ctrlmode.Cluster3),
 		model.FactoryFunc(func(m *model.Model) error {
 			if mode == TestModeDefault {
 				ClientRoutersVersion = ""
@@ -247,12 +248,6 @@ var m = &model.Model{
 			return nil
 		}),
 		model.FactoryFunc(func(m *model.Model) error {
-			if val, _ := m.GetBoolVariable("ha"); !val {
-				for _, host := range m.SelectHosts("component.ha") {
-					delete(host.Region.Hosts, host.Id)
-				}
-			}
-
 			if val, _ := m.GetBoolVariable("tcpdump"); !val {
 				for _, c := range m.SelectComponents(".tcpdump") {
 					delete(c.Host.Components, c.Id)
@@ -337,7 +332,7 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"ctrl2": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest"}},
 							Type:  &zitilab.ControllerType{},
 						},
 					},
@@ -442,7 +437,7 @@ var m = &model.Model{
 					InstanceType: "t3.micro",
 					Components: model.Components{
 						"ctrl3": {
-							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest", "ha"}},
+							Scope: model.Scope{Tags: model.Tags{"ctrl", "underTest"}},
 							Type:  &zitilab.ControllerType{},
 						},
 					},

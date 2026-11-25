@@ -1,7 +1,11 @@
 v: 3
 
+{{if .Component.GetFlag "ctrl_is_clustered"}}
 cluster:
   dataDir: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrldata
+{{else}}
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
+{{end}}
 
 tls:
   handshakeTimeout: 15s
