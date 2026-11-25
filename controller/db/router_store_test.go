@@ -33,7 +33,6 @@ import (
 func Test_RouterStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test create invalid api routers", ctx.testCreateInvalidRouters)
 	t.Run("test create router", ctx.testCreateRouters)

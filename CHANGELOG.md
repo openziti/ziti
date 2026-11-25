@@ -1,3 +1,25 @@
+# Release 2.0.10
+
+## What's New
+
+* [Named Datastore Migrations](#named-datastore-migrations) - The controller tracks datastore migrations by name. A datastore it converts can't be opened by 2.0.9 or earlier
+
+## Named Datastore Migrations
+
+The controller now records each datastore migration it applies by name, instead of a single version
+number, so a migration backported to a release line runs once whichever releases a datastore passes
+through. `ziti ops db get-db-version` lists the migrations applied to a datastore.
+
+On first start, this release converts the datastore to the new scheme. A converted datastore can't be
+opened by 2.0.9 or earlier, or by a 2.1 prerelease. To go back to an earlier release, restore the
+snapshot the controller saves alongside the database file before converting it.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/ziti/v2: [v2.0.9 -> v2.0.10](https://github.com/openziti/ziti/compare/v2.0.9...v2.0.10)
+    * [Issue #4747](https://github.com/openziti/ziti/issues/4747) - [Backport-2.0] Track edge datastore migrations by name instead of a single version
+
+
 # Release 2.0.9
 
 ## What's New

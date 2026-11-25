@@ -40,6 +40,8 @@ func (ctx *TestContext) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	return ctx.stores.GetStoreForEntity(entity)
 }
 
+// Init opens a new datastore and runs the migrations on it. NewTestContext calls it; calling it again
+// fails the test.
 func (ctx *TestContext) Init() {
 	ctx.InitDb(Open)
 

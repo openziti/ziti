@@ -328,13 +328,8 @@ func Test_RunMigrationsSnapshots(t *testing.T) {
 		ctx := NewTestContext(t)
 		defer ctx.Cleanup()
 		ctx.NoError(makeConfigTypeStale(ctx, hostV2ConfigType.Name))
-		// roll the edge db version back one, so the version migrations run and take their snapshot
-		ctx.NoError(ctx.GetDb().Update(nil, func(mc boltz.MutateContext) error {
-			root := boltz.NewTypedBucket(nil, mc.Tx().Bucket([]byte(RootBucket)))
-			versions := root.GetOrCreateBucket("versions")
-			versions.SetInt64("edge", CurrentDbVersion-1, nil)
-			return versions.GetError()
-		}))
+		// converting a numbered datastore takes its own snapshot
+		ctx.NoError(resetToNumberedVersion(ctx, MaxLegacyDbVersion))
 		db := newSnapshotCountingDb(t, ctx.GetDb())
 
 		err := RunMigrations(db, ctx.stores, nil)

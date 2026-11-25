@@ -8,9 +8,9 @@ import (
 
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/boltztest"
-	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 )
@@ -18,7 +18,6 @@ import (
 func Test_EdgeRouterPolicyStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test create edge router policies", ctx.testCreateEdgeRouterPolicy)
 	t.Run("test create/update edge router policies with invalid entity refs", ctx.testEdgeRouterPolicyInvalidValues)

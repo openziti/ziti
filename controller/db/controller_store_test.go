@@ -31,16 +31,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/openziti/ziti/v2/controller/storage/boltztest"
-	"github.com/openziti/ziti/v2/common/eid"
 	"go.etcd.io/bbolt"
 )
 
 func Test_ControllerStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("create controller saves all values", func(t *testing.T) {
 		ctx.NextTest(t)

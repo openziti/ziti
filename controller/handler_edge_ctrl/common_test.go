@@ -81,7 +81,6 @@ func newLegacySessionTestEntities(t *testing.T, testCtx *model.TestContext) (*mo
 func TestLoadFromBoltSupportsOpaqueServiceSessionTokens(t *testing.T) {
 	testCtx := model.NewTestContext(t)
 	defer testCtx.Cleanup()
-	testCtx.Init()
 
 	managers, identity, service := newLegacySessionTestEntities(t, testCtx)
 
@@ -119,7 +118,6 @@ func TestLoadFromBoltSupportsOpaqueServiceSessionTokens(t *testing.T) {
 func TestLoadFromBoltRejectsOpaqueServiceSessionForDifferentApiSession(t *testing.T) {
 	testCtx := model.NewTestContext(t)
 	defer testCtx.Cleanup()
-	testCtx.Init()
 
 	managers, identity, service := newLegacySessionTestEntities(t, testCtx)
 

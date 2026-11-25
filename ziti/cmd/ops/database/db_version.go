@@ -22,49 +22,79 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/ziti/v2/controller/db"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
 	"github.com/spf13/cobra"
+	"go.etcd.io/bbolt"
 )
 
 func NewGetDbVersionAction() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get-db-version <db-path>",
-		Short: "Show the edge database version",
+		Short: "Show the edge database version and the migrations applied to it",
 		Args:  cobra.ExactArgs(1),
 		RunE:  runGetDbVersion,
 	}
 }
 
 func runGetDbVersion(_ *cobra.Command, args []string) error {
-	version, err := getEdgeDbVersion(args[0])
+	version, applied, err := readEdgeDbVersion(args[0])
 	if err != nil {
 		return err
 	}
 	fmt.Printf("edge database version: %d\n", version)
+	if len(applied) == 0 {
+		fmt.Println("no named migrations recorded")
+		return nil
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"Migration", "Origin", "Applied At", "Applied By"})
+	for _, migration := range applied {
+		appliedAt := "unknown"
+		if !migration.AppliedAt.IsZero() {
+			appliedAt = migration.AppliedAt.Format(time.RFC3339)
+		}
+		t.AppendRow(table.Row{migration.Name, migration.Version, appliedAt, migration.AppliedBy})
+	}
+	fmt.Println(t.Render())
 	return nil
 }
 
-func getEdgeDbVersion(dbPath string) (int, error) {
+// readEdgeDbVersion returns the edge version of the database at dbPath and the named migrations
+// recorded as applied to it, in name order. It doesn't modify the database.
+func readEdgeDbVersion(dbPath string) (int, []*db.AppliedMigration, error) {
 	boltDb, err := db.Open(dbPath)
 	if err != nil {
-		return 0, fmt.Errorf("failed to open database %q: %w", dbPath, err)
+		return 0, nil, fmt.Errorf("failed to open database %q: %w", dbPath, err)
 	}
 	defer func() { _ = boltDb.Close() }()
 
-	mm := boltz.NewMigratorManager(boltDb)
-	version, err := mm.GetComponentVersion("edge")
+	var version int
+	var applied []*db.AppliedMigration
+	err = boltDb.View(func(tx *bbolt.Tx) error {
+		version = db.ReadEdgeVersion(tx)
+		var loadErr error
+		applied, loadErr = db.LoadAppliedMigrations(tx)
+		return loadErr
+	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to read current version: %w", err)
+		return 0, nil, fmt.Errorf("failed to read edge database version: %w", err)
 	}
-	return version, nil
+	return version, applied, nil
 }
 
 func NewSetDbVersionAction() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "set-db-version <db-path> <version>",
-		Short:  "Set the edge database version",
+		Use:   "set-db-version <db-path> <version>",
+		Short: "Set the edge database version to a numbered version",
+		Long: fmt.Sprintf("Sets the edge database version to a numbered version from %d to %d. "+
+			"Applied migrations stay recorded, so a controller with named migrations doesn't run them again.",
+			db.LegacyDbVersion, db.MaxLegacyDbVersion),
 		Args:   cobra.ExactArgs(2),
 		Hidden: true,
 		RunE:   runSetDbVersion,
@@ -77,6 +107,9 @@ func runSetDbVersion(_ *cobra.Command, args []string) error {
 	targetVersion, err := strconv.Atoi(args[1])
 	if err != nil {
 		return fmt.Errorf("invalid version %q: %w", args[1], err)
+	}
+	if err = checkSettableDbVersion(targetVersion); err != nil {
+		return err
 	}
 
 	fmt.Printf("" +
@@ -98,7 +131,7 @@ func runSetDbVersion(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	currentVersion, err := getEdgeDbVersion(dbPath)
+	currentVersion, _, err := readEdgeDbVersion(dbPath)
 	if err != nil {
 		return err
 	}
@@ -122,5 +155,16 @@ func runSetDbVersion(_ *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("database version updated from %d to %d\n", currentVersion, targetVersion)
+	return nil
+}
+
+// checkSettableDbVersion returns an error unless version is from db.LegacyDbVersion through
+// db.MaxLegacyDbVersion. Lower versions would re-run frozen numbered migrations, and higher ones are
+// refused by the controller or skip migrations.
+func checkSettableDbVersion(version int) error {
+	if version < db.LegacyDbVersion || version > db.MaxLegacyDbVersion {
+		return fmt.Errorf("version %d is outside the settable range, %d to %d",
+			version, db.LegacyDbVersion, db.MaxLegacyDbVersion)
+	}
 	return nil
 }

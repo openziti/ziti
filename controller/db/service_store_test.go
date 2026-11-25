@@ -32,7 +32,6 @@ import (
 func Test_ServiceStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test create invalid api services", ctx.testCreateInvalidServices)
 	t.Run("test create service", ctx.testCreateServices)

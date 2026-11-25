@@ -24,22 +24,12 @@ import (
 	"github.com/openziti/ziti/v2/controller/storage/boltz"
 )
 
-func (m *Migrations) initialize(step *boltz.MigrationStep) int {
-	versionBucket := boltz.GetOrCreatePath(step.Ctx.Tx(), RootBucket)
-	if step.SetError(versionBucket.GetError()) {
-		return 0
-	}
-	version := versionBucket.GetInt64(FieldVersion)
-	if version != nil && *version > 0 {
-		return int(*version)
-	}
-
+// initialize creates the data a new edge datastore starts with.
+func (m *Migrations) initialize(step *boltz.MigrationStep) {
 	m.createIdentityTypesV1(step)
 	m.addPostureCheckTypes(step)
 	m.addProcessMultiPostureCheck(step)
 	m.addSystemAuthPolicies(step)
-
-	return CurrentDbVersion
 }
 
 var IdentityTypesV1 = map[string]string{

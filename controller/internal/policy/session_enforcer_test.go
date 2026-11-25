@@ -33,7 +33,6 @@ func Test_SessionEnforcer(t *testing.T) {
 	ctx := &enforcerTestContext{
 		TestContext: model.NewTestContext(t),
 	}
-	ctx.Init()
 	defer ctx.Cleanup()
 
 	ctx.testSessionsCleanup()

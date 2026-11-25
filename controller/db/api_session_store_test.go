@@ -23,17 +23,16 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/ziti/v2/controller/storage/boltz"
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/storage/boltz"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"go.etcd.io/bbolt"
 )
 
 func Test_ApiSessionStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test create invalid api sessions", ctx.testCreateInvalidApiSessions)
 	t.Run("test create api sessions", ctx.testCreateApiSessions)

@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 	"github.com/openziti/ziti/v2/common/eid"
 	"github.com/openziti/ziti/v2/controller/change"
+	"github.com/openziti/ziti/v2/controller/storage/boltztest"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/foundation/v2/stringz"
@@ -34,7 +34,6 @@ import (
 func Test_EdgeServiceStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test service parent child relationship", ctx.testEdgeServiceParentChild)
 	t.Run("test create invalid api services", ctx.testCreateInvalidEdgeServices)
