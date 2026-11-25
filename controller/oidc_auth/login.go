@@ -34,7 +34,6 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/v2/common"
-	"github.com/openziti/ziti/v2/controller/apierror"
 	"github.com/openziti/ziti/v2/controller/model"
 	"github.com/pkg/errors"
 	"github.com/zitadel/oidc/v3/pkg/op"
@@ -170,19 +169,20 @@ func (l *login) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	id := r.FormValue(queryAuthRequestID)
 	w.Header().Set(AuthRequestIdHeader, id)
-	renderLogin(w, id, nil)
+	renderLogin(w, http.StatusOK, id, nil)
 }
 
-func renderLogin(w http.ResponseWriter, id string, err error) {
-	renderPage(w, loginTemplate, id, err, nil)
+func renderLogin(w http.ResponseWriter, status int, id string, err error) {
+	renderPage(w, loginTemplate, status, id, err, nil)
 }
 
-func renderTotp(w http.ResponseWriter, id string, err error, additionalData any) {
-	renderPage(w, totpTemplate, id, err, additionalData)
+func renderTotp(w http.ResponseWriter, status int, id string, err error, additionalData any) {
+	renderPage(w, totpTemplate, status, id, err, additionalData)
 }
 
-func renderPage(w http.ResponseWriter, pageTemplate *template.Template, id string, err error, additionalData any) {
+func renderPage(w http.ResponseWriter, pageTemplate *template.Template, status int, id string, err error, additionalData any) {
 	w.Header().Set("content-type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	var errMsg string
 	errDisplay := "none"
 	if err != nil {
@@ -259,21 +259,24 @@ func (l *login) checkTotp(w http.ResponseWriter, r *http.Request) {
 	authRequest, verifyErr := l.store.VerifyTotp(ctx, code, id)
 
 	if verifyErr != nil {
+		verifyApiErr := &errorz.ApiError{}
+		isUnauthorized := errors.As(verifyErr, &verifyApiErr) && verifyApiErr.Status == http.StatusUnauthorized
+
 		if responseType == JsonContentType {
-			renderJsonApiError(w, &errorz.ApiError{
-				AppCode: "INVALID TOTP CODE",
-				Message: "an invalid TOTP code was supplied",
-				Status:  http.StatusBadRequest,
-			})
-			return
+			if !isUnauthorized {
+				verifyApiErr = newInvalidTotpCodeError()
+			}
+			renderJsonApiError(w, verifyApiErr)
+		} else if isUnauthorized {
+			renderTotp(w, http.StatusUnauthorized, id, errors.New(verifyApiErr.Message), nil)
 		} else {
-			renderTotp(w, id, verifyErr, nil)
-			return
+			renderTotp(w, http.StatusOK, id, verifyErr, nil)
 		}
+		return
 	}
 
 	if !authRequest.HasAmr(AuthMethodSecondaryTotp) {
-		renderTotp(w, id, errors.New("TOTP supplied but not enabled or required on identity"), nil)
+		renderTotp(w, http.StatusOK, id, errors.New("TOTP supplied but not enabled or required on identity"), nil)
 		return
 	}
 
@@ -341,8 +344,7 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 		if responseType == HtmlContentType {
 
 			if method == AuthMethodPassword {
-				w.WriteHeader(authApiErr.Status)
-				renderLogin(w, credentials.AuthRequestId, authApiErr)
+				renderLogin(w, authApiErr.Status, credentials.AuthRequestId, authApiErr)
 				return
 			}
 
@@ -383,9 +385,9 @@ func (l *login) authenticate(w http.ResponseWriter, r *http.Request) {
 
 	if !authRequest.HasSecondaryAuth() {
 		if responseType == HtmlContentType {
-			renderTotp(w, credentials.AuthRequestId, err, authRequest.GetAuthQueries())
+			renderTotp(w, http.StatusOK, credentials.AuthRequestId, err, authRequest.GetAuthQueries())
 		} else {
-			l.renderAuthQueriesJson(w, authRequest)
+			l.renderAuthStateJson(w, authRequest)
 		}
 		return
 	}
@@ -406,22 +408,23 @@ func (l *login) listAuthQueries(w http.ResponseWriter, r *http.Request) {
 	authRequest, err := l.store.GetAuthRequest(authRequestId)
 
 	if err != nil {
-		invalid := apierror.NewInvalidAuth()
-		http.Error(w, invalid.Message, invalid.Status)
+		renderJsonError(w, err)
 		return
 	}
 
-	l.renderAuthQueriesJson(w, authRequest)
+	l.renderAuthStateJson(w, authRequest)
 }
 
-// renderAuthQueriesJson writes the pending secondary auth queries as a JSON response
-// and sets the totp-required header when applicable.
-func (l *login) renderAuthQueriesJson(w http.ResponseWriter, authRequest *AuthRequest) {
+// renderAuthStateJson writes the pending secondary auth queries and the auth request
+// expiration as a JSON response and sets the totp-required header when applicable.
+func (l *login) renderAuthStateJson(w http.ResponseWriter, authRequest *AuthRequest) {
 	if authRequest.NeedsTotp() {
 		w.Header().Set(TotpRequiredHeader, "true")
 	}
 	respBody := JsonMap(map[string]interface{}{
-		"authQueries": authRequest.GetAuthQueries(),
+		"authQueries":       authRequest.GetAuthQueries(),
+		"expiresAt":         strfmt.DateTime(authRequest.ExpiresAt),
+		"expirationSeconds": int64(authRequest.ExpiresAt.Sub(authRequest.CreationDate).Seconds()),
 	})
 	renderJson(w, http.StatusOK, &respBody)
 }
@@ -535,5 +538,5 @@ func (l *login) verifyTotp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.renderAuthQueriesJson(w, authRequest)
+	l.renderAuthStateJson(w, authRequest)
 }
