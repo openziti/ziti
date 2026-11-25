@@ -129,6 +129,11 @@ func (ae *AppEnv) GetTokenIssuerCache() *model.TokenIssuerCache {
 	return ae.TokenIssuerCache
 }
 
+// GetAuthRateLimiter returns the limiter that bounds concurrent authentication work.
+func (ae *AppEnv) GetAuthRateLimiter() rate.AdaptiveRateLimiter {
+	return ae.AuthRateLimiter
+}
+
 func (ae *AppEnv) CreateTotpTokenFromAccessClaims(issuer string, claims *common.AccessClaims) (string, *common.TotpClaims, error) {
 	if claims == nil {
 		return "", nil, errors.New("claims cannot be nil")

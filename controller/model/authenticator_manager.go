@@ -75,6 +75,19 @@ func (self *AuthenticatorManager) IsUpdated(field string) bool {
 	return !strings.EqualFold(field, "method") && !strings.EqualFold(field, "identityId")
 }
 
+// Authorize runs primary authentication for authContext.
+//
+// The credential check is the most expensive work an unauthenticated caller can ask the
+// controller to do. Password authentication derives an argon2id hash, which takes a few
+// megabytes and several cores per attempt, and both the legacy /authenticate route and the
+// OIDC login endpoints reach it. It therefore runs under the auth rate limiter, which caps
+// how many checks proceed at once and answers 429 beyond that, so a burst of requests cannot
+// take the controller's CPU with it.
+//
+// The returned RateLimitControl is intentionally dropped. Window growth and backoff are
+// driven by work that reports its own latency; a rejected credential says nothing about how
+// loaded the controller is, so the limiter stays at its configured window and acts as a plain
+// concurrency cap.
 func (self *AuthenticatorManager) Authorize(authContext AuthContext) (AuthResult, error) {
 	authModule := self.env.GetAuthRegistry().GetByMethod(authContext.GetMethod())
 
@@ -82,7 +95,19 @@ func (self *AuthenticatorManager) Authorize(authContext AuthContext) (AuthResult
 		return nil, apierror.NewInvalidAuthMethod()
 	}
 
-	return authModule.Process(authContext)
+	var result AuthResult
+
+	_, err := self.env.GetAuthRateLimiter().RunRateLimited(func() error {
+		var moduleErr error
+		result, moduleErr = authModule.Process(authContext)
+		return moduleErr
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (self *AuthenticatorManager) ReadFingerprints(authenticatorId string) ([]string, error) {
