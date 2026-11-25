@@ -1,0 +1,15 @@
+name: Validation (All, Non-HA)
+
+on:
+  workflow_dispatch:
+
+# OIDC is off, so this is the variant that covers legacy api sessions.
+
+jobs:
+  validation:
+    name: Validation
+    uses: ./.github/workflows/validation.yml
+    secrets: inherit
+    with:
+      cluster_mode: non-ha
+      oidc: false

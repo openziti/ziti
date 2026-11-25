@@ -48,17 +48,21 @@ func (a *createManagedLinkConfigsAction) Execute(run model.Run) error {
 			return fmt.Errorf("component %q has no host", c.Id)
 		}
 		configName := "link-" + c.Id
-		data := fmt.Sprintf(`{
-			"listeners": [{
+		listeners := ""
+		if !c.HasTag("link-dial-only") {
+			listeners = fmt.Sprintf(`"listeners": [{
 				"binding": "transport",
 				"bind": "tls:0.0.0.0:6000",
 				"advertise": "tls:%s:6000"
-			}],
+			}],`, c.Host.PublicIp)
+		}
+		data := fmt.Sprintf(`{
+			%s
 			"dialers": [{
 				"binding": "transport",
 				"options": {"connectTimeout": "30s"}
 			}]
-		}`, c.Host.PublicIp)
+		}`, listeners)
 
 		if err := zitilib_actions.EdgeExec(run.GetModel(), "create", "config", configName, "router.link.v1", data); err != nil {
 			return fmt.Errorf("create link config for %q: %w", c.Id, err)
