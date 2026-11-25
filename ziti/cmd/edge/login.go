@@ -878,6 +878,21 @@ func (o *LoginOptions) NewManagementClient(useCachedCreds bool) (*edge_apis.Mana
 	transport := &edge_apis.TlsAwareHttpTransport{Transport: o.transport}
 	o.client.Transport = transport
 
+	if o.TotpCallback == nil {
+		// without this, a TOTP-protected login passes a nil func to the SDK and panics
+		o.TotpCallback = func(ch chan string) {
+			if !xterm.IsTerminal(int(os.Stdin.Fd())) {
+				ch <- ""
+				return
+			}
+			code, err := term.Prompt("Enter MFA (TOTP) code: ")
+			if err != nil {
+				code = ""
+			}
+			ch <- strings.TrimSpace(code)
+		}
+	}
+
 	o.mgmtClient = edge_apis.NewManagementApiClientWithConfig(&edge_apis.ApiClientConfig{
 		ApiUrls:          []*url.URL{ctrlUrl},
 		CaPool:           o.caPool,
