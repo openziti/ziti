@@ -301,7 +301,12 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 	}
 
 	changeCtx := rc.NewChangeContext()
-	ok, _ := ae.Managers.Mfa.Verify(mfa, *body.Code, changeCtx)
+	ok, err := ae.Managers.Mfa.Verify(mfa, *body.Code, changeCtx)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
@@ -354,7 +359,12 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 		return
 	}
 
-	ok, _ := ae.Managers.Mfa.VerifyTOTP(mfa, code)
+	ok, err := ae.Managers.Mfa.VerifyTOTP(mfa, code)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
