@@ -91,7 +91,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zitadel/oidc/v3 v3.52.0
+	github.com/zitadel/oidc/v3 v3.53.0
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/atomic v1.12.0
 	go4.org v0.0.0-20261028031214-ed6929a230fe
