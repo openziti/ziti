@@ -80,7 +80,7 @@ func Test_Quickstart_Cluster(t *testing.T) {
 	}
 	t.Logf("starting: %s %v", zitiPath, args)
 	clusterCmd := exec.CommandContext(ctx, zitiPath, args...)
-	clusterCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true", "ZITI_CONFIG_DIR="+cfgDir)
+	clusterCmd.Env = append(os.Environ(), "ZITI_LOG_NO_JSON=true", "PFXLOG_NO_JSON=true", "ZITI_CONFIG_DIR="+cfgDir)
 	clusterCmd.SysProcAttr = newProcessGroupAttr()
 	clusterCmd.Stdout = logFile
 	clusterCmd.Stderr = logFile
