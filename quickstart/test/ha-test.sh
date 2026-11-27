@@ -7,7 +7,8 @@ set -o pipefail
 
 # set defaults
 : "${BUILD_DIR:=./build}"
-: "${PFXLOG_NO_JSON:=true}"; export PFXLOG_NO_JSON  # disable JSON log format
+: "${ZITI_LOG_NO_JSON:=${PFXLOG_NO_JSON:-true}}"; export ZITI_LOG_NO_JSON  # disable JSON log format
+: "${PFXLOG_NO_JSON:=${ZITI_LOG_NO_JSON}}"; export PFXLOG_NO_JSON  # deprecated name, still read by the legacy pfxlog logger
 BASE_TMP_DIR="/tmp/ha-quickstart-test"
 mkdir -p "$BASE_TMP_DIR"
 : "${ziti_home:=$(mktemp -d "$BASE_TMP_DIR/ziti_home_XXXXXX")}"

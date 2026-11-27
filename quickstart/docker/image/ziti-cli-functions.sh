@@ -415,8 +415,10 @@ function persistEnvironmentValues {
       echo 'if [[ "$'${envvar}'" == "" ]]; then export '${envvar}'="'${envval}'"; else echo "NOT OVERRIDING: env var '${envvar}' already set. using existing value"; fi' >> "${tmpfilepath}"
   done
 
+  export ZITI_LOG_NO_JSON=true
   export PFXLOG_NO_JSON=true
   # shellcheck disable=SC2129
+  echo "export ZITI_LOG_NO_JSON=true" >> "${tmpfilepath}"
   echo "export PFXLOG_NO_JSON=true" >> "${tmpfilepath}"
 
   echo "alias zec='ziti edge'" >> "${tmpfilepath}"

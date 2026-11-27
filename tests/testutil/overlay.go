@@ -184,7 +184,7 @@ func (o *Overlay) RunZiti(zitiPath string, args []string, done chan error) {
 		zitiPath,
 		args...,
 	)
-	o.extCmd.Env = append(os.Environ(), "PFXLOG_NO_JSON=true", fmt.Sprintf("ZITI_CONFIG_DIR=%s/.config", o.Home))
+	o.extCmd.Env = append(os.Environ(), "ZITI_LOG_NO_JSON=true", "PFXLOG_NO_JSON=true", fmt.Sprintf("ZITI_CONFIG_DIR=%s/.config", o.Home))
 	_ = os.Mkdir(o.Home, 0755)
 	outf := filepath.Join(o.Home, fmt.Sprintf("stdout-ctrl-%s.log", o.InstanceID))
 	fmt.Printf("log for %s stdout at: %s\n", o.Name, outf)
